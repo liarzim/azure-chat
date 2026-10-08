@@ -25,7 +25,9 @@
       "Custom.StoryPointsValues",
       "Custom.LeadingSquad"
     ],
-    "Task": [],
+    "Task": [
+      "Microsoft.VSTS.Scheduling.OriginalEstimate"
+    ],
     "Bug": []
   },
   "templates": {
@@ -78,6 +80,6 @@
       ]
     }
   },
-  "updatedAt": "2026-10-08T13:50:43.000Z",
+  "updatedAt": "2026-10-08T13:54:32.000Z",
   "updatedBy": "מיכאל ליארזי"
 }

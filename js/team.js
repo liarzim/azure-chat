@@ -28,7 +28,9 @@ const TEAM_DEFAULT = {
       "Custom.StoryPointsValues",
       "Custom.LeadingSquad"
     ],
-    "Task": [],
+    "Task": [
+      "Microsoft.VSTS.Scheduling.OriginalEstimate"
+    ],
     "Bug": []
   },
   templates: {

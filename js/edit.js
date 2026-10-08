@@ -96,7 +96,7 @@ function canonHtml(h) {
     const attrs = [...el.attributes].map(x => [x.name, x.value]).sort((p, q) => p[0].localeCompare(q[0]));
     attrs.forEach(([n]) => el.removeAttribute(n)); attrs.forEach(([n, v]) => el.setAttribute(n, v));
   });
-  return d.innerHTML.replace(/\s+/g, " ").trim();
+  return d.innerHTML.replace(/\s*style="direction:\s*rtl;?"/g, "").replace(/direction:\s*rtl;?\s*/g, "").replace(/\s+/g, " ").trim();
 }
 function sameValue(f, a, b) {
   if (isEmptyValue(f, a) && isEmptyValue(f, b)) return true;
@@ -183,7 +183,7 @@ async function resolveValue(f, raw, meta, item) {
     }
     return {value: parts.join("; ")};
   }
-  if (f.type === "html") return {value: r.split("\n").map(l => "<div>" + (escHtml(l) || "<br>") + "</div>").join("")};
+  if (f.type === "html") return {value: r.split("\n").map(l => '<div style="direction:rtl;">' + (escHtml(l) || "<br>") + "</div>").join("")};
   return {value: r};
 }
 
@@ -237,7 +237,7 @@ const Edit = {
     return items;
   }
 };
-function commentHtml(text) { return String(text).split("\n").map(l => "<div>" + (escHtml(l) || "<br>") + "</div>").join(""); }
+function commentHtml(text) { return String(text).split("\n").map(l => '<div style="direction:rtl;">' + (escHtml(l) || "<br>") + "</div>").join(""); }
 
 
 /* ---------- Refreshing tables after a save ---------- */
@@ -322,7 +322,7 @@ function makeEditor(f, value, ctx) {
     get = () => {
       const c = area.cloneNode(true);
       c.querySelectorAll("img[data-orig-src]").forEach(img => { img.setAttribute("src", img.getAttribute("data-orig-src")); img.removeAttribute("data-orig-src"); img.classList.remove("edimg"); if (!img.className) img.removeAttribute("class"); });
-      return tplHere ? normalizeTemplateHtml(tplHere, c.innerHTML) : c.innerHTML;
+      return tplHere ? normalizeTemplateHtml(tplHere, c.innerHTML) : rtlBlocks(c.innerHTML);
     };
     set = v => { area.innerHTML = v || ""; };
     wrap.append(bar, area);

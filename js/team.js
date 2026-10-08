@@ -100,11 +100,24 @@ function sanitizeTemplateHtml(html) {
 function templateHtml(tpl) {
   if (!tpl) return "";
   const color = tpl.headingColor || "#0033CC";
-  return tpl.headings.map(h => {
-    const title = '<div><b><u><span style="color:' + color + '">' + escHtml(h.text) + ":</span></u></b></div>";
-    const body = h.content ? h.content : "<div><br></div>";
-    return title + body + "<div><br></div>";
+  const html = tpl.headings.map(h => {
+    const title = '<div style="direction:rtl;"><b><u><span style="color:' + color + '">' + escHtml(h.text) + ":</span></u></b></div>";
+    const body = h.content ? h.content : '<div style="direction:rtl;"><br></div>';
+    return title + body + '<div style="direction:rtl;"><br></div>';
   }).join("");
+  return rtlBlocks(html);
+}
+
+/* Hebrew text: every top-level line is written right-to-left, the way Azure DevOps stores it.
+   Lines that already set a direction keep it. */
+const RTL_BLOCK_TAGS = /^(DIV|P|UL|OL|LI|H[1-6]|BLOCKQUOTE|TABLE|PRE)$/;
+function rtlBlocks(html) {
+  if (!html) return html;
+  const doc = new DOMParser().parseFromString("<div>" + html + "</div>", "text/html");
+  const root = doc.body.firstChild;
+  [...root.childNodes].forEach(n => { if (n.nodeType === 3 && n.nodeValue.trim()) { const d = doc.createElement("div"); n.replaceWith(d); d.appendChild(n); } });
+  [...root.children].forEach(b => { if (RTL_BLOCK_TAGS.test(b.tagName) && !b.style.direction && !b.getAttribute("dir")) b.style.direction = "rtl"; });
+  return root.innerHTML;
 }
 
 /* ---------- Keeping user text plain inside a template ----------
@@ -150,7 +163,7 @@ function normalizeTemplateHtml(tpl, html) {
     const prev = b.previousElementSibling;
     if (prev && !isBlankBlock(prev)) { const sp = doc.createElement("div"); sp.appendChild(doc.createElement("br")); b.before(sp); }
   });
-  return root.innerHTML;
+  return rtlBlocks(root.innerHTML);
 }
 
 /* Compare heading lines loosely: ignore spaces, colons and dashes. */

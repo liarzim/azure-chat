@@ -904,7 +904,7 @@ function demoItems(ids) {
     if (type === "Bug") f["Microsoft.VSTS.TCM.ReproSteps"] = "<div>1. נכנסים למסך בקשה חדשה</div><div>2. ממלאים את כל השדות ולוחצים שמירה</div><div><br></div><div>התוצאה: מופיעה הודעת שגיאה כללית</div><div><img src='demo:inline-" + id + "' alt='צילום מסך'></div>";
     else if (type === "Feature") {
       const tpl = TeamConfig.template("Feature");
-      f["System.Description"] = tpl ? templateHtml(tpl).replace(/(תאור הדרישה:<\/span><\/u><\/b><\/div>)<div><br><\/div>/, "$1<div>דוח חודשי מרוכז לכל לקוח, עם פילוח לפי מודול.</div>") : "<div>תיאור</div>";
+      f["System.Description"] = tpl ? templateHtml(tpl).replace(/(תאור הדרישה:<\/span><\/u><\/b><\/div>)<div[^>]*><br><\/div>/, '$1<div style="direction:rtl;">דוח חודשי מרוכז לכל לקוח, עם פילוח לפי מודול.</div>') : "<div>תיאור</div>";
     }
     else f["System.Description"] = "<p>כמשתמש, אני רוצה לסנן תוצאות לפי טווח תאריכים.</p><ul><li>שדה מתאריך</li><li>שדה עד תאריך</li></ul>";
     if (i % 3 === 0) f["Microsoft.VSTS.Common.Priority"] = 2;

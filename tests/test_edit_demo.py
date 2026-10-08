@@ -53,7 +53,7 @@ with sync_playwright() as p:
     pg.locator("#epFields select[aria-label='State']").select_option("Active"); pg.wait_for_timeout(300)
     check("feature blocked by template", pg.locator("#epSave").is_disabled() and "ערך ללקוח" in pg.inner_text("#epCheck"), pg.inner_text("#epCheck"))
     pg.locator("#epAdd").select_option("System.Description"); pg.locator("#epFields .rich.big").wait_for()
-    pg.evaluate("""() => { const a = document.querySelector('#epFields .rich.big'); a.innerHTML = a.innerHTML.replace(/(ערך ללקוח:<\\/span><\\/u><\\/b><\\/div>)<div><br><\\/div>/, '$1<div>חיסכון של שעתיים בשבוע לכל לקוח</div>'); a.dispatchEvent(new Event('input')); }""")
+    pg.evaluate("""() => { const a = document.querySelector('#epFields .rich.big'); a.innerHTML = a.innerHTML.replace(/(ערך ללקוח:<\\/span><\\/u><\\/b><\\/div>)<div[^>]*><br><\\/div>/, '$1<div>חיסכון של שעתיים בשבוע לכל לקוח</div>'); a.dispatchEvent(new Event('input')); }""")
     pg.wait_for_timeout(400)
     check("feature saves once template filled", pg.locator("#epSave").is_enabled(), pg.inner_text("#epCheck"))
     shot(pg, "edit_feature.png")

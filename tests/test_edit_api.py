@@ -83,7 +83,7 @@ with sync_playwright() as p:
     check("PATCH content type", pt["ct"] == "application/json-patch+json", pt["ct"])
     check("rev test first", pt["ops"][0] == {"op": "test", "path": "/rev", "value": 5}, pt["ops"])
     check("state op", {"op": "add", "path": "/fields/System.State", "value": "Resolved"} in pt["ops"], pt["ops"])
-    check("comment as History html", any(o["path"] == "/fields/System.History" and o["value"] == "<div>תוקן בגרסה 4.1</div><div>נבדק</div>" for o in pt["ops"]), pt["ops"])
+    check("comment as History html", any(o["path"] == "/fields/System.History" and o["value"] == '<div style="direction:rtl;">תוקן בגרסה 4.1</div><div style="direction:rtl;">נבדק</div>' for o in pt["ops"]), pt["ops"])
     check("only the changed field sent", len(pt["ops"]) == 3, pt["ops"])
     check("expand=all on PATCH", "$expand=all" in pt["url"])
     check("table shows new state", pg.locator(".msg.bot table").first.locator("tbody tr").nth(0).locator("td").nth(hdr.index("State")).inner_text() == "Resolved")

@@ -46,11 +46,16 @@
     <h2>Azure Chat 2 · <span id="orgName"></span></h2>
     <span class="who" id="who"></span>
     <button class="btn" id="newBtn">+ פריט חדש</button>
-    <button class="btn ghost" id="teamBtn">הגדרות צוות</button>
-    <button class="btn ghost" id="settingsBtn">עמודות</button>
-    <button class="btn ghost" id="clearBtn">ניקוי</button>
-    <a class="btn ghost" id="helpBtn" href="help.html#usage" target="_blank" rel="noopener">מדריך</a>
-    <button class="btn ghost" id="logoutBtn">התנתקות</button>
+    <div class="menuwrap">
+      <button class="btn ghost" id="setMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="setMenu">הגדרות <span aria-hidden="true">▾</span></button>
+      <div class="menu hidden" id="setMenu" role="menu">
+        <button type="button" role="menuitem" id="settingsBtn">הגדרת עמודות בדוח</button>
+        <button type="button" role="menuitem" id="teamBtn">הגדרות לפתיחת פריט חדש</button>
+      </div>
+    </div>
+    <button class="btn danger" id="clearBtn">ניקוי שיחה</button>
+    <a class="btn info" id="helpBtn" href="help.html#usage" target="_blank" rel="noopener">מדריך</a>
+    <button class="btn iconbtn danger-ic" id="logoutBtn" title="התנתקות" aria-label="התנתקות"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h8"/><circle cx="11" cy="12" r=".6" fill="currentColor"/><path d="M15 12h7"/><path d="M19 9l3 3-3 3"/></svg></button>
   </header>
   <div class="banner hidden" id="demoBanner">מצב הדגמה: הנתונים מומצאים ולא מגיעים מ-Azure DevOps</div>
   <main id="chat"><div class="wrap" id="msgs"></div></main>
@@ -66,7 +71,7 @@
 <div class="overlay hidden" id="settings" role="dialog" aria-modal="true" aria-labelledby="setTitle">
   <div class="dialog">
     <div class="dlg-head">
-      <h3 id="setTitle">עמודות ברירת המחדל</h3>
+      <h3 id="setTitle">הגדרת עמודות בדוח</h3>
       <p>העמודות והסדר שיופיעו בכל טבלה. ההגדרה נשמרת רק אצלך, במחשב הזה. אפשר עדיין לשנות לבקשה בודדת עם "רק", "תוסיף" ו"בלי".</p>
     </div>
     <div class="dlg-body">
@@ -95,7 +100,7 @@
 
 <div class="tpanel hidden" id="teamPanel" role="dialog" aria-modal="true" aria-labelledby="teamTitle">
   <div class="tp-head">
-    <h2 id="teamTitle">הגדרות צוות</h2>
+    <h2 id="teamTitle">הגדרות לפתיחת פריט חדש</h2>
     <span class="tp-status" id="teamStatus"></span>
     <span class="sp"></span>
     <button class="btn" id="teamSave" type="button">שמירה לצוות</button>

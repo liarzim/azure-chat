@@ -261,7 +261,7 @@ const TeamUI = {
   },
 
   init() {
-    $("teamBtn").onclick = () => this.open();
+    $("teamBtn").onclick = () => { closeSetMenu(); this.open(); };
     $("teamClose").onclick = () => this.close();
     $("teamSave").onclick = () => this.save(false);
     $("teamDownload").onclick = () => this.download();

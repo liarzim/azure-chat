@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.0-beta.9",
+  VERSION: "2.0-beta.10",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -875,6 +875,7 @@ function getDefaultFields() {
 }
 
 let draft = [];
+function closeSetMenu() { const m = $("setMenu"); if (m) { m.classList.add("hidden"); $("setMenuBtn").setAttribute("aria-expanded", "false"); } }
 function openSettings() { draft = getDefaultFields(); renderSettings(); $("settings").classList.remove("hidden"); $("setSave").focus(); }
 function closeSettings() { $("settings").classList.add("hidden"); $("input").focus(); }
 function renderSettings() {
@@ -906,7 +907,16 @@ function addDraft(name) {
   draft.push(known ? known.name : name); renderSettings();
 }
 function initSettings() {
-  $("settingsBtn").onclick = openSettings;
+  $("settingsBtn").onclick = () => { closeSetMenu(); openSettings(); };
+  const setMenuBtn = $("setMenuBtn"), setMenu = $("setMenu");
+  const openSetMenu = () => { setMenu.classList.remove("hidden"); setMenuBtn.setAttribute("aria-expanded", "true"); setMenu.querySelector("button").focus(); };
+  setMenuBtn.onclick = e => { e.stopPropagation(); setMenu.classList.contains("hidden") ? openSetMenu() : closeSetMenu(); };
+  document.addEventListener("click", e => { if (!e.target.closest(".menuwrap")) closeSetMenu(); });
+  setMenu.addEventListener("keydown", e => {
+    const items = [...setMenu.querySelectorAll("button")], i = items.indexOf(document.activeElement);
+    if (e.key === "Escape") { closeSetMenu(); setMenuBtn.focus(); }
+    else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus(); }
+  });
   $("setCancel").onclick = closeSettings;
   $("settings").addEventListener("click", e => { if (e.target.id === "settings") closeSettings(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("settings").classList.contains("hidden")) closeSettings(); });

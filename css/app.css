@@ -232,3 +232,22 @@ td.idc{white-space:nowrap}
 .askparent{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 4px}
 .askparent .eplabel{margin:0}
 a.btn{text-decoration:none;display:inline-block}
+
+/* Header: settings menu, colored buttons, logout icon */
+.menuwrap{position:relative}
+.menu{position:absolute;top:calc(100% + 6px);inset-inline-start:0;z-index:40;min-width:220px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:6px;display:flex;flex-direction:column}
+.menu button{background:none;border:0;text-align:start;padding:9px 12px;border-radius:7px;color:var(--ink);font-size:14px;white-space:nowrap}
+.menu button:hover,.menu button:focus-visible{background:var(--accent-soft);outline:none}
+header .btn.danger{background:#d92d20;color:#fff;border:1px solid #d92d20}
+header .btn.danger:hover{background:#b42318}
+header .btn.info{background:#e0f2fe;color:#075985;border:1px solid #7dd3fc;font-weight:600}
+header .btn.info:hover{background:#bae6fd}
+header .btn.iconbtn{display:inline-flex;align-items:center;justify-content:center;padding:6px 8px;background:transparent;border:1px solid #f4b4ae}
+header .btn.danger-ic{color:#d92d20}
+header .btn.danger-ic:hover{background:#fdecea}
+header .btn.iconbtn svg{width:20px;height:20px}
+@media (prefers-color-scheme: dark){
+  header .btn.info{background:#0c4a6e;color:#e0f2fe;border-color:#0369a1}
+  header .btn.danger-ic{color:#ff8a80;border-color:#7a2e28}
+  header .btn.danger-ic:hover{background:#3a1f1f}
+}

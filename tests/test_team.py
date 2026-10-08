@@ -26,7 +26,7 @@ with sync_playwright() as p:
     ctx.route("https://api.github.com/**", gh)
     pg = ctx.new_page(); errs = []
     pg.on("pageerror", lambda e: errs.append(str(e))); pg.on("console", lambda m: m.type == "error" and errs.append(m.text))
-    pg.goto(BASE); pg.click("#demoBtn"); pg.click("#teamBtn")
+    pg.goto(BASE); pg.click("#demoBtn"); pg.click("#setMenuBtn"); pg.click("#teamBtn")
     pg.locator(".fgroup").first.wait_for()
     groups = [s.inner_text() for s in pg.locator(".fgroup summary").all()]
     check("Feature groups follow the Azure form", groups[0].startswith("כותרת הטופס") and any(g.startswith("Planning") for g in groups) and any(g.startswith("Requirements") for g in groups), groups)
@@ -99,7 +99,7 @@ with sync_playwright() as p:
     pg.click("#teamConfirm button:has-text('סגירה בלי שמירה')")
     check("closed", pg.locator("#teamPanel").is_hidden())
     # Mobile layout
-    pg.set_viewport_size({"width": 390, "height": 820}); pg.click("#teamBtn"); pg.click("#teamTabs [data-tab=template]")
+    pg.set_viewport_size({"width": 390, "height": 820}); pg.click("#setMenuBtn"); pg.click("#teamBtn"); pg.click("#teamTabs [data-tab=template]")
     sw = pg.evaluate("() => document.documentElement.scrollWidth")
     check("no horizontal scroll on phone", sw <= 390, sw)
     pg.screenshot(path=os.path.join(ROOT, "tests", "artifacts", "team_mobile.png"))

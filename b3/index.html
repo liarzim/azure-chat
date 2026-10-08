@@ -1,0 +1,156 @@
+<!doctype html>
+<!-- Azure Chat 2 -->
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Azure Chat 2</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- Login screen -->
+<section id="login">
+  <div class="card">
+    <h1>Azure Chat 2</h1>
+    <p>הזינו מספרי באגים, משימות, User Stories או פיצ'רים, וקבלו טבלה מסודרת מ-Azure DevOps.</p>
+
+    <div id="msBlock">
+      <button class="btn block ms" id="msLogin">
+        <svg viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+        התחברות עם חשבון Microsoft
+      </button>
+      <div class="sep">או</div>
+    </div>
+
+    <form id="patForm">
+      <label for="pat">Personal Access Token</label>
+      <input class="field" id="pat" type="password" autocomplete="off" spellcheck="false" placeholder="הדביקו כאן את ה-PAT">
+      <p class="small" style="margin:8px 0 10px">
+        בלי סימון, הטוקן נמחק כשסוגרים את הלשונית. הרשאה נדרשת: <b>Work Items: Read</b>.
+        <a id="patHelp" target="_blank" rel="noopener">יצירת טוקן חדש</a>
+      </p>
+      <label class="remember"><input type="checkbox" id="remember"> לזכור את הטוקן במחשב הזה</label>
+      <button class="btn block" id="patBtn" type="submit">כניסה עם טוקן</button>
+    </form>
+
+    <div id="loginErr" class="err hidden"></div>
+    <div class="demo-link"><button id="demoBtn" type="button">כניסה למצב הדגמה (נתונים מומצאים)</button></div>
+    <div class="ver" id="verLogin"></div>
+  </div>
+</section>
+
+<!-- Main app -->
+<section id="app" class="hidden">
+  <header>
+    <h2>Azure Chat 2 · <span id="orgName"></span></h2>
+    <span class="who" id="who"></span>
+    <button class="btn" id="newBtn">+ פריט חדש</button>
+    <button class="btn ghost" id="teamBtn">הגדרות צוות</button>
+    <button class="btn ghost" id="settingsBtn">עמודות</button>
+    <button class="btn ghost" id="clearBtn">ניקוי</button>
+    <button class="btn ghost" id="logoutBtn">התנתקות</button>
+  </header>
+  <div class="banner hidden" id="demoBanner">מצב הדגמה: הנתונים מומצאים ולא מגיעים מ-Azure DevOps</div>
+  <main id="chat"><div class="wrap" id="msgs"></div></main>
+  <footer>
+    <div class="chips" id="chips"></div>
+    <form class="composer" id="composer">
+      <textarea id="input" rows="1" placeholder="לדוגמה: 110047, 112074  או  110047 רק Title ו-State"></textarea>
+      <button class="btn" type="submit" id="sendBtn">שליחה</button>
+    </form>
+  </footer>
+</section>
+
+<div class="overlay hidden" id="settings" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+  <div class="dialog">
+    <div class="dlg-head">
+      <h3 id="setTitle">עמודות ברירת המחדל</h3>
+      <p>העמודות והסדר שיופיעו בכל טבלה. ההגדרה נשמרת רק אצלך, במחשב הזה. אפשר עדיין לשנות לבקשה בודדת עם "רק", "תוסיף" ו"בלי".</p>
+    </div>
+    <div class="dlg-body">
+      <div id="colList"></div>
+      <div class="addrow">
+        <select id="addSelect" aria-label="שדה להוספה"></select>
+        <button class="btn ghost" type="button" id="addKnown">הוספה</button>
+      </div>
+      <div class="addrow">
+        <input id="addCustom" placeholder="שדה אחר לפי שם, למשל Commited1" aria-label="שם שדה מותאם">
+        <button class="btn ghost" type="button" id="addCustomBtn">הוספה</button>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn" type="button" id="setSave">שמירה</button>
+      <button class="btn ghost" type="button" id="setCancel">ביטול</button>
+      <span class="sp"></span>
+      <button class="btn ghost" type="button" id="setReset">איפוס לברירת המחדל של הצוות</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="lightbox" role="dialog" aria-modal="true" aria-label="תמונה">
+  <figure class="lb"><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure>
+</div>
+
+<div class="tpanel hidden" id="teamPanel" role="dialog" aria-modal="true" aria-labelledby="teamTitle">
+  <div class="tp-head">
+    <h2 id="teamTitle">הגדרות צוות</h2>
+    <span class="tp-status" id="teamStatus"></span>
+    <span class="sp"></span>
+    <button class="btn" id="teamSave" type="button">שמירה לצוות</button>
+    <button class="btn ghost" id="teamDownload" type="button">הורדת קובץ</button>
+    <button class="btn ghost" id="teamClose" type="button">סגירה</button>
+  </div>
+  <div class="tp-confirm hidden" id="teamConfirm" role="alert"></div>
+  <nav class="tabs" id="teamTabs" aria-label="לשוניות">
+    <button type="button" data-tab="fields">שדות חובה</button>
+    <button type="button" data-tab="template">תבנית Description</button>
+    <button type="button" data-tab="github">חיבור ל-GitHub</button>
+  </nav>
+  <div class="tp-types" id="teamTypesRow"><span class="muted">סוג פריט:</span><div class="segs" id="teamTypes"></div></div>
+  <div class="tp-body" id="teamBody"></div>
+</div>
+
+<aside class="epanel hidden" id="editPanel" role="dialog" aria-modal="true" aria-labelledby="epTitle">
+  <div class="ep-head">
+    <div class="ep-titles"><h2 id="epTitle"></h2><div class="muted" id="epSub"></div></div>
+    <button class="btn ghost sm" type="button" id="epChild">+ תת-פריט</button>
+    <a class="btn ghost sm" id="epLink" target="_blank" rel="noopener">פתיחה ב-Azure</a>
+    <button class="btn ghost sm" type="button" id="epClose" aria-label="סגירה">✕</button>
+  </div>
+  <div class="ep-body">
+    <div id="epCreateRow" class="hidden">
+      <div class="segs" id="epTypes" role="group" aria-label="סוג פריט"></div>
+      <div id="epAskParent" class="askparent hidden">
+        <span class="eplabel" id="epAskText">האם יש Epic אב?</span>
+        <div class="segs" role="radiogroup" aria-labelledby="epAskText"><button type="button" class="seg" role="radio" data-v="yes">כן</button><button type="button" class="seg" role="radio" data-v="no">לא</button></div>
+      </div>
+      <div id="epParentWrap">
+      <label class="eplabel" for="epParent" id="epParentLabel">פריט אב (חובה)</label>
+      <div class="parentrow"><input id="epParent" inputmode="numeric" placeholder="מספר פריט, למשל 112075" autocomplete="off"><span id="epParentInfo" class="muted"></span></div>
+      </div>
+    </div>
+    <div id="epFields"></div>
+    <select id="epAdd" aria-label="הוספת שדה לעריכה"></select>
+    <div id="epCommentWrap">
+      <label for="epComment" class="eplabel">תגובה לדיון (לא חובה)</label>
+      <textarea id="epComment" rows="3" placeholder="תתווסף ל-Discussion של הפריט"></textarea>
+    </div>
+    <div class="epcheck" id="epCheck" aria-live="polite"></div>
+  </div>
+  <div class="ep-foot">
+    <button class="btn" type="button" id="epSave" disabled>שמירה ב-Azure</button>
+    <button class="btn ghost" type="button" id="epCancel">ביטול</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/team.js"></script>
+<script src="js/meta.js"></script>
+<script src="js/team-settings.js"></script>
+<script src="js/pickers.js"></script>
+<script src="js/edit.js"></script>
+<script src="js/core.js"></script>
+</body>
+</html>

@@ -27,8 +27,8 @@
       <label for="pat">Personal Access Token</label>
       <input class="field" id="pat" type="password" autocomplete="off" spellcheck="false" placeholder="הדביקו כאן את ה-PAT">
       <p class="small" style="margin:8px 0 10px">
-        בלי סימון, הטוקן נמחק כשסוגרים את הלשונית. הרשאה נדרשת: <b>Work Items: Read</b>.
-        <a id="patHelp" target="_blank" rel="noopener">יצירת טוקן חדש</a>
+        בלי סימון, הטוקן נמחק כשסוגרים את הלשונית. הרשאה נדרשת: <b>Work Items: Read &amp; write</b>.<br>
+        <a href="help.html#token" target="_blank" rel="noopener">איך יוצרים טוקן? (מדריך עם תמונות)</a> · <a id="patHelp" target="_blank" rel="noopener">רשימת הטוקנים שלי ב-Azure</a>
       </p>
       <label class="remember"><input type="checkbox" id="remember"> לזכור את הטוקן במחשב הזה</label>
       <button class="btn block" id="patBtn" type="submit">כניסה עם טוקן</button>
@@ -49,6 +49,7 @@
     <button class="btn ghost" id="teamBtn">הגדרות צוות</button>
     <button class="btn ghost" id="settingsBtn">עמודות</button>
     <button class="btn ghost" id="clearBtn">ניקוי</button>
+    <a class="btn ghost" id="helpBtn" href="help.html#usage" target="_blank" rel="noopener">מדריך</a>
     <button class="btn ghost" id="logoutBtn">התנתקות</button>
   </header>
   <div class="banner hidden" id="demoBanner">מצב הדגמה: הנתונים מומצאים ולא מגיעים מ-Azure DevOps</div>

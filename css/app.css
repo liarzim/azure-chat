@@ -231,3 +231,4 @@ td.idc{white-space:nowrap}
 .pk-dates{unicode-bidi:isolate;display:inline-block}
 .askparent{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 4px}
 .askparent .eplabel{margin:0}
+a.btn{text-decoration:none;display:inline-block}

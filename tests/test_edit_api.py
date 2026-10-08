@@ -119,7 +119,7 @@ with sync_playwright() as p:
     send("110047 Priority 1"); pg.locator(".editcard").nth(5).wait_for()
     pg.locator(".editcard").last.locator("button:has-text('שמירה')").click(); pg.locator(".editcard").last.locator("b:has-text('לא עודכנו')").wait_for()
     t = pg.locator(".editcard").last.inner_text()
-    check("rule error shown without TF code", "Rule Error for field Severity" in t and "TF401320" not in t, t)
+    check("rule error explained in Hebrew without TF code", "Azure דורש למלא את השדה Severity" in t and "TF401320" not in t, repr(t))
     behaviour["rule"].clear()
     # g. "me" resolves from login identity
     send("110047 Assigned To אני"); pg.locator(".editcard").nth(6).wait_for()

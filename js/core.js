@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.0-beta.6",
+  VERSION: "2.0-beta.7",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -191,6 +191,17 @@ const Auth = {
 
 class AuthError extends Error {}
 
+/* After a failed call: find out what is blocked, so the message says what to do.
+   1) any request to Azure at all  2) a plain cross-site request  3) the request with the token header */
+async function netDiagnose(url) {
+  const tryFetch = async (opts) => { try { await fetch(url, Object.assign({credentials: "omit", cache: "no-store"}, opts)); return true; } catch (e) { return false; } };
+  const reach = await tryFetch({mode: "no-cors"});
+  if (!reach) return "הדפדפן לא מצליח להגיע ל-dev.azure.com בכלל. בדקו חיבור רשת / VPN, או אם תוכנת אבטחה חוסמת. [קוד: N0]";
+  const cors = await tryFetch({});
+  if (!cors) return "הרשת מגיעה ל-Azure, אבל הדפדפן חוסם בקשות מהאתר הזה ל-Azure. בדרך כלל זה תוסף בדפדפן (חוסם פרסומות / אבטחה) או פרוקסי ארגוני. נסו בחלון InPrivate/Incognito או בדפדפן אחר. [קוד: N1]";
+  return "רק בקשות עם הטוקן נחסמות. בדרך כלל זה תוסף בדפדפן או פרוקסי ארגוני שחוסם כותרת Authorization. נסו בחלון InPrivate/Incognito או בדפדפן אחר. [קוד: N2]";
+}
+
 /* Short name of the call, shown in network errors so a failure can be traced. */
 function apiWhat(url) {
   try { const u = new URL(url); return decodeURIComponent(u.pathname.replace(/^\/[^/]+\//, "").replace(/^[^/]+\/_apis\//, "_apis/")); } catch (e) { return ""; }
@@ -206,7 +217,7 @@ async function api(url) {
       if (e instanceof AuthError) throw e;
       if (attempt < 1) { await new Promise(res => setTimeout(res, 800)); continue; }
       console.error("Azure call failed:", url, e);
-      throw new Error("אין חיבור ל-Azure DevOps (" + apiWhat(url) + "). בדקו את חיבור הרשת או ה-VPN.");
+      throw new Error("אין חיבור ל-Azure DevOps (" + apiWhat(url) + "). " + await netDiagnose(url));
     }
   }
   const ct = r.headers.get("content-type") || "";

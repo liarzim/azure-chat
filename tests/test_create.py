@@ -137,8 +137,10 @@ META = json.load(open(os.path.join(ROOT, "demo", "meta.json"), encoding="utf-8")
 PAT = "test-pat"; AUTH = "Basic " + base64.b64encode((":" + PAT).encode()).decode()
 CORS = {"access-control-allow-origin": "*", "access-control-allow-headers": "authorization, content-type, accept", "access-control-allow-methods": "GET, POST, PATCH, OPTIONS"}
 PARENT = {"id": 110047, "rev": 3, "url": "https://dev.azure.com/GOI-Finance/481b/_apis/wit/workItems/110047", "fields": {"System.WorkItemType": "User Story", "System.Title": "סיפור", "System.TeamProject": "Portfolio Merkava", "System.AreaPath": "Portfolio Merkava\\MK2\\Meteor\\Meteor Sigma", "System.IterationPath": "Portfolio Merkava\\PI4_26\\4.1"}, "relations": []}
-posts = []
+posts = []; block = {"mode": None}
 def handler(route, req):
+    if block["mode"] == "auth" and req.method != "OPTIONS" and req.all_headers().get("authorization"): return route.abort()
+    if block["mode"] == "all": return route.abort()
     if req.method == "OPTIONS": return route.fulfill(status=204, headers=CORS)
     u = req.url; J = lambda d, s=200: route.fulfill(status=s, json=d, headers=CORS)
     if req.all_headers().get("authorization") != AUTH: return route.fulfill(status=203, body="x", headers={**CORS, "content-type": "text/html"})
@@ -165,6 +167,11 @@ with sync_playwright() as p:
     b = p.chromium.launch(); ctx = b.new_context(viewport={"width": 1400, "height": 900}); ctx.route("https://dev.azure.com/**", handler)
     pg = ctx.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.goto("http://127.0.0.1:8786/")
+    block["mode"] = "auth"; pg.fill("#pat", PAT); pg.click("#patBtn"); pg.locator("#login .err:visible, #loginErr:visible").first.wait_for(timeout=15000)
+    check("diagnosis: only token requests blocked", "N2" in pg.inner_text("#login") and "_apis/projects" in pg.inner_text("#login"), pg.inner_text("#login"))
+    block["mode"] = "all"; pg.click("#patBtn"); pg.wait_for_timeout(3000)
+    check("diagnosis: azure not reachable", "N0" in pg.inner_text("#login"), pg.inner_text("#login"))
+    block["mode"] = None
     pg.fill("#pat", PAT + "ש"); pg.click("#patBtn"); pg.wait_for_timeout(500)
     check("hebrew letter in token: clear message", "שאינם באנגלית" in pg.inner_text("#login") and pg.locator("#app").is_hidden(), pg.inner_text("#login"))
     pg.fill("#pat", "\u200f " + PAT + "\u200e\u202c"); pg.click("#patBtn"); pg.locator("#app:not(.hidden)").wait_for()

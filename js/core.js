@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.0-beta.11",
+  VERSION: "2.0-beta.12",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).

@@ -23,7 +23,11 @@ const TEAM_DEFAULT = {
       "Custom.Customer",
       "Custom.Businesspriority"
     ],
-    "User Story": [],
+    "User Story": [
+      "Custom.Customer",
+      "Custom.StoryPointsValues",
+      "Custom.LeadingSquad"
+    ],
     "Task": [],
     "Bug": []
   },

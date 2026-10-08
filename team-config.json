@@ -20,7 +20,11 @@
       "Custom.Customer",
       "Custom.Businesspriority"
     ],
-    "User Story": [],
+    "User Story": [
+      "Custom.Customer",
+      "Custom.StoryPointsValues",
+      "Custom.LeadingSquad"
+    ],
     "Task": [],
     "Bug": []
   },
@@ -74,6 +78,6 @@
       ]
     }
   },
-  "updatedAt": "2026-10-08T10:12:14.879Z",
+  "updatedAt": "2026-10-08T13:50:43.000Z",
   "updatedBy": "מיכאל ליארזי"
 }

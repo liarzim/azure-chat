@@ -253,3 +253,12 @@ header .btn.iconbtn svg{width:20px;height:20px}
 }
 #epParentList{top:42px}
 #epParentList .pk-opt b{margin-inline-end:6px}
+
+/* Chosen parent card */
+#epParentInfo.parentcard{display:block;margin-top:6px;padding:8px 12px;border:1px solid var(--accent);border-inline-start:4px solid var(--accent);border-radius:8px;background:var(--accent-soft);color:var(--ink);font-size:14px;line-height:1.5}
+#epParentInfo.parentcard .pc-under{color:var(--muted);font-size:12px}
+#epParentInfo.parentcard .pc-type{display:inline-block;font-size:12px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--panel);border:1px solid var(--line)}
+#epParentInfo.parentcard .pc-title{font-weight:600}
+#epParentInfo.parentcard .pc-state{display:inline-block;font-size:12px;color:var(--muted);margin-inline-start:6px}
+#epParentInfo.parentcard.warn{border-color:#d4a72c;background:var(--warn-soft)}
+#epParentInfo.parentcard .pc-warn{color:#9a6700;font-size:13px;margin-top:2px}

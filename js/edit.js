@@ -643,7 +643,7 @@ const EditPanel = {
       if (this.state !== s || $("epParent").value.trim() !== raw || (OPTIONAL_PARENT[s.type] && s.hasParent === false)) return;
       if (!p) throw new Error("לא נמצא");
       s.parent = p;
-      info.textContent = "תחת " + p.fields["System.WorkItemType"] + " " + p.id + " · " + (p.fields["System.Title"] || "");
+      this.showParentCard(p, "");
       if (reload && !s.typeChosen) {
         // No type picked yet: suggest the usual child of this parent (Epic → Feature, Feature → User Story...).
         const pt = p.fields["System.WorkItemType"];
@@ -700,10 +700,16 @@ const EditPanel = {
   checkParentType() {
     const s = this.state; if (!s.parent) return;
     const pt = s.parent.fields["System.WorkItemType"], ok = (PARENT_TYPES[s.type] || []).includes(pt);
-    const info = $("epParentInfo");
-    info.className = ok ? "muted" : "warn";
-    const base = "תחת " + pt + " " + s.parent.id + " · " + (s.parent.fields["System.Title"] || "");
-    info.textContent = ok ? base : base + " · שימו לב: " + s.type + " נמצא בדרך כלל תחת " + ((PARENT_TYPES[s.type] || []).join(" או ") || "שום פריט");
+    this.showParentCard(s.parent, ok ? "" : "שימו לב: " + s.type + " נמצא בדרך כלל תחת " + ((PARENT_TYPES[s.type] || []).join(" או ") || "שום פריט"));
+  },
+  /* The chosen parent, shown clearly under the number: type, number, title, state. */
+  showParentCard(p, warning) {
+    const f = p.fields, info = $("epParentInfo");
+    info.className = "parentcard" + (warning ? " warn" : "");
+    info.innerHTML = '<span class="pc-under">תחת</span> <span class="pc-type">' + escHtml(f["System.WorkItemType"] || "") + '</span> <b dir="ltr">' + p.id + "</b>" +
+      ' <span class="pc-sep">·</span> <span class="pc-title">' + escHtml(f["System.Title"] || "") + "</span>" +
+      (f["System.State"] ? ' <span class="pc-state">' + escHtml(f["System.State"]) + "</span>" : "") +
+      (warning ? '<div class="pc-warn">' + escHtml(warning) + "</div>" : "");
   },
 
   addField(ref, focus, reason, initial) {

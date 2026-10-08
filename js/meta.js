@@ -35,6 +35,7 @@ const Meta = {
     if (/\/_apis\/wit\/fields\?/.test(url)) return {value: d.fields};
     if (/\/classificationnodes\?/.test(url)) return {value: d.classificationnodes || []};
     if ((m = url.match(/\/workitemtypes\/([^/?]+)\/fields\?/))) return {value: d.typeFields[decodeURIComponent(m[1])] || []};
+    if ((m = url.match(/\/workitemtypes\/([^/?]+)\/states\?/))) { const w = d.workitemtypes.find(x => x.name === decodeURIComponent(m[1])); return {value: w ? w.states || [] : []}; }
     if (/\/_apis\/wit\/workitemtypes\?/.test(url)) return {value: d.workitemtypes};
     if (/\/_apis\/work\/processes\/[^/]+\/workitemtypes\?/.test(url)) return {value: d.processWits};
     if ((m = url.match(/\/workItemTypes\/([^/?]+)\/layout\?/))) { const w = d.processWits.find(x => x.referenceName === m[1]); return w ? d.layouts[w.name] : null; }
@@ -53,6 +54,25 @@ const Meta = {
       const d = await this.get(this.projectUrl() + "/_apis/wit/workitemtypes?api-version=7.1");
       return (d.value || []).filter(w => !w.isDisabled);
     });
+  },
+
+  /* States of one type (small call; the full type list carries every form's XML). */
+  typeStates(type) {
+    return this._once("states:" + type, async () => {
+      try {
+        const d = await this.get(this.projectUrl() + "/_apis/wit/workitemtypes/" + encodeURIComponent(type) + "/states?api-version=7.1");
+        return d.value || [];
+      } catch (e) {
+        const w = (await this.workItemTypes()).find(x => x.name === type) || {};
+        return w.states || [];
+      }
+    });
+  },
+
+  /* Warm the cache in the background after sign-in, so the first form opens fast. */
+  prefetch(types) {
+    const run = () => (types || []).reduce((p, t) => p.then(() => this.typeMeta(t).catch(() => {})), Promise.resolve());
+    setTimeout(run, 300);
   },
 
   processTypes() {
@@ -83,10 +103,9 @@ const Meta = {
      F = {ref, label, name, type, azureRequired, allowed, defaultValue, isIdentity, onForm} */
   typeMeta(type) {
     return this._once("meta:" + type, async () => {
-      const [defs, wits, tfs] = await Promise.all([this.fieldDefs(), this.workItemTypes(), this.typeFields(type)]);
+      const [defs, states, tfs] = await Promise.all([this.fieldDefs(), this.typeStates(type), this.typeFields(type)]);
       let lay = null;
       try { lay = await this.layout(type); } catch (e) { lay = null; }   // layout needs extra rights; fields still work without it
-      const wit = wits.find(w => w.name === type) || {};
       const byRef = new Map();
       tfs.forEach(tf => {
         const d = defs.get(tf.referenceName) || {};
@@ -135,7 +154,7 @@ const Meta = {
       });
       const rest = [...byRef.values()].filter(f => !used.has(f.ref)).sort((a, b) => a.label.localeCompare(b.label));
       if (rest.length) groups.push({key: "other", label: "שדות שלא מופיעים בטופס", fields: rest, collapsed: true});
-      return {type, states: (wit.states || []).map(s => ({name: s.name, category: s.category, color: s.color})), groups, byRef, hasLayout: !!lay};
+      return {type, states: (states || []).map(s => ({name: s.name, category: s.category, color: s.color})), groups, byRef, hasLayout: !!lay};
     });
   },
 

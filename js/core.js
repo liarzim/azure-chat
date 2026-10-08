@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.0-beta.3",
+  VERSION: "2.0-beta.4",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -785,6 +785,7 @@ function showLogin(err) {
 }
 function showApp() {
   $("login").classList.add("hidden"); $("app").classList.remove("hidden");
+  if (typeof Meta !== "undefined" && Auth.mode === "pat") Meta.prefetch(["Task", "User Story", "Bug", "Feature", "Epic"]);
   $("orgName").textContent = CONFIG.ORG;
   $("who").textContent = Auth.userName || "";
   $("demoBanner").classList.toggle("hidden", Auth.mode !== "demo");

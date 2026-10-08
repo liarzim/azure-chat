@@ -529,9 +529,23 @@ const EditPanel = {
 
   async loadType(type, pairs) {
     const s = this.state;
+    s.type = type; s.meta = null; s.editors = new Map(); s.notes = [];
+    this.renderTypes();
+    this.updateParentUi();
+    $("epFields").innerHTML = '<div class="muted pad loading">טוען את השדות של ' + escHtml(type) + " מ-Azure DevOps...</div>";
+    $("epAdd").innerHTML = ""; $("epCheck").innerHTML = "";
+    $("epSave").disabled = true; $("epSave").textContent = "טוען...";
     let meta;
-    try { meta = await Meta.typeMeta(type); } catch (e) { toast("לא ניתן לטעון את שדות " + type + ": " + e.message); return; }
-    s.type = type; s.meta = meta; s.editors = new Map(); s.notes = [];
+    try { meta = await Meta.typeMeta(type); }
+    catch (e) {
+      if (this.state !== s || s.type !== type) return;
+      $("epFields").innerHTML = '<div class="err">לא ניתן לטעון את השדות של ' + escHtml(type) + ": " + escHtml(e.message || String(e)) + '<br><button type="button" class="btn ghost" id="epRetry">נסו שוב</button></div>';
+      $("epSave").textContent = "יצירה ב-Azure";
+      $("epRetry").onclick = () => this.loadType(type, pairs);
+      return;
+    }
+    if (this.state !== s || s.type !== type) return;
+    s.meta = meta;
     s.template = TeamConfig.template(type);
     const fields = {"System.WorkItemType": type, "System.TeamProject": TeamConfig.data.project};
     meta.byRef.forEach(f => { const d = defaultFieldValue(f); if (d !== undefined) fields[f.ref] = d; });

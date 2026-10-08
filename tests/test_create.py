@@ -114,6 +114,14 @@ with sync_playwright() as p:
     pg.locator("#epFields input[aria-label='Remaining']").fill("4"); pg.wait_for_timeout(300)
     check("enabled after filling it", pg.locator("#epSave").is_enabled())
     pg.click("#epCancel")
+    # 8b. loading failure stays visible with a retry button
+    pg.evaluate("""() => { const orig = Meta.typeMeta.bind(Meta); let n = 0; Meta.typeMeta = t => (t === 'Bug' && n++ === 0) ? Promise.reject(new Error('Failed to fetch')) : orig(t); }""")
+    pg.click("#newBtn"); pg.locator("#epCreateRow:not(.hidden)").wait_for(); pg.wait_for_timeout(300)
+    pg.locator("#epTypes .seg:has-text('Bug')").click(); pg.wait_for_timeout(400)
+    check("load error shown in the form", "לא ניתן לטעון את השדות של Bug" in pg.inner_text("#epFields") and "Failed to fetch" in pg.inner_text("#epFields") and pg.locator("#epSave").is_disabled() and pg.locator("#epTypes .seg").count() == 5, pg.inner_text("#epFields"))
+    pg.click("#epRetry"); pg.wait_for_timeout(600)
+    check("retry loads the fields", pg.locator("#epFields input[aria-label='Title']").count() == 1 and pg.locator("#epTypes .seg.on").inner_text() == "Bug")
+    pg.click("#epCancel")
     # 9. lookups and updates still work
     send("110047 Priority=3"); pg.locator(".editcard").first.wait_for()
     check("update command still recognised", "Priority" in pg.locator(".editcard").first.inner_text())

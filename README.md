@@ -20,6 +20,8 @@
 
 ## פרסום
 
+האתר: https://azure-chat-lake.vercel.app
+
 כל push ל-`main` מתפרסם אוטומטית ב-Vercel.
 
 ## הגדרות צוות

@@ -89,8 +89,18 @@ function displayValue(f, v) {
   if (f.type === "boolean") return (v === true || v === "true" || v === 1 || v === "1") ? "כן" : "לא";
   return String(v);
 }
+/* Same HTML regardless of attribute order or serialization details. */
+function canonHtml(h) {
+  const d = document.createElement("div"); d.innerHTML = String(h || "");
+  d.querySelectorAll("*").forEach(el => {
+    const attrs = [...el.attributes].map(x => [x.name, x.value]).sort((p, q) => p[0].localeCompare(q[0]));
+    attrs.forEach(([n]) => el.removeAttribute(n)); attrs.forEach(([n, v]) => el.setAttribute(n, v));
+  });
+  return d.innerHTML.replace(/\s+/g, " ").trim();
+}
 function sameValue(f, a, b) {
   if (isEmptyValue(f, a) && isEmptyValue(f, b)) return true;
+  if (f.type === "html") return canonHtml(a) === canonHtml(b);
   if (f.isIdentity) return norm(identityUnique(a)) === norm(identityUnique(b));
   if (f.type === "dateTime") return String(a).slice(0, 10) === String(b).slice(0, 10);
   if (f.type === "boolean") return displayValue(f, a) === displayValue(f, b);
@@ -278,10 +288,41 @@ function makeEditor(f, value, ctx) {
       Img.get(src).then(o => { img.src = o.url; }, () => { img.alt = "[תמונה]"; });
     });
     area.oninput = onChange;
+    const tplHere = tpl && tpl.field === f.ref ? tpl : null;
+    if (tplHere) {
+      const topBlock = n => { while (n && n.parentNode !== area) n = n.parentNode; return n && n.nodeType === 1 ? n : null; };
+      // Enter at the end of a heading opens a plain line instead of continuing the heading's formatting.
+      area.addEventListener("keydown", e => {
+        if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+        const sel = getSelection(); if (!sel.rangeCount) return;
+        const blk = topBlock(sel.anchorNode);
+        if (!blk || !isHeadingBlock(tplHere, blk)) return;
+        e.preventDefault();
+        const next = blk.nextElementSibling;
+        let line;
+        if (next && isBlankBlock(next) && !isHeadingBlock(tplHere, next)) line = next;
+        else { line = document.createElement("div"); line.appendChild(document.createElement("br")); blk.after(line); }
+        line.innerHTML = "<br>";
+        const r = document.createRange(); r.setStart(line, 0); r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
+        onChange();
+      });
+      // Text typed on a content line never keeps the heading look.
+      area.addEventListener("input", () => {
+        const sel = getSelection(); if (!sel.rangeCount) return;
+        const blk = topBlock(sel.anchorNode);
+        if (!blk || isHeadingBlock(tplHere, blk) || !hasHeadingLook(tplHere, blk)) return;
+        const pre = document.createRange(); pre.selectNodeContents(blk); pre.setEnd(sel.anchorNode, sel.anchorOffset);
+        const offset = pre.toString().length;
+        stripHeadingLook(tplHere, blk);
+        const walker = document.createTreeWalker(blk, NodeFilter.SHOW_TEXT); let left = offset, node, placed = false;
+        while ((node = walker.nextNode())) { if (left <= node.length) { const r = document.createRange(); r.setStart(node, left); r.collapse(true); sel.removeAllRanges(); sel.addRange(r); placed = true; break; } left -= node.length; }
+        if (!placed) { const r = document.createRange(); r.selectNodeContents(blk); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+      });
+    }
     get = () => {
       const c = area.cloneNode(true);
       c.querySelectorAll("img[data-orig-src]").forEach(img => { img.setAttribute("src", img.getAttribute("data-orig-src")); img.removeAttribute("data-orig-src"); img.classList.remove("edimg"); if (!img.className) img.removeAttribute("class"); });
-      return c.innerHTML;
+      return tplHere ? normalizeTemplateHtml(tplHere, c.innerHTML) : c.innerHTML;
     };
     set = v => { area.innerHTML = v || ""; };
     wrap.append(bar, area);

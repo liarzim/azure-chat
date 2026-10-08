@@ -107,6 +107,52 @@ function templateHtml(tpl) {
   }).join("");
 }
 
+/* ---------- Keeping user text plain inside a template ----------
+   Headings are bold, underlined and coloured. Browsers carry that formatting
+   to the next line when Enter is pressed at the end of a heading, so text
+   typed under a heading would look like a heading. These helpers remove the
+   heading look from content lines and keep a blank line before each heading. */
+function cssColor(c) { const d = document.createElement("span"); d.style.color = c; return d.style.color; }
+function isHeadingBlock(tpl, el) {
+  if (!tpl || !el) return false;
+  const k = headingKey(el.textContent || "");
+  if (!k) return false;
+  return tpl.headings.some(h => [h.text, ...(h.aliases || [])].some(t => headingKey(t) === k));
+}
+function hasHeadingLook(tpl, el) {
+  const col = cssColor(tpl.headingColor || "#0033CC");
+  return [...el.querySelectorAll("span, font")].some(x => (x.style && x.style.color === col) || (x.tagName === "FONT" && cssColor(x.getAttribute("color") || "") === col));
+}
+/* Removes the heading colour, and the bold/underline wrapped around it, from one content line. */
+function stripHeadingLook(tpl, block) {
+  const col = cssColor(tpl.headingColor || "#0033CC");
+  const unwrap = n => { n.replaceWith(...n.childNodes); };
+  [...block.querySelectorAll("span, font")].forEach(x => {
+    const isHead = (x.style && x.style.color === col) || (x.tagName === "FONT" && cssColor(x.getAttribute("color") || "") === col);
+    if (!isHead) return;
+    let p = x.parentElement;
+    while (p && p !== block && /^(B|STRONG|U)$/.test(p.tagName)) { const up = p.parentElement; unwrap(p); p = up; }
+    unwrap(x);
+  });
+  [...block.querySelectorAll("b, strong, u")].forEach(x => { if (!x.textContent.trim() && !x.querySelector("img")) unwrap(x); });
+}
+function isBlankBlock(el) { return !el.textContent.replace(/[\s ​]/g, "") && !el.querySelector("img"); }
+function normalizeTemplateHtml(tpl, html) {
+  if (!tpl || !html) return html;
+  const doc = new DOMParser().parseFromString("<div>" + html + "</div>", "text/html");
+  const root = doc.body.firstChild;
+  // Loose text at the top level becomes its own line so it can be checked like the rest.
+  [...root.childNodes].forEach(n => { if (n.nodeType === 3 && n.nodeValue.trim()) { const d = doc.createElement("div"); n.replaceWith(d); d.appendChild(n); } });
+  const blocks = [...root.children];
+  blocks.forEach(b => { if (!isHeadingBlock(tpl, b) && hasHeadingLook(tpl, b)) stripHeadingLook(tpl, b); });
+  [...root.children].forEach((b, i) => {
+    if (i === 0 || !isHeadingBlock(tpl, b)) return;
+    const prev = b.previousElementSibling;
+    if (prev && !isBlankBlock(prev)) { const sp = doc.createElement("div"); sp.appendChild(doc.createElement("br")); b.before(sp); }
+  });
+  return root.innerHTML;
+}
+
 /* Compare heading lines loosely: ignore spaces, colons and dashes. */
 function headingKey(s) { return String(s).toLowerCase().replace(/[\s:：\-–—_]/g, ""); }
 

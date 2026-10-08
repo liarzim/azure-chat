@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.0-alpha",
+  VERSION: "2.0-beta.2",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -894,14 +894,14 @@ function initSettings() {
 /* ============================ DEMO DATA ============================ */
 function demoItems(ids) {
   const people = [{displayName: "דנה כהן", uniqueName: "dana@example.com"}, {displayName: "יוסי לוי", uniqueName: "yossi@example.com"}, {displayName: "מאיה פרץ", uniqueName: "maya@example.com"}, {displayName: "אבי מזרחי", uniqueName: "avi@example.com"}];
-  const stateFor = {"Bug": ["New", "Active", "Resolved", "Closed"], "User Story": ["New", "Active", "Testing", "Closed"], "Feature": ["New", "Solution", "Active", "Closed"]};
+  const stateFor = {"Bug": ["New", "Active", "Resolved", "Closed"], "User Story": ["New", "Active", "Testing", "Closed"], "Feature": ["New", "Solution", "Active", "Closed"], "Epic": ["New", "Ready", "Active", "Closed"]};
   return new Promise(res => setTimeout(() => res(ids.filter(id => id % 10 !== 9).map((id, i) => {
     const stored = DemoDB.get(id);
     if (stored) return stored;
-    const type = id % 5 === 0 ? "Feature" : id % 2 === 0 ? "Bug" : "User Story";
+    const type = id >= 900000 ? "Epic" : id % 5 === 0 ? "Feature" : id % 2 === 0 ? "Bug" : "User Story";
     const f = {
       "System.WorkItemType": type,
-      "System.Title": type === "Bug" ? "שגיאה בשמירת טופס בקשה (הדגמה " + id + ")" : type === "Feature" ? "ממשק דיווח חודשי ללקוח (הדגמה " + id + ")" : "הוספת סינון לפי תאריך במסך החיפוש (הדגמה " + id + ")",
+      "System.Title": type === "Epic" ? "תוכנית דיגיטציה רבעונית (הדגמה " + id + ")" : type === "Bug" ? "שגיאה בשמירת טופס בקשה (הדגמה " + id + ")" : type === "Feature" ? "ממשק דיווח חודשי ללקוח (הדגמה " + id + ")" : "הוספת סינון לפי תאריך במסך החיפוש (הדגמה " + id + ")",
       "System.State": stateFor[type][i % 4], "System.Reason": "Approved",
       "System.AssignedTo": people[i % 4], "System.CreatedBy": people[(i + 1) % 4],
       "System.CreatedDate": "2026-09-1" + (i % 9) + "T08:00:00Z", "System.ChangedDate": "2026-10-0" + ((i % 6) + 1) + "T10:00:00Z",
@@ -949,6 +949,7 @@ function demoImage(src) {
   await TeamConfig.load();
   TeamUI.init();
   EditPanel.init();
+  Pickers.init();
   try {
     if (await Auth.init()) showApp(); else showLogin();
   } catch (e) { showLogin("שגיאה בהתחברות: " + (e.message || e)); }

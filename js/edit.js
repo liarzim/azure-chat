@@ -19,7 +19,50 @@ const People = {
     this.map.set(v.uniqueName.toLowerCase(), {displayName: v.displayName || v.uniqueName, uniqueName: v.uniqueName});
   },
   fromItems(items) { (items || []).forEach(it => Object.values(it.fields || {}).forEach(v => this.add(v))); },
-  list() { return [...this.map.values()].sort((a, b) => a.displayName.localeCompare(b.displayName)); },
+  list() { return [...this.map.values()].sort((a, b) => a.displayName.localeCompare(b.displayName, "he")); },
+  source: "",
+  CACHE: "ado_people_v1",
+  /* Everyone in the project's teams (needs Project and Team: Read); otherwise people active in the last 90 days. */
+  all() {
+    if (this._all) return this._all;
+    this._all = (async () => {
+      if (Auth.mode === "demo") {
+        [["דנה כהן", "dana@example.com"], ["יוסי לוי", "yossi@example.com"], ["מאיה פרץ", "maya@example.com"], ["אבי מזרחי", "avi@example.com"], ["רבקה שכטר", "rivka@example.com"], ["שלומי גבעון", "shlomi@example.com"], ["חיה נשר", "chaya@example.com"], ["מיכאל ליארזי", "michael@example.com"]]
+          .forEach(([d, u]) => this.add({displayName: d, uniqueName: u}));
+        this.source = "teams"; return this.list();
+      }
+      try {
+        const c = JSON.parse(localStorage.getItem(this.CACHE) || "null");
+        if (c && Date.now() - c.t < 12 * 3600e3 && Array.isArray(c.list) && c.list.length) { c.list.forEach(p => this.add(p)); this.source = c.source; return this.list(); }
+      } catch (e) {}
+      const proj = encodeURIComponent(TeamConfig.data.project);
+      let viaTeams = false;
+      try {
+        const teams = (await api(ADO + "/_apis/projects/" + proj + "/teams?$top=500&api-version=7.1")).value || [];
+        for (let i = 0; i < teams.length; i += 6) {
+          await Promise.all(teams.slice(i, i + 6).map(async t => {
+            try { ((await api(ADO + "/_apis/projects/" + proj + "/teams/" + t.id + "/members?$top=1000&api-version=7.1")).value || []).forEach(m => { const id = m.identity || {}; if (/@/.test(id.uniqueName || "") && !m.identity.isContainer) this.add(id); }); } catch (e) {}
+          }));
+        }
+        viaTeams = this.map.size > 0;
+      } catch (e) { viaTeams = false; }
+      if (!viaTeams) {
+        try {
+          const w = await apiSend("POST", ADO + "/" + proj + "/_apis/wit/wiql?$top=1000&api-version=7.1", {query: "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.ChangedDate] >= @today - 90 ORDER BY [System.ChangedDate] DESC"}, "application/json");
+          const ids = (w.workItems || []).map(x => x.id);
+          for (let i = 0; i < ids.length; i += 200) {
+            const d = await api(ADO + "/_apis/wit/workitems?ids=" + ids.slice(i, i + 200).join(",") + "&fields=System.AssignedTo,System.CreatedBy,System.ChangedBy&errorPolicy=omit&api-version=7.1");
+            (d.value || []).forEach(it => it && Object.values(it.fields || {}).forEach(v => this.add(v)));
+          }
+        } catch (e) {}
+      }
+      this.source = viaTeams ? "teams" : "recent";
+      try { localStorage.setItem(this.CACHE, JSON.stringify({t: Date.now(), source: this.source, list: this.list()})); } catch (e) {}
+      return this.list();
+    })();
+    this._all.catch(() => { this._all = null; });
+    return this._all;
+  },
   me() { return Auth.userEmail ? {displayName: Auth.userName || Auth.userEmail, uniqueName: Auth.userEmail} : null; },
   async search(q) {
     q = String(q || "").trim(); if (q.length < 2) return [];
@@ -39,9 +82,13 @@ const People = {
 Meta.classPaths = function () {
   return this._once("classnodes", async () => {
     const d = await this.get(this.projectUrl() + "/_apis/wit/classificationnodes?$depth=10&api-version=7.1");
-    const out = {area: [], iteration: []};
-    const walk = (n, base, kind) => { const p = base ? base + "\\" + n.name : n.name; out[kind].push(p); (n.children || []).forEach(c => walk(c, p, kind)); };
-    (d.value || []).forEach(root => walk(root, "", String(root.structureType).toLowerCase() === "iteration" ? "iteration" : "area"));
+    const out = {area: [], iteration: [], trees: {}};
+    const walk = (n, base, kind) => {
+      const p = base ? base + "\\" + n.name : n.name; out[kind].push(p);
+      const a = n.attributes || {};
+      return {name: n.name, path: p, start: a.startDate || null, finish: a.finishDate || null, children: (n.children || []).map(c => walk(c, p, kind))};
+    };
+    (d.value || []).forEach(root => { const kind = String(root.structureType).toLowerCase() === "iteration" ? "iteration" : "area"; out.trees[kind] = walk(root, "", kind); });
     return out;
   });
 };
@@ -346,21 +393,13 @@ function makeEditor(f, value, ctx) {
     get = () => sel.value === "true"; set = v => { sel.value = v ? "true" : "false"; };
     wrap.appendChild(sel);
   } else if (f.isIdentity) {
-    const inp = document.createElement("input"); inp.setAttribute("aria-label", f.label); inp.placeholder = "שם או אימייל";
-    const dl = document.createElement("datalist"); dl.id = "dl" + Math.random().toString(36).slice(2); inp.setAttribute("list", dl.id);
-    const fill = list => { dl.innerHTML = ""; list.forEach(p => dl.appendChild(new Option(p.displayName + " <" + p.uniqueName + ">", identityValue(p)))); };
-    const me = People.me(); fill([...(me ? [me] : []), ...People.list()]);
-    inp.value = isEmptyValue(f, value) ? "" : (typeof value === "object" ? identityValue(value) : String(value));
-    let t; inp.oninput = () => { onChange(); clearTimeout(t); t = setTimeout(async () => fill(await People.search(inp.value)), 300); };
-    get = () => inp.value.trim() || null; set = v => { inp.value = v || ""; };
-    wrap.append(inp, dl);
+    const pk = makePersonPicker(f, value, onChange);
+    get = pk.get; set = pk.set;
+    wrap.appendChild(pk.el);
   } else if (f.ref === "System.AreaPath" || f.ref === "System.IterationPath") {
-    const inp = document.createElement("input"); inp.setAttribute("aria-label", f.label); inp.dir = "ltr";
-    const dl = document.createElement("datalist"); dl.id = "dl" + Math.random().toString(36).slice(2); inp.setAttribute("list", dl.id);
-    Meta.classPaths().then(p => (f.ref === "System.AreaPath" ? p.area : p.iteration).forEach(x => dl.appendChild(new Option(x, x))), () => {});
-    inp.value = value || ""; inp.oninput = onChange;
-    get = () => inp.value.trim() || null; set = v => { inp.value = v || ""; };
-    wrap.append(inp, dl);
+    const pk = makeTreePicker(f, value, f.ref === "System.AreaPath" ? "area" : "iteration", onChange);
+    get = pk.get; set = pk.set;
+    wrap.appendChild(pk.el);
   } else if (f.type === "dateTime") {
     const inp = document.createElement("input"); inp.type = "date"; inp.setAttribute("aria-label", f.label);
     inp.value = value ? String(value).slice(0, 10) : ""; inp.onchange = onChange;
@@ -585,6 +624,10 @@ const EditPanel = {
     const box = $("epCheck"); const parts = [];
     (s.notes || []).forEach(n => parts.push('<div class="bad">' + escHtml(n) + "</div>"));
     if (create && s.parentError) parts.push('<div class="bad">' + escHtml(s.parentError) + "</div>");
+    const needParent = create && !s.parent && !s.parentError && (PARENT_TYPES[s.type] || []).length > 0;
+    if (needParent) parts.push('<div class="bad">חובה לבחור פריט אב (' + escHtml(PARENT_TYPES[s.type].join(" או ")) + ")</div>");
+    const badPeople = [...$("epFields").querySelectorAll(".pk-input.invalid")].map(i => i.getAttribute("aria-label"));
+    if (badPeople.length) parts.push('<div class="bad">לא נבחר אדם מהרשימה: ' + badPeople.map(escHtml).join(", ") + "</div>");
     if (plan.missing.length) parts.push('<div class="bad">חסרים שדות חובה: ' + plan.missing.map(f => escHtml(f.label)).join(", ") + "</div>");
     if (plan.template) parts.push('<div class="bad">בתבנית של ' + escHtml(s.type) + " חסר תוכן תחת: " + [...plan.template.missing, ...plan.template.empty].map(escHtml).join(", ") + "</div>");
     if (create) {
@@ -596,14 +639,17 @@ const EditPanel = {
       if (!plan.diffs.length && !plan.comment) parts.push('<div class="muted">עוד אין שינויים.</div>');
     }
     box.innerHTML = parts.join("");
-    const ok = plan.ok && !(create && (s.parentError || (s.notes || []).length));
+    const pendingPeople = $("epFields").querySelectorAll(".pk-input.pending").length > 0;
+    const ok = plan.ok && !badPeople.length && !pendingPeople && !(create && (s.parentError || needParent || (s.notes || []).length));
     $("epSave").disabled = !ok;
     const label = create ? "יצירה ב-Azure" : "שמירה ב-Azure";
-    $("epSave").textContent = ok ? label : (plan.missing.length || plan.template ? "יש למלא שדות חובה" : label);
+    $("epSave").textContent = ok ? label : (plan.missing.length || plan.template || needParent ? "יש למלא שדות חובה" : label);
+    if (create) $("epParentLabel").textContent = (PARENT_TYPES[s.type] || []).length ? "פריט אב (חובה)" : "פריט אב (לא נדרש ל-" + s.type + ")";
   },
 
   async save() {
     const s = this.state; if (!s || !s.plan) return;
+    if ($("epFields").querySelector(".pk-input.pending, .pk-input.invalid")) { await this.refresh(); return; }
     const btn = $("epSave"); btn.disabled = true; btn.textContent = s.mode === "create" ? "יוצר..." : "שומר...";
     try {
       const plan = await Edit.plan(s.item, this.changes(), s.mode === "create" ? "" : $("epComment").value);

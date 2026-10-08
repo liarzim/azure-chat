@@ -3478,29 +3478,61 @@
      "name": "PI3_26",
      "children": [
       {
-       "name": "3.1"
+       "name": "3.1",
+       "attributes": {
+        "startDate": "2026-07-01T00:00:00Z",
+        "finishDate": "2026-07-31T00:00:00Z"
+       }
       },
       {
-       "name": "3.2"
+       "name": "3.2",
+       "attributes": {
+        "startDate": "2026-08-01T00:00:00Z",
+        "finishDate": "2026-08-31T00:00:00Z"
+       }
       },
       {
-       "name": "3.3"
+       "name": "3.3",
+       "attributes": {
+        "startDate": "2026-09-01T00:00:00Z",
+        "finishDate": "2026-09-30T00:00:00Z"
+       }
       }
-     ]
+     ],
+     "attributes": {
+      "startDate": "2026-07-01T00:00:00Z",
+      "finishDate": "2026-09-30T00:00:00Z"
+     }
     },
     {
      "name": "PI4_26",
      "children": [
       {
-       "name": "4.1"
+       "name": "4.1",
+       "attributes": {
+        "startDate": "2026-10-01T00:00:00Z",
+        "finishDate": "2026-10-31T00:00:00Z"
+       }
       },
       {
-       "name": "4.2"
+       "name": "4.2",
+       "attributes": {
+        "startDate": "2026-11-01T00:00:00Z",
+        "finishDate": "2026-11-30T00:00:00Z"
+       }
       },
       {
-       "name": "4.3"
+       "name": "4.3",
+       "attributes": {
+        "startDate": "2026-12-01T00:00:00Z",
+        "finishDate": "2026-12-31T00:00:00Z"
+       }
       }
-     ]
+     ],
+     "attributes": {
+      "startDate": "2026-10-01T00:00:00Z",
+      "finishDate": "2026-12-31T00:00:00Z"
+     }
     }
    ]
   }

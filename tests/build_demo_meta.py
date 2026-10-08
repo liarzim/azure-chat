@@ -136,5 +136,11 @@ def node(name, kids=()): return {"name": name, "children": list(kids)} if kids e
 out["classificationnodes"] = [
  {"structureType": "area", "name": "Portfolio Merkava", "children": [node("MK2", [node("Meteor", [node("Meteor Sigma"), node("Meteor Alpha")]), node("LOG", [node("LOGST")])]), node("Payroll")]},
  {"structureType": "iteration", "name": "Portfolio Merkava", "children": [node("PI3_26", [node("3.1"), node("3.2"), node("3.3")]), node("PI4_26", [node("4.1"), node("4.2"), node("4.3")])]}]
+DATES = {"PI3_26": ("2026-07-01", "2026-09-30"), "3.1": ("2026-07-01", "2026-07-31"), "3.2": ("2026-08-01", "2026-08-31"), "3.3": ("2026-09-01", "2026-09-30"),
+         "PI4_26": ("2026-10-01", "2026-12-31"), "4.1": ("2026-10-01", "2026-10-31"), "4.2": ("2026-11-01", "2026-11-30"), "4.3": ("2026-12-01", "2026-12-31")}
+def _dates(n):
+    if n["name"] in DATES: n["attributes"] = {"startDate": DATES[n["name"]][0] + "T00:00:00Z", "finishDate": DATES[n["name"]][1] + "T00:00:00Z"}
+    for c in n.get("children", []): _dates(c)
+_dates(out["classificationnodes"][1])
 json.dump(out, open(os.path.join(ROOT, "demo", "meta.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 print("ok", {t: len(v) for t, v in out["typeFields"].items()})

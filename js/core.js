@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.1",
+  VERSION: "2.2",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -703,8 +703,8 @@ function welcomeHtml() {
   const first = (Auth.userName || "").trim().split(/\s+/)[0];
   return '<div class="hello"><img class="hello-bot" src="img/azuri.svg" alt="" width="84" height="84"><div>' +
     "<h3>היי" + (first ? " " + escHtml(first) : "") + ", אני אז'ורי!</h3>" +
-    "<p>תנו לי מספר של פריט, או כמה, ואביא לכם אותו בטבלה מסודרת. אפשר גם לעדכן פריטים ולפתוח חדשים.</p>" +
-    '<p class="hello-tip">לדוגמה <code>110047</code> או <code>112074 State Resolved</code>. כל הפקודות: <code>עזרה</code> או ה<a href="help.html#usage" target="_blank" rel="noopener">מדריך</a>.</p>' +
+    "<p>תנו לי מספר של פריט, או כמה מילים לחיפוש, ואביא לכם את הפריטים בטבלה מסודרת. אפשר גם לעדכן פריטים ולפתוח חדשים.</p>" +
+    '<p class="hello-tip">לדוגמה <code>110047</code>, <code>ייצוא לאקסל</code> או <code>112074 State Resolved</code>. כל הפקודות: <code>עזרה</code> או ה<a href="help.html#usage" target="_blank" rel="noopener">מדריך</a>.</p>' +
     "</div></div>";
 }
 function helpHtml(first) {
@@ -716,6 +716,8 @@ function helpHtml(first) {
     "<li><code>110047 תוסיף Tags ו-Story Points</code> ברירת מחדל ועוד שדות</li>" +
     "<li><code>110047 בלי Priority ו-WSJF Priority</code> להוריד שדות</li>" +
     "<li><code>עזרה</code> להציג את ההסבר הזה שוב · <code>נקה</code> לנקות את השיחה</li></ul>" +
+    "<b>חיפוש:</b> כתבו מילים במקום מספר, ותקבלו רשימה לבחירה (אחד, כמה או הכל). בכותרת מחפשים גם חלק ממילה, בתיאור מילים שלמות. עם מספרים בטקסט: <code>חפש: גרסה 2026</code>.<ul>" +
+    "<li><code>ייצוא לאקסל</code> · <code>מסך חיפוש</code></li></ul>" +
     "<b>עדכון:</b> לחצו על תא בטבלה או על ✎, או כתבו פקודה. כל עדכון מוצג קודם לאישור.<ul>" +
     "<li><code>112074 State Resolved</code> · <code>110047 112074 Iteration 4.2</code></li>" +
     "<li><code>112074 שייך לאני</code> · <code>112074 Priority=2; Tags +SAP</code></li>" +
@@ -783,6 +785,7 @@ async function handleInput(text) {
   const req = parseRequest(text);
   if (req.cmd === "help") { addMsg("bot", helpHtml(false)); return; }
   if (req.cmd === "clear") { msgs.innerHTML = ""; addMsg("bot", helpHtml(true)); return; }
+  if (ChatSearch.explicit(text)) return ChatSearch.run(ChatSearch.queryFrom(text));
   const cr = ChatCreate.parse(text);
   if (cr) {
     busy = true; $("sendBtn").disabled = true;
@@ -802,7 +805,16 @@ async function handleInput(text) {
     } finally { busy = false; $("sendBtn").disabled = false; $("input").focus(); }
     return;
   }
-  if (!req.ids.length) { addMsg("bot", "לא מצאתי מספרים בהודעה. כתבו מספר אחד או יותר של Work Items, למשל <code>110047, 112074</code>, או <code>עזרה</code>."); return; }
+  if (!req.ids.length) {   // words, not numbers: search Azure by title / description
+    const q = ChatSearch.queryFrom(text);
+    if (!q) { addMsg("bot", "כתבו מספר של פריט, או כמה מילים לחיפוש, למשל <code>110047</code> או <code>ייצוא לאקסל</code>. כל הפקודות: <code>עזרה</code>."); return; }
+    return ChatSearch.run(q);
+  }
+  return runLookup(req);
+}
+
+/* Fetches the items of a request and shows them as a table (chat lookup, or items picked from a search). */
+async function runLookup(req) {
   if (req.ids.length > CONFIG.MAX_IDS) { addMsg("bot error", "אפשר עד " + CONFIG.MAX_IDS + " מספרים בהודעה אחת."); return; }
   busy = true; $("sendBtn").disabled = true;
   const wait = addMsg("bot typing", "שולף " + req.ids.length + " פריטים...");

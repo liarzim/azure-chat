@@ -458,28 +458,29 @@ function defaultFieldValue(f) {
 /* ---------- Text search (parent picker now; chat search later) ----------
    Finds open items whose title contains the text, or whose Description contains its words. */
 const SEARCH_CLOSED = ["Closed", "Removed", "Done"];
-async function searchItems(text, types, limit) {
-  text = String(text || "").trim(); limit = limit || 20;
+async function searchItems(text, types, limit, opts) {
+  text = String(text || "").trim(); limit = limit || 20; opts = opts || {};
+  const open = !opts.includeClosed;
   if (text.length < 2) return [];
   if (Auth.mode === "demo") {
     const pool = [900001, 900002, 112075, 112080, 110047, 110051, 112074, 112076];
     const items = (await fetchItems(pool)).concat([...DemoDB.map.values()].filter(it => it.id >= 300001));
     const seen = new Set(), q = norm(text);
     return items.filter(it => { if (seen.has(it.id)) return false; seen.add(it.id); const f = it.fields;
-      return (!types || !types.length || types.includes(f["System.WorkItemType"])) && !SEARCH_CLOSED.includes(f["System.State"]) &&
+      return (!types || !types.length || types.includes(f["System.WorkItemType"])) && (!open || !SEARCH_CLOSED.includes(f["System.State"])) &&
         (norm(f["System.Title"] || "").includes(q) || norm(String(f["System.Description"] || "").replace(/<[^>]+>/g, " ")).includes(q)); }).slice(0, limit);
   }
   const q = text.replace(/'/g, "''");
   const base = "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project" +
     (types && types.length ? " AND [System.WorkItemType] IN (" + types.map(t => "'" + t.replace(/'/g, "''") + "'").join(", ") + ")" : "") +
-    " AND [System.State] NOT IN (" + SEARCH_CLOSED.map(x => "'" + x + "'").join(", ") + ")";
+    (open ? " AND [System.State] NOT IN (" + SEARCH_CLOSED.map(x => "'" + x + "'").join(", ") + ")" : "");
   const url = Meta.projectUrl() + "/_apis/wit/wiql?$top=" + limit + "&api-version=7.1";
   let w;
   try { w = await apiSend("POST", url, {query: base + " AND ([System.Title] CONTAINS '" + q + "' OR [System.Description] CONTAINS WORDS '" + q + "') ORDER BY [System.ChangedDate] DESC"}, "application/json"); }
   catch (e) { w = await apiSend("POST", url, {query: base + " AND [System.Title] CONTAINS '" + q + "' ORDER BY [System.ChangedDate] DESC"}, "application/json"); }   // full-text not available: title only
   const ids = (w.workItems || []).map(x => x.id).slice(0, limit);
   if (!ids.length) return [];
-  const d = await api(ADO + "/_apis/wit/workitems?ids=" + ids.join(",") + "&fields=System.Id,System.Title,System.WorkItemType,System.State,System.AreaPath,System.IterationPath&errorPolicy=omit&api-version=7.1");
+  const d = await api(ADO + "/_apis/wit/workitems?ids=" + ids.join(",") + "&fields=System.Id,System.Title,System.WorkItemType,System.State,System.AreaPath,System.IterationPath,System.AssignedTo,System.ChangedDate&errorPolicy=omit&api-version=7.1");
   const byId = new Map((d.value || []).filter(Boolean).map(it => [it.id, it]));
   return ids.map(id => byId.get(id)).filter(Boolean);
 }

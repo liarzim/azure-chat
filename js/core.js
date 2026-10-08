@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.0-beta.4",
+  VERSION: "2.0-beta.5",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -180,13 +180,22 @@ const Auth = {
 
 class AuthError extends Error {}
 
+/* Short name of the call, shown in network errors so a failure can be traced. */
+function apiWhat(url) {
+  try { const u = new URL(url); return decodeURIComponent(u.pathname.replace(/^\/[^/]+\//, "").replace(/^[^/]+\/_apis\//, "_apis/")); } catch (e) { return ""; }
+}
 async function api(url) {
   let r;
-  try {
-    r = await fetch(url, {headers: {Authorization: await Auth.header(), Accept: "application/json"}, credentials: "omit"});
-  } catch (e) {
-    if (e instanceof AuthError) throw e;
-    throw new Error("אין חיבור ל-Azure DevOps. בדקו את חיבור הרשת או ה-VPN.");
+  for (let attempt = 0; ; attempt++) {
+    try {
+      r = await fetch(url, {headers: {Authorization: await Auth.header(), Accept: "application/json"}, credentials: "omit"});
+      break;
+    } catch (e) {
+      if (e instanceof AuthError) throw e;
+      if (attempt < 1) { await new Promise(res => setTimeout(res, 800)); continue; }
+      console.error("Azure call failed:", url, e);
+      throw new Error("אין חיבור ל-Azure DevOps (" + apiWhat(url) + "). בדקו את חיבור הרשת או ה-VPN.");
+    }
   }
   const ct = r.headers.get("content-type") || "";
   if (r.status === 401 || r.status === 203 || (r.ok && !ct.includes("json"))) {

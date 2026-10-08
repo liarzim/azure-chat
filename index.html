@@ -45,7 +45,8 @@
   <header>
     <h2>Azure Chat 2 · <span id="orgName"></span></h2>
     <span class="who" id="who"></span>
-    <button class="btn ghost" id="settingsBtn">הגדרות</button>
+    <button class="btn ghost" id="teamBtn">הגדרות צוות</button>
+    <button class="btn ghost" id="settingsBtn">עמודות</button>
     <button class="btn ghost" id="clearBtn">ניקוי</button>
     <button class="btn ghost" id="logoutBtn">התנתקות</button>
   </header>
@@ -90,8 +91,30 @@
   <figure class="lb"><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure>
 </div>
 
+<div class="tpanel hidden" id="teamPanel" role="dialog" aria-modal="true" aria-labelledby="teamTitle">
+  <div class="tp-head">
+    <h2 id="teamTitle">הגדרות צוות</h2>
+    <span class="tp-status" id="teamStatus"></span>
+    <span class="sp"></span>
+    <button class="btn" id="teamSave" type="button">שמירה לצוות</button>
+    <button class="btn ghost" id="teamDownload" type="button">הורדת קובץ</button>
+    <button class="btn ghost" id="teamClose" type="button">סגירה</button>
+  </div>
+  <div class="tp-confirm hidden" id="teamConfirm" role="alert"></div>
+  <nav class="tabs" id="teamTabs" aria-label="לשוניות">
+    <button type="button" data-tab="fields">שדות חובה</button>
+    <button type="button" data-tab="template">תבנית Description</button>
+    <button type="button" data-tab="github">חיבור ל-GitHub</button>
+  </nav>
+  <div class="tp-types" id="teamTypesRow"><span class="muted">סוג פריט:</span><div class="segs" id="teamTypes"></div></div>
+  <div class="tp-body" id="teamBody"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
+<script src="js/team.js"></script>
+<script src="js/meta.js"></script>
+<script src="js/team-settings.js"></script>
 <script src="js/core.js"></script>
 </body>
 </html>

@@ -891,6 +891,8 @@ function demoImage(src) {
 /* ============================ START ============================ */
 (async function start() {
   initUi();
+  await TeamConfig.load();
+  TeamUI.init();
   try {
     if (await Auth.init()) showApp(); else showLogin();
   } catch (e) { showLogin("שגיאה בהתחברות: " + (e.message || e)); }

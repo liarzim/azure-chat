@@ -1,0 +1,3439 @@
+{
+ "fields": [
+  {
+   "referenceName": "System.Title",
+   "name": "Title",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.State",
+   "name": "State",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.Reason",
+   "name": "Reason",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.AssignedTo",
+   "name": "Assigned To",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": true,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.AreaPath",
+   "name": "Area Path",
+   "type": "treePath",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.IterationPath",
+   "name": "Iteration Path",
+   "type": "treePath",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.Description",
+   "name": "Description",
+   "type": "html",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.Tags",
+   "name": "Tags",
+   "type": "plainText",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.History",
+   "name": "History",
+   "type": "history",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.IterationId",
+   "name": "Iteration ID",
+   "type": "integer",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.AreaId",
+   "name": "Area ID",
+   "type": "integer",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.TeamProject",
+   "name": "Team Project",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.WorkItemType",
+   "name": "Work Item Type",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.ChangedBy",
+   "name": "Changed By",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": true,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "System.CreatedDate",
+   "name": "Created Date",
+   "type": "dateTime",
+   "readOnly": true,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Common.Priority",
+   "name": "Priority",
+   "type": "integer",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Common.ValueArea",
+   "name": "Value Area",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Common.Activity",
+   "name": "Activity",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Common.StackRank",
+   "name": "Stack Rank",
+   "type": "double",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Common.ClosedDate",
+   "name": "Closed Date",
+   "type": "dateTime",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Common.Severity",
+   "name": "Severity",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Common.AcceptanceCriteria",
+   "name": "Acceptance Criteria",
+   "type": "html",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Scheduling.StoryPoints",
+   "name": "Story Points",
+   "type": "double",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Scheduling.StartDate",
+   "name": "Start Date",
+   "type": "dateTime",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Scheduling.TargetDate",
+   "name": "Target Date",
+   "type": "dateTime",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Scheduling.RemainingWork",
+   "name": "Remaining Work",
+   "type": "double",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Scheduling.OriginalEstimate",
+   "name": "Original Estimate",
+   "type": "double",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.Scheduling.CompletedWork",
+   "name": "Completed Work",
+   "type": "double",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.TCM.ReproSteps",
+   "name": "Repro Steps",
+   "type": "html",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.CMMI.Minutes",
+   "name": "Minutes",
+   "type": "html",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.CMMI.MitigationPlan",
+   "name": "Mitigation Plan",
+   "type": "html",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Microsoft.VSTS.CMMI.ActualAttendee2",
+   "name": "Actual Attendee 2",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": true,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.ROIExplenation",
+   "name": "ROI Explenation",
+   "type": "html",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.Solutionownername",
+   "name": "Solution owner name",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": true,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.SolutionApproverName",
+   "name": "Solution Approver Name",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": true,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.TesterOwnerName",
+   "name": "Tester Owner Name",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": true,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.InfrastructureOwner",
+   "name": "Infrastructure Owner",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": true,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.ArchitectureApproval",
+   "name": "Architecture Approval",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.UXUIRequired",
+   "name": "UX UI Required",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.StoryPointsValues",
+   "name": "Story Points Values",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.WSJFPriority",
+   "name": "WSJF Priority",
+   "type": "double",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.LeadingSquad",
+   "name": "Leading Squad",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.InfrastructureExpertise",
+   "name": "Infrastructure Expertise",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.Customer",
+   "name": "Customer",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.Businesspriority",
+   "name": "Business priority",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.BusinessFocus",
+   "name": "Business Focus",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.OperationFocus",
+   "name": "Operation Focus",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.MVP",
+   "name": "MVP",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.CR",
+   "name": "CR",
+   "type": "boolean",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.GovOffice",
+   "name": "Gov Office",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.DeliveryStage",
+   "name": "Delivery Stage",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.Commited1",
+   "name": "Commited1",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.34c3825b-e2cf-4990-b473-d6a7e7d431e7",
+   "name": "שובץ",
+   "type": "boolean",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.Deliveryrisk",
+   "name": "Delivery risk",
+   "type": "boolean",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.RiskLevel",
+   "name": "Risk Level",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.SystemModule",
+   "name": "SystemModule",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.Q",
+   "name": "Q",
+   "type": "integer",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.EmbeddedPI",
+   "name": "Embedded PI",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.ParentName",
+   "name": "Parent Name",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.FoundInEnviroment1",
+   "name": "Found In Enviroment1",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": true
+  },
+  {
+   "referenceName": "Custom.Relevance",
+   "name": "Relevance",
+   "type": "boolean",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.Reviewed",
+   "name": "Reviewed",
+   "type": "boolean",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.EscapingDefect",
+   "name": "Escaping Defect",
+   "type": "boolean",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.Reopen",
+   "name": "Reopen",
+   "type": "boolean",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.OSS",
+   "name": "OSS",
+   "type": "boolean",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.TransportNumber",
+   "name": "Transport Number",
+   "type": "string",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  },
+  {
+   "referenceName": "Custom.d3d0252f-48df-4329-8b93-585a2c0f8dae",
+   "name": "דיוור למשתמשים",
+   "type": "boolean",
+   "readOnly": false,
+   "isIdentity": false,
+   "isPicklist": false
+  }
+ ],
+ "workitemtypes": [
+  {
+   "name": "Epic",
+   "referenceName": "Microsoft.VSTS.WorkItemTypes.Epic",
+   "isDisabled": false,
+   "states": [
+    {
+     "name": "New",
+     "category": "Proposed"
+    },
+    {
+     "name": "Features Breakdown",
+     "category": "Proposed"
+    },
+    {
+     "name": "Ready",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "category": "InProgress"
+    },
+    {
+     "name": "MVP ready",
+     "category": "InProgress"
+    },
+    {
+     "name": "Closed",
+     "category": "Completed"
+    },
+    {
+     "name": "Removed",
+     "category": "Removed"
+    }
+   ]
+  },
+  {
+   "name": "Feature",
+   "referenceName": "Microsoft.VSTS.WorkItemTypes.Feature",
+   "isDisabled": false,
+   "states": [
+    {
+     "name": "New",
+     "category": "Proposed"
+    },
+    {
+     "name": "Req defintion",
+     "category": "Proposed"
+    },
+    {
+     "name": "Ready for solution",
+     "category": "Proposed"
+    },
+    {
+     "name": "Solution",
+     "category": "Proposed"
+    },
+    {
+     "name": "Story breakdown",
+     "category": "Proposed"
+    },
+    {
+     "name": "Ready",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "category": "InProgress"
+    },
+    {
+     "name": "Blocked",
+     "category": "InProgress"
+    },
+    {
+     "name": "Testing",
+     "category": "InProgress"
+    },
+    {
+     "name": "Ready to deploy",
+     "category": "InProgress"
+    },
+    {
+     "name": "Pilot",
+     "category": "InProgress"
+    },
+    {
+     "name": "Closed",
+     "category": "Completed"
+    },
+    {
+     "name": "Removed",
+     "category": "Removed"
+    }
+   ]
+  },
+  {
+   "name": "User Story",
+   "referenceName": "Microsoft.VSTS.WorkItemTypes.UserStory",
+   "isDisabled": false,
+   "states": [
+    {
+     "name": "New",
+     "category": "Proposed"
+    },
+    {
+     "name": "Ready",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "category": "InProgress"
+    },
+    {
+     "name": "Inactive",
+     "category": "InProgress"
+    },
+    {
+     "name": "Testing",
+     "category": "InProgress"
+    },
+    {
+     "name": "Ready to deploy",
+     "category": "InProgress"
+    },
+    {
+     "name": "Closed",
+     "category": "Completed"
+    },
+    {
+     "name": "Removed",
+     "category": "Removed"
+    }
+   ]
+  },
+  {
+   "name": "Task",
+   "referenceName": "Microsoft.VSTS.WorkItemTypes.Task",
+   "isDisabled": false,
+   "states": [
+    {
+     "name": "New",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "category": "InProgress"
+    },
+    {
+     "name": "Inactive",
+     "category": "InProgress"
+    },
+    {
+     "name": "Closed",
+     "category": "Completed"
+    },
+    {
+     "name": "Removed",
+     "category": "Removed"
+    }
+   ]
+  },
+  {
+   "name": "Bug",
+   "referenceName": "Microsoft.VSTS.WorkItemTypes.Bug",
+   "isDisabled": false,
+   "states": [
+    {
+     "name": "New",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "category": "InProgress"
+    },
+    {
+     "name": "In Progress",
+     "category": "InProgress"
+    },
+    {
+     "name": "Ready",
+     "category": "InProgress"
+    },
+    {
+     "name": "Inactive",
+     "category": "InProgress"
+    },
+    {
+     "name": "Resolved",
+     "category": "Resolved"
+    },
+    {
+     "name": "Closed",
+     "category": "Completed"
+    },
+    {
+     "name": "Removed",
+     "category": "Removed"
+    }
+   ]
+  }
+ ],
+ "processWits": [
+  {
+   "name": "Epic",
+   "referenceName": "Merkava.Epic"
+  },
+  {
+   "name": "Feature",
+   "referenceName": "Merkava.Feature"
+  },
+  {
+   "name": "User Story",
+   "referenceName": "Merkava.UserStory"
+  },
+  {
+   "name": "Task",
+   "referenceName": "Merkava.Task"
+  },
+  {
+   "name": "Bug",
+   "referenceName": "Merkava.Bug"
+  }
+ ],
+ "typeFields": {
+  "Epic": [
+   {
+    "referenceName": "System.Title",
+    "name": "Title",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AssignedTo",
+    "name": "Assigned To",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.State",
+    "name": "State",
+    "alwaysRequired": true,
+    "defaultValue": "New",
+    "allowedValues": [
+     "New",
+     "Features Breakdown",
+     "Ready",
+     "Active",
+     "MVP ready",
+     "Closed",
+     "Removed"
+    ]
+   },
+   {
+    "referenceName": "System.Reason",
+    "name": "Reason",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AreaPath",
+    "name": "Area Path",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.IterationPath",
+    "name": "Iteration Path",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.Tags",
+    "name": "Tags",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.IterationId",
+    "name": "Iteration ID",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AreaId",
+    "name": "Area ID",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.TeamProject",
+    "name": "Team Project",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.WorkItemType",
+    "name": "Work Item Type",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.ChangedBy",
+    "name": "Changed By",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.History",
+    "name": "History",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.CreatedDate",
+    "name": "Created Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.StackRank",
+    "name": "Stack Rank",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.ClosedDate",
+    "name": "Closed Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.Description",
+    "name": "Description",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.Priority",
+    "name": "Priority",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": [
+     "1",
+     "2",
+     "3",
+     "4"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.StartDate",
+    "name": "Start Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.TargetDate",
+    "name": "Target Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.StoryPoints",
+    "name": "Story Points",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.Customer",
+    "name": "Customer",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "אגת",
+     "חשבונאות ודיווח",
+     "חשכל",
+     "מטה שכר",
+     "מימון ואשראי",
+     "נכסים ולוגיסטיקה",
+     "סיגמה"
+    ]
+   },
+   {
+    "referenceName": "Custom.Businesspriority",
+    "name": "Business priority",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "03 - Very Low - לא ישפיע אם לא ידולוור",
+     "05 - Low - מינימום השפעה על תהליך עסקי",
+     "08 - Med - התהליך העסקי מושפע לא דרמטית",
+     "13 - High - No WA תהליך עסקי מושפע",
+     "20 - Very High - תהליך עסקי עיקרי יפגע",
+     "40 - Critical - אם לא יבוצע לא נעמוד בהתחייבות"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.ValueArea",
+    "name": "Value Area",
+    "alwaysRequired": true,
+    "defaultValue": "Business",
+    "allowedValues": [
+     "Business",
+     "Container",
+     "Internal",
+     "Maintenance"
+    ]
+   },
+   {
+    "referenceName": "Custom.MVP",
+    "name": "MVP",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "MVP1",
+     "MVP2",
+     "MVP3"
+    ]
+   },
+   {
+    "referenceName": "Custom.CR",
+    "name": "CR",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.34c3825b-e2cf-4990-b473-d6a7e7d431e7",
+    "name": "שובץ",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.LeadingSquad",
+    "name": "Leading Squad",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Attendance",
+     "Car_Housing",
+     "CRM",
+     "CTO",
+     "Data & AI",
+     "Development",
+     "Finance",
+     "FM",
+     "HR_Core",
+     "Infrastructure",
+     "Logistics",
+     "Meteor",
+     "Payroll",
+     "Support",
+     "Training",
+     "UX/UI"
+    ]
+   }
+  ],
+  "Feature": [
+   {
+    "referenceName": "System.Title",
+    "name": "Title",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AssignedTo",
+    "name": "Assigned To",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.State",
+    "name": "State",
+    "alwaysRequired": true,
+    "defaultValue": "New",
+    "allowedValues": [
+     "New",
+     "Req defintion",
+     "Ready for solution",
+     "Solution",
+     "Story breakdown",
+     "Ready",
+     "Active",
+     "Blocked",
+     "Testing",
+     "Ready to deploy",
+     "Pilot",
+     "Closed",
+     "Removed"
+    ]
+   },
+   {
+    "referenceName": "System.Reason",
+    "name": "Reason",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AreaPath",
+    "name": "Area Path",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.IterationPath",
+    "name": "Iteration Path",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.Tags",
+    "name": "Tags",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.IterationId",
+    "name": "Iteration ID",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AreaId",
+    "name": "Area ID",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.TeamProject",
+    "name": "Team Project",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.WorkItemType",
+    "name": "Work Item Type",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.ChangedBy",
+    "name": "Changed By",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.History",
+    "name": "History",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.CreatedDate",
+    "name": "Created Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.StackRank",
+    "name": "Stack Rank",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.ClosedDate",
+    "name": "Closed Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.Description",
+    "name": "Description",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.CMMI.Minutes",
+    "name": "Minutes",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.ROIExplenation",
+    "name": "ROI Explenation",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.CMMI.MitigationPlan",
+    "name": "Mitigation Plan",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.Solutionownername",
+    "name": "Solution owner name",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.SolutionApproverName",
+    "name": "Solution Approver Name",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.CMMI.ActualAttendee2",
+    "name": "Actual Attendee 2",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.TesterOwnerName",
+    "name": "Tester Owner Name",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.InfrastructureOwner",
+    "name": "Infrastructure Owner",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.ArchitectureApproval",
+    "name": "Architecture Approval",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Approved",
+     "Rejected"
+    ]
+   },
+   {
+    "referenceName": "Custom.UXUIRequired",
+    "name": "UX UI Required",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "No",
+     "Yes"
+    ]
+   },
+   {
+    "referenceName": "Custom.StoryPointsValues",
+    "name": "Story Points Values",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "01 = 1d",
+     "02 = 1-2d",
+     "03 = 2-4d",
+     "05 = 4-6d",
+     "08 = 6-10d",
+     "13 = 2-3W",
+     "20 = 3-5W",
+     "30 = 5-8W"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.StoryPoints",
+    "name": "Story Points",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.WSJFPriority",
+    "name": "WSJF Priority",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.LeadingSquad",
+    "name": "Leading Squad",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Attendance",
+     "Car_Housing",
+     "CRM",
+     "CTO",
+     "Data & AI",
+     "Development",
+     "Finance",
+     "FM",
+     "HR_Core",
+     "Infrastructure",
+     "Logistics",
+     "Meteor",
+     "Payroll",
+     "Support",
+     "Training",
+     "UX/UI"
+    ]
+   },
+   {
+    "referenceName": "Custom.InfrastructureExpertise",
+    "name": "Infrastructure Expertise",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Basis",
+     "Cloud",
+     "Communication",
+     "DBA",
+     "Information security",
+     "Management",
+     "System",
+     "Technician"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.ValueArea",
+    "name": "Value Area",
+    "alwaysRequired": true,
+    "defaultValue": "Business",
+    "allowedValues": [
+     "Business",
+     "Container",
+     "Internal",
+     "Maintenance"
+    ]
+   },
+   {
+    "referenceName": "Custom.Customer",
+    "name": "Customer",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "אגת",
+     "חשבונאות ודיווח",
+     "חשכל",
+     "מטה שכר",
+     "מימון ואשראי",
+     "נכסים ולוגיסטיקה",
+     "סיגמה"
+    ]
+   },
+   {
+    "referenceName": "Custom.Businesspriority",
+    "name": "Business priority",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "03 - Very Low - לא ישפיע אם לא ידולוור",
+     "05 - Low - מינימום השפעה על תהליך עסקי",
+     "08 - Med - התהליך העסקי מושפע לא דרמטית",
+     "13 - High - No WA תהליך עסקי מושפע",
+     "20 - Very High - תהליך עסקי עיקרי יפגע",
+     "40 - Critical - אם לא יבוצע לא נעמוד בהתחייבות"
+    ]
+   },
+   {
+    "referenceName": "Custom.BusinessFocus",
+    "name": "Business Focus",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "No",
+     "Yes"
+    ]
+   },
+   {
+    "referenceName": "Custom.OperationFocus",
+    "name": "Operation Focus",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "No",
+     "Yes"
+    ]
+   },
+   {
+    "referenceName": "Custom.MVP",
+    "name": "MVP",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "MVP1",
+     "MVP2",
+     "MVP3"
+    ]
+   },
+   {
+    "referenceName": "Custom.CR",
+    "name": "CR",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.GovOffice",
+    "name": "Gov Office",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "הכנסת",
+     "מטה החשב הכללי",
+     "משרד האוצר"
+    ]
+   },
+   {
+    "referenceName": "Custom.d3d0252f-48df-4329-8b93-585a2c0f8dae",
+    "name": "דיוור למשתמשים",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.StartDate",
+    "name": "Start Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.TargetDate",
+    "name": "Target Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.DeliveryStage",
+    "name": "Delivery Stage",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "ליווי ותמיכה בלקוח",
+     "Delivery",
+     "Stage for Delivery"
+    ]
+   },
+   {
+    "referenceName": "Custom.Commited1",
+    "name": "Commited1",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "No",
+     "Yes"
+    ]
+   },
+   {
+    "referenceName": "Custom.34c3825b-e2cf-4990-b473-d6a7e7d431e7",
+    "name": "שובץ",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.Deliveryrisk",
+    "name": "Delivery risk",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.RiskLevel",
+    "name": "Risk Level",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "01 - High",
+     "02 - Medium",
+     "03- Low"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.Activity",
+    "name": "Activity",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Deployment",
+     "Design",
+     "Development",
+     "Documentation",
+     "Requirements",
+     "Testing"
+    ]
+   },
+   {
+    "referenceName": "Custom.SystemModule",
+    "name": "SystemModule",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "דיגיטל",
+     "הרשאות",
+     "שכר",
+     "CRM",
+     "FI",
+     "HR ליבה",
+     "PM"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.Priority",
+    "name": "Priority",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "1",
+     "2",
+     "3",
+     "4"
+    ]
+   }
+  ],
+  "User Story": [
+   {
+    "referenceName": "System.Title",
+    "name": "Title",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AssignedTo",
+    "name": "Assigned To",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.State",
+    "name": "State",
+    "alwaysRequired": true,
+    "defaultValue": "New",
+    "allowedValues": [
+     "New",
+     "Ready",
+     "Active",
+     "Inactive",
+     "Testing",
+     "Ready to deploy",
+     "Closed",
+     "Removed"
+    ]
+   },
+   {
+    "referenceName": "System.Reason",
+    "name": "Reason",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AreaPath",
+    "name": "Area Path",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.IterationPath",
+    "name": "Iteration Path",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.Tags",
+    "name": "Tags",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.IterationId",
+    "name": "Iteration ID",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AreaId",
+    "name": "Area ID",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.TeamProject",
+    "name": "Team Project",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.WorkItemType",
+    "name": "Work Item Type",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.ChangedBy",
+    "name": "Changed By",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.History",
+    "name": "History",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.CreatedDate",
+    "name": "Created Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.StackRank",
+    "name": "Stack Rank",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.ClosedDate",
+    "name": "Closed Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.Description",
+    "name": "Description",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.CMMI.Minutes",
+    "name": "Minutes",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.Customer",
+    "name": "Customer",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "אגת",
+     "חשבונאות ודיווח",
+     "חשכל",
+     "מטה שכר",
+     "מימון ואשראי",
+     "נכסים ולוגיסטיקה",
+     "סיגמה"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.CMMI.ActualAttendee2",
+    "name": "Actual Attendee 2",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.TesterOwnerName",
+    "name": "Tester Owner Name",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.InfrastructureOwner",
+    "name": "Infrastructure Owner",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.WSJFPriority",
+    "name": "WSJF Priority",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.StoryPointsValues",
+    "name": "Story Points Values",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "01 = 1d",
+     "02 = 1-2d",
+     "03 = 2-4d",
+     "05 = 4-6d",
+     "08 = 6-10d",
+     "13 = 2-3W",
+     "20 = 3-5W",
+     "30 = 5-8W"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.StoryPoints",
+    "name": "Story Points",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.Priority",
+    "name": "Priority",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "1",
+     "2",
+     "3",
+     "4"
+    ]
+   },
+   {
+    "referenceName": "Custom.CR",
+    "name": "CR",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.GovOffice",
+    "name": "Gov Office",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "הכנסת",
+     "מטה החשב הכללי",
+     "משרד האוצר"
+    ]
+   },
+   {
+    "referenceName": "Custom.LeadingSquad",
+    "name": "Leading Squad",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Attendance",
+     "Car_Housing",
+     "CRM",
+     "CTO",
+     "Data & AI",
+     "Development",
+     "Finance",
+     "FM",
+     "HR_Core",
+     "Infrastructure",
+     "Logistics",
+     "Meteor",
+     "Payroll",
+     "Support",
+     "Training",
+     "UX/UI"
+    ]
+   },
+   {
+    "referenceName": "Custom.InfrastructureExpertise",
+    "name": "Infrastructure Expertise",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Basis",
+     "Cloud",
+     "Communication",
+     "DBA",
+     "Information security",
+     "Management",
+     "System",
+     "Technician"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.ValueArea",
+    "name": "Value Area",
+    "alwaysRequired": true,
+    "defaultValue": "Business",
+    "allowedValues": [
+     "Business",
+     "Container",
+     "Internal",
+     "Maintenance"
+    ]
+   },
+   {
+    "referenceName": "Custom.Commited1",
+    "name": "Commited1",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "No",
+     "Yes"
+    ]
+   },
+   {
+    "referenceName": "Custom.Q",
+    "name": "Q",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "1",
+     "2",
+     "3",
+     "4"
+    ]
+   },
+   {
+    "referenceName": "Custom.EmbeddedPI",
+    "name": "Embedded PI",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Embedded For Delivery",
+     "Embedded For Work"
+    ]
+   },
+   {
+    "referenceName": "Custom.34c3825b-e2cf-4990-b473-d6a7e7d431e7",
+    "name": "שובץ",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.Deliveryrisk",
+    "name": "Delivery risk",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.RiskLevel",
+    "name": "Risk Level",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "01 - High",
+     "02 - Medium",
+     "03- Low"
+    ]
+   },
+   {
+    "referenceName": "Custom.ParentName",
+    "name": "Parent Name",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.Activity",
+    "name": "Activity",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Deployment",
+     "Design",
+     "Development",
+     "Documentation",
+     "Requirements",
+     "Testing"
+    ]
+   },
+   {
+    "referenceName": "Custom.SystemModule",
+    "name": "SystemModule",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "דיגיטל",
+     "הרשאות",
+     "שכר",
+     "CRM",
+     "FI",
+     "HR ליבה",
+     "PM"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.AcceptanceCriteria",
+    "name": "Acceptance Criteria",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.StartDate",
+    "name": "Start Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   }
+  ],
+  "Task": [
+   {
+    "referenceName": "System.Title",
+    "name": "Title",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AssignedTo",
+    "name": "Assigned To",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.State",
+    "name": "State",
+    "alwaysRequired": true,
+    "defaultValue": "New",
+    "allowedValues": [
+     "New",
+     "Active",
+     "Inactive",
+     "Closed",
+     "Removed"
+    ]
+   },
+   {
+    "referenceName": "System.Reason",
+    "name": "Reason",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AreaPath",
+    "name": "Area Path",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.IterationPath",
+    "name": "Iteration Path",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.Tags",
+    "name": "Tags",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.IterationId",
+    "name": "Iteration ID",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AreaId",
+    "name": "Area ID",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.TeamProject",
+    "name": "Team Project",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.WorkItemType",
+    "name": "Work Item Type",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.ChangedBy",
+    "name": "Changed By",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.History",
+    "name": "History",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.CreatedDate",
+    "name": "Created Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.StackRank",
+    "name": "Stack Rank",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.ClosedDate",
+    "name": "Closed Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.Description",
+    "name": "Description",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.Priority",
+    "name": "Priority",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "1",
+     "2",
+     "3",
+     "4"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.Activity",
+    "name": "Activity",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Deployment",
+     "Design",
+     "Development",
+     "Documentation",
+     "Requirements",
+     "Testing"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.OriginalEstimate",
+    "name": "Original Estimate",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.RemainingWork",
+    "name": "Remaining Work",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.CompletedWork",
+    "name": "Completed Work",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.TransportNumber",
+    "name": "Transport Number",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.SystemModule",
+    "name": "SystemModule",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "דיגיטל",
+     "הרשאות",
+     "שכר",
+     "CRM",
+     "FI",
+     "HR ליבה",
+     "PM"
+    ]
+   }
+  ],
+  "Bug": [
+   {
+    "referenceName": "System.Title",
+    "name": "Title",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AssignedTo",
+    "name": "Assigned To",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.State",
+    "name": "State",
+    "alwaysRequired": true,
+    "defaultValue": "New",
+    "allowedValues": [
+     "New",
+     "Active",
+     "In Progress",
+     "Ready",
+     "Inactive",
+     "Resolved",
+     "Closed",
+     "Removed"
+    ]
+   },
+   {
+    "referenceName": "System.Reason",
+    "name": "Reason",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AreaPath",
+    "name": "Area Path",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.IterationPath",
+    "name": "Iteration Path",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.Tags",
+    "name": "Tags",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.IterationId",
+    "name": "Iteration ID",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.AreaId",
+    "name": "Area ID",
+    "alwaysRequired": true,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.TeamProject",
+    "name": "Team Project",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.WorkItemType",
+    "name": "Work Item Type",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.ChangedBy",
+    "name": "Changed By",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.History",
+    "name": "History",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.CreatedDate",
+    "name": "Created Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.StackRank",
+    "name": "Stack Rank",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.ClosedDate",
+    "name": "Closed Date",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.TCM.ReproSteps",
+    "name": "Repro Steps",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "System.Description",
+    "name": "Description",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.Priority",
+    "name": "Priority",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "1",
+     "2",
+     "3",
+     "4"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.Severity",
+    "name": "Severity",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "1 - Critical",
+     "2 - High",
+     "3 - Medium",
+     "4 - Low"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.Activity",
+    "name": "Activity",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Deployment",
+     "Design",
+     "Development",
+     "Documentation",
+     "Requirements",
+     "Testing"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.StoryPoints",
+    "name": "Story Points",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Common.ValueArea",
+    "name": "Value Area",
+    "alwaysRequired": true,
+    "defaultValue": "Business",
+    "allowedValues": [
+     "Business",
+     "Container",
+     "Internal",
+     "Maintenance"
+    ]
+   },
+   {
+    "referenceName": "Custom.FoundInEnviroment1",
+    "name": "Found In Enviroment1",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "01 - DFR",
+     "02 - DGL",
+     "03 - DCR",
+     "05 - QMT",
+     "10 - Prod"
+    ]
+   },
+   {
+    "referenceName": "Custom.Relevance",
+    "name": "Relevance",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.Reviewed",
+    "name": "Reviewed",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.EscapingDefect",
+    "name": "Escaping Defect",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.CR",
+    "name": "CR",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.Reopen",
+    "name": "Reopen",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.OSS",
+    "name": "OSS",
+    "alwaysRequired": true,
+    "defaultValue": "0",
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.TransportNumber",
+    "name": "Transport Number",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   },
+   {
+    "referenceName": "Custom.LeadingSquad",
+    "name": "Leading Squad",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": [
+     "Attendance",
+     "Car_Housing",
+     "CRM",
+     "CTO",
+     "Data & AI",
+     "Development",
+     "Finance",
+     "FM",
+     "HR_Core",
+     "Infrastructure",
+     "Logistics",
+     "Meteor",
+     "Payroll",
+     "Support",
+     "Training",
+     "UX/UI"
+    ]
+   },
+   {
+    "referenceName": "Microsoft.VSTS.Scheduling.RemainingWork",
+    "name": "Remaining Work",
+    "alwaysRequired": false,
+    "defaultValue": null,
+    "allowedValues": []
+   }
+  ]
+ },
+ "layouts": {
+  "Epic": {
+   "pages": [
+    {
+     "label": "Details",
+     "visible": true,
+     "sections": [
+      {
+       "groups": [
+        {
+         "label": "Description",
+         "visible": true,
+         "controls": [
+          {
+           "id": "System.Description",
+           "label": "Description",
+           "controlType": "HtmlFieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Planning",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Microsoft.VSTS.Common.Priority",
+           "label": "Priority",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Scheduling.StartDate",
+           "label": "Start Date",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Scheduling.TargetDate",
+           "label": "Target Date",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Scheduling.StoryPoints",
+           "label": "Story Points",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Requirements",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.Customer",
+           "label": "לקוח מוביל",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.Businesspriority",
+           "label": "Business priority",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Common.ValueArea",
+           "label": "Value Area",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.MVP",
+           "label": "MVP",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.CR",
+           "label": "CR",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.34c3825b-e2cf-4990-b473-d6a7e7d431e7",
+           "label": "שובץ",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.LeadingSquad",
+           "label": "Leading Squad",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "systemControls": [
+    {
+     "id": "System.Title",
+     "label": "",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.AssignedTo",
+     "label": "Assi&gned To",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.State",
+     "label": "Stat&e",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.Reason",
+     "label": "Reason",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.AreaPath",
+     "label": "&Area",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.IterationPath",
+     "label": "Ite&ration",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.History",
+     "label": "History",
+     "controlType": "FieldControl",
+     "visible": true
+    }
+   ]
+  },
+  "Feature": {
+   "pages": [
+    {
+     "label": "Details",
+     "visible": true,
+     "sections": [
+      {
+       "groups": [
+        {
+         "label": "Description",
+         "visible": true,
+         "controls": [
+          {
+           "id": "System.Description",
+           "label": "Description",
+           "controlType": "HtmlFieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "סיכומי דיון ומיילים",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Microsoft.VSTS.CMMI.Minutes",
+           "label": "סיכומי דיון ומיילים",
+           "controlType": "HtmlFieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Expected Business Outcome",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.ROIExplenation",
+           "label": "Expected Business Outcome",
+           "controlType": "HtmlFieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Mitigation Plan",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Microsoft.VSTS.CMMI.MitigationPlan",
+           "label": "Mitigation Plan",
+           "controlType": "HtmlFieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Planning",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.Solutionownername",
+           "label": "Solution owner name",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.SolutionApproverName",
+           "label": "Solution Approver Name",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.CMMI.ActualAttendee2",
+           "label": "Dev Owner Name",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.TesterOwnerName",
+           "label": "Tester Owner Name",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.InfrastructureOwner",
+           "label": "Infrastructure Owner",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.ArchitectureApproval",
+           "label": "Solution Status (After DR)",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.UXUIRequired",
+           "label": "UX UI Required",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.StoryPointsValues",
+           "label": "Story Points Values",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Scheduling.StoryPoints",
+           "label": "Story Points",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.WSJFPriority",
+           "label": "ROI score (WSJF)",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Product Line",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.LeadingSquad",
+           "label": "Leading Squad",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.InfrastructureExpertise",
+           "label": "Infrastructure Expertise",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Common.ValueArea",
+           "label": "Feature Type",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Requirements",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.Customer",
+           "label": "לקוח מוביל",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.Businesspriority",
+           "label": "Business priority",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.BusinessFocus",
+           "label": "Business Focus",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.OperationFocus",
+           "label": "Operation Focus",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.MVP",
+           "label": "MVP",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.CR",
+           "label": "CR",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.GovOffice",
+           "label": "Gov Office",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "תכנית עבודה רבעונית",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.d3d0252f-48df-4329-8b93-585a2c0f8dae",
+           "label": "דיוור ת\"ע למשתמשים",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "לוחות זמנים",
+         "visible": true,
+         "controls": [
+          {
+           "id": "System.CreatedDate",
+           "label": "Created Date",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Scheduling.StartDate",
+           "label": "Active (start) Date",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Scheduling.TargetDate",
+           "label": "Target date",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Common.ClosedDate",
+           "label": "Closed Date",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Delivery",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.DeliveryStage",
+           "label": "Delivery Stage",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.Commited1",
+           "label": "Commited",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.34c3825b-e2cf-4990-b473-d6a7e7d431e7",
+           "label": "Conflict/Issue",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.Deliveryrisk",
+           "label": "Delivery risk",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.RiskLevel",
+           "label": "Risk Level",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Related Work",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Related Work",
+           "label": "",
+           "controlType": "LinksControl",
+           "visible": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "label": "CsM",
+     "visible": true,
+     "sections": [
+      {
+       "groups": [
+        {
+         "label": "CsM",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Microsoft.VSTS.Common.Activity",
+           "label": "Activity",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.SystemModule",
+           "label": "SystemModule",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "systemControls": [
+    {
+     "id": "System.Title",
+     "label": "",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.AssignedTo",
+     "label": "Assi&gned To",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.State",
+     "label": "Stat&e",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.Reason",
+     "label": "Reason",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.AreaPath",
+     "label": "&Area",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.IterationPath",
+     "label": "Ite&ration",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.History",
+     "label": "History",
+     "controlType": "FieldControl",
+     "visible": true
+    }
+   ]
+  },
+  "User Story": {
+   "pages": [
+    {
+     "label": "Details",
+     "visible": true,
+     "sections": [
+      {
+       "groups": [
+        {
+         "label": "Description",
+         "visible": true,
+         "controls": [
+          {
+           "id": "System.Description",
+           "label": "Description",
+           "controlType": "HtmlFieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "סיכומי דיון ומיילים",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Microsoft.VSTS.CMMI.Minutes",
+           "label": "סיכומי דיון ומיילים",
+           "controlType": "HtmlFieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Planning",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.Customer",
+           "label": "לקוח מוביל",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.CMMI.ActualAttendee2",
+           "label": "Dev Owner Name",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.TesterOwnerName",
+           "label": "Tester Owner Name",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.InfrastructureOwner",
+           "label": "Infrastructure Owner",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.WSJFPriority",
+           "label": "ROI Score",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.StoryPointsValues",
+           "label": "Story Points Values",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Scheduling.StoryPoints",
+           "label": "Story Points",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Common.Priority",
+           "label": "Priority",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.CR",
+           "label": "CR",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.GovOffice",
+           "label": "Gov Office",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Product Line",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.LeadingSquad",
+           "label": "Leading Squad",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.InfrastructureExpertise",
+           "label": "Infrastructure Expertise",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Common.ValueArea",
+           "label": "US Type",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Delivery",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.Commited1",
+           "label": "Commited1",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.Q",
+           "label": "Delivery PI (Q)",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.EmbeddedPI",
+           "label": "Embedded PI",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.34c3825b-e2cf-4990-b473-d6a7e7d431e7",
+           "label": "Conflict/Issue",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.Deliveryrisk",
+           "label": "Delivery risk",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.RiskLevel",
+           "label": "Risk Level",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.ParentName",
+           "label": "Parent Name",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "label": "CsM",
+     "visible": true,
+     "sections": [
+      {
+       "groups": [
+        {
+         "label": "CsM",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Microsoft.VSTS.Common.Activity",
+           "label": "Activity",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.SystemModule",
+           "label": "SystemModule",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "systemControls": [
+    {
+     "id": "System.Title",
+     "label": "",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.AssignedTo",
+     "label": "Assi&gned To",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.State",
+     "label": "Stat&e",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.Reason",
+     "label": "Reason",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.AreaPath",
+     "label": "&Area",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.IterationPath",
+     "label": "Ite&ration",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.History",
+     "label": "History",
+     "controlType": "FieldControl",
+     "visible": true
+    }
+   ]
+  },
+  "Task": {
+   "pages": [
+    {
+     "label": "Details",
+     "visible": true,
+     "sections": [
+      {
+       "groups": [
+        {
+         "label": "Description",
+         "visible": true,
+         "controls": [
+          {
+           "id": "System.Description",
+           "label": "Description",
+           "controlType": "HtmlFieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Planning",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Microsoft.VSTS.Common.Priority",
+           "label": "Priority",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Common.Activity",
+           "label": "Activity",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Effort",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Microsoft.VSTS.Scheduling.OriginalEstimate",
+           "label": "Original Estimate",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Scheduling.RemainingWork",
+           "label": "Remaining",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Scheduling.CompletedWork",
+           "label": "Completed",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Other",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.TransportNumber",
+           "label": "Transport Number",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.SystemModule",
+           "label": "SystemModule",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "systemControls": [
+    {
+     "id": "System.Title",
+     "label": "",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.AssignedTo",
+     "label": "Assi&gned To",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.State",
+     "label": "Stat&e",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.Reason",
+     "label": "Reason",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.AreaPath",
+     "label": "&Area",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.IterationPath",
+     "label": "Ite&ration",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.History",
+     "label": "History",
+     "controlType": "FieldControl",
+     "visible": true
+    }
+   ]
+  },
+  "Bug": {
+   "pages": [
+    {
+     "label": "Details",
+     "visible": true,
+     "sections": [
+      {
+       "groups": [
+        {
+         "label": "Repro Steps",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Microsoft.VSTS.TCM.ReproSteps",
+           "label": "Repro Steps",
+           "controlType": "HtmlFieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Description",
+         "visible": true,
+         "controls": [
+          {
+           "id": "System.Description",
+           "label": "Description",
+           "controlType": "HtmlFieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Planning",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Microsoft.VSTS.Common.Priority",
+           "label": "Priority",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Common.Severity",
+           "label": "Severity",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Common.Activity",
+           "label": "Activity",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Scheduling.StoryPoints",
+           "label": "Story Points",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Microsoft.VSTS.Common.ValueArea",
+           "label": "Value Area",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        },
+        {
+         "label": "Classification",
+         "visible": true,
+         "controls": [
+          {
+           "id": "Custom.FoundInEnviroment1",
+           "label": "Found In Environment",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.Relevance",
+           "label": "Relevance",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.Reviewed",
+           "label": "Reviewed",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.EscapingDefect",
+           "label": "Escaping Defect",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.CR",
+           "label": "CR",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.Reopen",
+           "label": "Reopen",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.OSS",
+           "label": "OSS",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.TransportNumber",
+           "label": "Transport Number",
+           "controlType": "FieldControl",
+           "visible": true
+          },
+          {
+           "id": "Custom.LeadingSquad",
+           "label": "Leading Squad",
+           "controlType": "FieldControl",
+           "visible": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "systemControls": [
+    {
+     "id": "System.Title",
+     "label": "",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.AssignedTo",
+     "label": "Assi&gned To",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.State",
+     "label": "Stat&e",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.Reason",
+     "label": "Reason",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.AreaPath",
+     "label": "&Area",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.IterationPath",
+     "label": "Ite&ration",
+     "controlType": "FieldControl",
+     "visible": true
+    },
+    {
+     "id": "System.History",
+     "label": "History",
+     "controlType": "FieldControl",
+     "visible": true
+    }
+   ]
+  }
+ }
+}

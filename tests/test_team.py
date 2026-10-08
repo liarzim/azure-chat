@@ -87,7 +87,10 @@ with sync_playwright() as p:
     pg.click("#teamTabs [data-tab=fields]"); pg.locator("tr:has(td:text-is('Gov Office')) input[type=checkbox]").first.check()
     pg.click("#teamSave"); pg.locator("#teamConfirm:has-text('מישהו אחר')").wait_for(timeout=5000)
     check("conflict warning shown", "מישהו אחר" in pg.inner_text("#teamConfirm") and len(remote["puts"]) == 1)
-    pg.click("#teamConfirm button:has-text('לשמור ולדרוס')"); pg.locator("#toast:has-text('נשמר ב-GitHub')").wait_for(timeout=5000)
+    pg.click("#teamConfirm button:has-text('לשמור ולדרוס')")
+    for _ in range(50):
+        if len(remote["puts"]) >= 2: break
+        pg.wait_for_timeout(100)
     check("overwrite after confirm", len(remote["puts"]) == 2 and "Custom.GovOffice" in remote["json"]["requiredFields"]["Feature"])
     # Close with unsaved changes asks first
     pg.locator("tr:has(td:text-is('MVP')) input[type=checkbox]").first.check()

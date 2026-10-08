@@ -115,7 +115,7 @@ function sameField(a, b) {
 /* ============================ AUTH ============================ */
 const Auth = {
   mode: null,          // "msal" | "pat" | "demo"
-  msal: null, account: null, pat: null, userName: "",
+  msal: null, account: null, pat: null, userName: "", userEmail: "",
 
   redirectUri() { return location.origin + location.pathname.replace(/index\.html?$/i, ""); },
 
@@ -131,9 +131,9 @@ const Auth = {
     }
     for (const store of [sessionStorage, localStorage]) {
       const pat = store.getItem("ado_pat");
-      if (pat) { this.mode = "pat"; this.pat = pat; this.userName = store.getItem("ado_user") || ""; return true; }
+      if (pat) { this.mode = "pat"; this.pat = pat; this.userName = store.getItem("ado_user") || ""; this.userEmail = store.getItem("ado_email") || ""; return true; }
     }
-    if (sessionStorage.getItem("ado_demo")) { this.mode = "demo"; this.userName = "משתמש הדגמה"; return true; }
+    if (sessionStorage.getItem("ado_demo")) { this.mode = "demo"; this.userName = "משתמש הדגמה"; this.userEmail = "demo.user@example.com"; return true; }
     return false;
   },
 
@@ -144,11 +144,15 @@ const Auth = {
     await api(ADO + "/_apis/projects?$top=1&api-version=7.1");   // validates the token
     try {
       const cd = await api(ADO + "/_apis/connectionData");
-      this.userName = (cd.authenticatedUser && (cd.authenticatedUser.providerDisplayName || cd.authenticatedUser.customDisplayName)) || "";
-    } catch (e) { this.userName = ""; }
+      const u = cd.authenticatedUser || {};
+      this.userName = u.providerDisplayName || u.customDisplayName || "";
+      this.userEmail = (u.properties && u.properties.Account && (u.properties.Account.$value || u.properties.Account)) || "";
+      if (typeof this.userEmail !== "string") this.userEmail = "";
+    } catch (e) { this.userName = ""; this.userEmail = ""; }
     const store = remember ? localStorage : sessionStorage;
     store.setItem("ado_pat", this.pat);
     store.setItem("ado_user", this.userName);
+    store.setItem("ado_email", this.userEmail);
   },
 
   async header() {
@@ -166,11 +170,11 @@ const Auth = {
   },
 
   async logout() {
-    [sessionStorage, localStorage].forEach(s => { s.removeItem("ado_pat"); s.removeItem("ado_user"); s.removeItem("ado_demo"); });
+    [sessionStorage, localStorage].forEach(s => { s.removeItem("ado_pat"); s.removeItem("ado_user"); s.removeItem("ado_email"); s.removeItem("ado_demo"); });
     if (this.mode === "msal" && this.msal) {
       await this.msal.logoutRedirect({account: this.account, onRedirectNavigate: () => false});
     }
-    this.mode = null; this.pat = null; this.account = null;
+    this.mode = null; this.pat = null; this.account = null; this.userEmail = "";
   }
 };
 
@@ -186,7 +190,7 @@ async function api(url) {
   }
   const ct = r.headers.get("content-type") || "";
   if (r.status === 401 || r.status === 203 || (r.ok && !ct.includes("json"))) {
-    throw new AuthError(Auth.mode === "pat" ? "הטוקן לא תקין, פג תוקפו, או שאין לו הרשאת Work Items: Read." : "ההתחברות פגה. התחברו מחדש.");
+    throw new AuthError(Auth.mode === "pat" ? "הטוקן לא תקין, פג תוקפו, או שאין לו הרשאת Work Items." : "ההתחברות פגה. התחברו מחדש.");
   }
   if (r.status === 403) throw new Error("אין לכם הרשאה לפריטים האלה.");
   if (!r.ok) {
@@ -263,7 +267,7 @@ function buildTable(fieldNames, items, ids) {
       else if (name && !images[i].name) images[i].name = name;
       return i + 1;
     };
-    return {id, missing: false, project: f["System.TeamProject"], images, cells: cols.map(c => cellValue(c, it, f, reg))};
+    return {id, missing: false, project: f["System.TeamProject"], type: f["System.WorkItemType"], images, cells: cols.map(c => cellValue(c, it, f, reg))};
   });
   const projects = [...new Set(rows.filter(r => !r.missing).map(r => r.project))];
   return {cols, rows, missing: rows.filter(r => r.missing).map(r => r.id), unknown: cols.filter(c => !c.found).map(c => c.label), projects};
@@ -670,14 +674,21 @@ function helpHtml(first) {
     "<li><code>110047 תוסיף Tags ו-Story Points</code> ברירת מחדל ועוד שדות</li>" +
     "<li><code>110047 בלי Priority ו-WSJF Priority</code> להוריד שדות</li>" +
     "<li><code>עזרה</code> להציג את ההסבר הזה שוב · <code>נקה</code> לנקות את השיחה</li></ul>" +
+    "<b>עדכון:</b> לחצו על תא בטבלה או על ✎, או כתבו פקודה. כל עדכון מוצג קודם לאישור.<ul>" +
+    "<li><code>112074 State Resolved</code> · <code>110047 112074 Iteration 4.2</code></li>" +
+    "<li><code>112074 שייך לאני</code> · <code>112074 Priority=2; Tags +SAP</code></li>" +
+    "<li><code>112074 תגובה: נבדק בסביבת QA</code></li></ul>" +
     '<div class="notes">העמודות שלך כרגע: ' + getDefaultFields().join(", ") + (hasPersonalFields() ? " (הגדרה אישית)" : "") +
     "<br>שדות נוספים שאפשר לבקש: " + FIELDS.filter(f => !getDefaultFields().some(d => sameField(d, f.name))).map(f => f.name).join(", ") +
     ", וגם כל שדה מותאם של הפרויקט לפי שמו. בבאג, עמודת Description מציגה את Repro Steps. תמונות מוצגות בתוך הטבלה, ולחיצה עליהן מגדילה. כפתור העתקת טבלה מעתיק גם את התמונות.</div></div>";
 }
 
-function renderResult(t, req) {
+const NOT_EDITABLE_KINDS = new Set(["id", "attach", "none"]);
+function renderResult(t, req, el, items) {
   const found = t.rows.length - t.missing.length;
-  const el = addMsg("bot", "");
+  const fresh = !el;
+  if (fresh) { el = addMsg("bot", ""); Results.add(el, t, req, items || []); }
+  else el.innerHTML = "";
   const meta = document.createElement("div"); meta.className = "meta";
   meta.innerHTML = "<span>" + found + " מתוך " + t.rows.length + " פריטים" + (req.customized ? " · שדות מותאמים" : "") + '</span><span class="sp"></span>';
   const actions = document.createElement("div"); actions.className = "actions";
@@ -690,23 +701,34 @@ function renderResult(t, req) {
   t.rows.forEach((r, ri) => {
     h += "<tr>" + r.cells.map((v, i) => {
       const c = t.cols[i];
-      if (c.ref === "id" && !r.missing && Auth.mode !== "demo") return '<td><a target="_blank" rel="noopener" href="' + ADO + "/" + encodeURIComponent(r.project || "") + "/_workitems/edit/" + r.id + '">' + escHtml(v) + "</a></td>";
+      const edBtn = '<button type="button" class="rowedit" data-r="' + ri + '" title="עריכה" aria-label="עריכת ' + r.id + '">✎</button>';
+      if (c.ref === "id" && !r.missing && Auth.mode !== "demo") return '<td class="idc"><a target="_blank" rel="noopener" href="' + ADO + "/" + encodeURIComponent(r.project || "") + "/_workitems/edit/" + r.id + '">' + escHtml(v) + "</a>" + edBtn + "</td>";
+      if (c.ref === "id" && !r.missing) return '<td class="idc">' + escHtml(v) + edBtn + "</td>";
       const long = v.length > 80 || v.includes("\n");
       const cls = r.missing && c.label === "Title" ? "missing" : v === "—" || v === "לא נמצא" ? "na" : c.kind === "attach" ? "att" : long ? "long" : "";
       const body = escHtml(v).replace(/\[תמונה (\d+)\]/g, (m, n) => '<span class="imgref" data-r="' + ri + '" data-i="' + n + '"><span class="ph">' + m + "</span></span>");
-      return '<td class="' + cls + '">' + body + "</td>";
+      const editable = !r.missing && c.ref && !NOT_EDITABLE_KINDS.has(c.kind) && c.ref !== "System.WorkItemType" && c.ref !== "System.TeamProject";
+      return '<td class="' + cls + (editable ? " ed" : "") + '"' + (editable ? ' data-r="' + ri + '" data-c="' + i + '" title="לחצו לעריכה"' : "") + ">" + body + "</td>";
     }).join("") + "</tr>";
   });
   wrap.innerHTML = h + "</tbody></table>";
   el.appendChild(wrap);
   hydrateImages(wrap, t);
+  wrap.addEventListener("click", e => {
+    if (e.target.closest("a, img")) return;
+    const b = e.target.closest(".rowedit");
+    if (b) { EditPanel.open(el, +b.dataset.r, null); return; }
+    const td = e.target.closest("td.ed");
+    if (td && !getSelection().toString()) EditPanel.open(el, +td.dataset.r, +td.dataset.c);
+  });
 
   const notes = [];
   if (t.missing.length) notes.push("לא נמצאו או שאין הרשאה: " + t.missing.join(", "));
   if (t.unknown.length) notes.push("שדות שלא נמצאו בפריטים: " + t.unknown.join(", "));
   if (t.projects.length > 1) notes.push("הפריטים שייכים לכמה פרויקטים: " + t.projects.join(", ") + ". אפשר להוסיף את העמודה Project.");
   if (notes.length) { const n = document.createElement("div"); n.className = "notes"; n.innerHTML = notes.map(escHtml).join("<br>"); el.appendChild(n); }
-  scrollDown();
+  if (fresh) scrollDown();
+  return el;
 }
 
 let busy = false;
@@ -716,14 +738,26 @@ async function handleInput(text) {
   const req = parseRequest(text);
   if (req.cmd === "help") { addMsg("bot", helpHtml(false)); return; }
   if (req.cmd === "clear") { msgs.innerHTML = ""; addMsg("bot", helpHtml(true)); return; }
+  let upd = null;
+  try { upd = await ChatEdit.parse(text); } catch (e) { upd = null; }
+  if (upd) {
+    busy = true; $("sendBtn").disabled = true;
+    try { await ChatEdit.run(upd); }
+    catch (e) {
+      addMsg("bot error", escHtml(e.message || String(e)));
+      if (e instanceof AuthError && Auth.mode === "pat") { await Auth.logout(); setTimeout(() => showLogin(e.message), 1500); }
+    } finally { busy = false; $("sendBtn").disabled = false; $("input").focus(); }
+    return;
+  }
   if (!req.ids.length) { addMsg("bot", "לא מצאתי מספרים בהודעה. כתבו מספר אחד או יותר של Work Items, למשל <code>110047, 112074</code>, או <code>עזרה</code>."); return; }
   if (req.ids.length > CONFIG.MAX_IDS) { addMsg("bot error", "אפשר עד " + CONFIG.MAX_IDS + " מספרים בהודעה אחת."); return; }
   busy = true; $("sendBtn").disabled = true;
   const wait = addMsg("bot typing", "שולף " + req.ids.length + " פריטים...");
   try {
     const items = await fetchItems(req.ids);
+    People.fromItems(items);
     wait.remove();
-    renderResult(buildTable(req.fields, items, req.ids), req);
+    renderResult(buildTable(req.fields, items, req.ids), req, null, items);
   } catch (e) {
     wait.remove();
     if (e instanceof AuthError) {
@@ -758,7 +792,7 @@ function initUi() {
     catch (e) { Auth.mode = null; showLogin(e.message || String(e)); }
     finally { $("patBtn").disabled = false; $("patBtn").textContent = "כניסה עם טוקן"; }
   };
-  $("demoBtn").onclick = () => { sessionStorage.setItem("ado_demo", "1"); Auth.mode = "demo"; Auth.userName = "משתמש הדגמה"; showApp(); };
+  $("demoBtn").onclick = () => { sessionStorage.setItem("ado_demo", "1"); Auth.mode = "demo"; Auth.userName = "משתמש הדגמה"; Auth.userEmail = "demo.user@example.com"; showApp(); };
   $("logoutBtn").onclick = async () => { await Auth.logout(); showLogin(); };
   $("clearBtn").onclick = () => { msgs.innerHTML = ""; addMsg("bot", helpHtml(true)); };
   initSettings();
@@ -848,30 +882,40 @@ function initSettings() {
 
 /* ============================ DEMO DATA ============================ */
 function demoItems(ids) {
-  const people = ["דנה כהן", "יוסי לוי", "מאיה פרץ", "אבי מזרחי"];
-  const states = ["New", "Active", "Resolved", "Closed"];
+  const people = [{displayName: "דנה כהן", uniqueName: "dana@example.com"}, {displayName: "יוסי לוי", uniqueName: "yossi@example.com"}, {displayName: "מאיה פרץ", uniqueName: "maya@example.com"}, {displayName: "אבי מזרחי", uniqueName: "avi@example.com"}];
+  const stateFor = {"Bug": ["New", "Active", "Resolved", "Closed"], "User Story": ["New", "Active", "Testing", "Closed"], "Feature": ["New", "Solution", "Active", "Closed"]};
   return new Promise(res => setTimeout(() => res(ids.filter(id => id % 10 !== 9).map((id, i) => {
-    const bug = id % 2 === 0;
+    const stored = DemoDB.get(id);
+    if (stored) return stored;
+    const type = id % 5 === 0 ? "Feature" : id % 2 === 0 ? "Bug" : "User Story";
     const f = {
-      "System.WorkItemType": bug ? "Bug" : "User Story",
-      "System.Title": bug ? "שגיאה בשמירת טופס בקשה (הדגמה " + id + ")" : "הוספת סינון לפי תאריך במסך החיפוש (הדגמה " + id + ")",
-      "System.State": states[i % 4], "System.Reason": "Approved",
-      "System.AssignedTo": {displayName: people[i % 4]}, "System.CreatedBy": {displayName: people[(i + 1) % 4]},
+      "System.WorkItemType": type,
+      "System.Title": type === "Bug" ? "שגיאה בשמירת טופס בקשה (הדגמה " + id + ")" : type === "Feature" ? "ממשק דיווח חודשי ללקוח (הדגמה " + id + ")" : "הוספת סינון לפי תאריך במסך החיפוש (הדגמה " + id + ")",
+      "System.State": stateFor[type][i % 4], "System.Reason": "Approved",
+      "System.AssignedTo": people[i % 4], "System.CreatedBy": people[(i + 1) % 4],
       "System.CreatedDate": "2026-09-1" + (i % 9) + "T08:00:00Z", "System.ChangedDate": "2026-10-0" + ((i % 6) + 1) + "T10:00:00Z",
-      "System.IterationPath": "Demo Project\\PI4_26\\4." + ((i % 3) + 1), "System.AreaPath": "Demo Project\\Team A",
-      "System.TeamProject": "Demo Project", "System.Tags": bug ? "Demo; UI" : "Demo",
-      "Custom.WSJFPriority": i * 3, "Microsoft.VSTS.Scheduling.StoryPoints": bug ? undefined : 3, "Custom.Customer": "לקוח לדוגמה"
+      "System.IterationPath": "Portfolio Merkava\\PI4_26\\4." + ((i % 3) + 1), "System.AreaPath": "Portfolio Merkava\\MK2\\Meteor\\Meteor Sigma",
+      "System.TeamProject": "Portfolio Merkava", "System.Tags": type === "Bug" ? "Demo; UI" : "Demo",
+      "Custom.WSJFPriority": i * 3, "Custom.Customer": "מימון ואשראי", "Custom.LeadingSquad": "Meteor",
+      "Microsoft.VSTS.Common.ValueArea": "Business", "Custom.CR": false, "Custom.34c3825b-e2cf-4990-b473-d6a7e7d431e7": false, "Custom.Deliveryrisk": false,
+      "Custom.d3d0252f-48df-4329-8b93-585a2c0f8dae": false, "Custom.Relevance": false, "Custom.Reviewed": false, "Custom.EscapingDefect": false, "Custom.Reopen": false, "Custom.OSS": false
     };
-    if (bug) f["Microsoft.VSTS.TCM.ReproSteps"] = "<div>1. נכנסים למסך בקשה חדשה</div><div>2. ממלאים את כל השדות ולוחצים שמירה</div><div><br></div><div>התוצאה: מופיעה הודעת שגיאה כללית</div><div><img src='demo:inline-" + id + "' alt='צילום מסך'></div>";
+    if (type === "User Story") f["Microsoft.VSTS.Scheduling.StoryPoints"] = 3;
+    if (type === "Bug") f["Microsoft.VSTS.TCM.ReproSteps"] = "<div>1. נכנסים למסך בקשה חדשה</div><div>2. ממלאים את כל השדות ולוחצים שמירה</div><div><br></div><div>התוצאה: מופיעה הודעת שגיאה כללית</div><div><img src='demo:inline-" + id + "' alt='צילום מסך'></div>";
+    else if (type === "Feature") {
+      const tpl = TeamConfig.template("Feature");
+      f["System.Description"] = tpl ? templateHtml(tpl).replace(/(תאור הדרישה:<\/span><\/u><\/b><\/div>)<div><br><\/div>/, "$1<div>דוח חודשי מרוכז לכל לקוח, עם פילוח לפי מודול.</div>") : "<div>תיאור</div>";
+    }
     else f["System.Description"] = "<p>כמשתמש, אני רוצה לסנן תוצאות לפי טווח תאריכים.</p><ul><li>שדה מתאריך</li><li>שדה עד תאריך</li></ul>";
     if (i % 3 === 0) f["Microsoft.VSTS.Common.Priority"] = 2;
-    Object.keys(f).forEach(k => f[k] === undefined && delete f[k]);
-    const relations = i % 2 === 0 ? [
+    const relations = type === "Bug" ? [
       {rel: "AttachedFile", url: "demo:att-" + id, attributes: {name: "מסך-שגיאה.png"}},
       {rel: "AttachedFile", url: "demo:log-" + id, attributes: {name: "server-log.txt"}}
     ] : [];
-    return {id, fields: f, relations};
-  })), 400));
+    const it = {id, rev: 1, fields: f, relations};
+    DemoDB.put(it);
+    return DemoDB.get(id);
+  })), 300));
 }
 
 function demoImage(src) {
@@ -893,6 +937,7 @@ function demoImage(src) {
   initUi();
   await TeamConfig.load();
   TeamUI.init();
+  EditPanel.init();
   try {
     if (await Auth.init()) showApp(); else showLogin();
   } catch (e) { showLogin("שגיאה בהתחברות: " + (e.message || e)); }

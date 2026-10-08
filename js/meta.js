@@ -33,6 +33,7 @@ const Meta = {
     const d = await this._demo;
     let m;
     if (/\/_apis\/wit\/fields\?/.test(url)) return {value: d.fields};
+    if (/\/classificationnodes\?/.test(url)) return {value: d.classificationnodes || []};
     if ((m = url.match(/\/workitemtypes\/([^/?]+)\/fields\?/))) return {value: d.typeFields[decodeURIComponent(m[1])] || []};
     if (/\/_apis\/wit\/workitemtypes\?/.test(url)) return {value: d.workitemtypes};
     if (/\/_apis\/work\/processes\/[^/]+\/workitemtypes\?/.test(url)) return {value: d.processWits};

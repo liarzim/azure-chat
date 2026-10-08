@@ -110,11 +110,31 @@
   <div class="tp-body" id="teamBody"></div>
 </div>
 
+<aside class="epanel hidden" id="editPanel" role="dialog" aria-modal="true" aria-labelledby="epTitle">
+  <div class="ep-head">
+    <div class="ep-titles"><h2 id="epTitle"></h2><div class="muted" id="epSub"></div></div>
+    <a class="btn ghost sm" id="epLink" target="_blank" rel="noopener">פתיחה ב-Azure</a>
+    <button class="btn ghost sm" type="button" id="epClose" aria-label="סגירה">✕</button>
+  </div>
+  <div class="ep-body">
+    <div id="epFields"></div>
+    <select id="epAdd" aria-label="הוספת שדה לעריכה"></select>
+    <label for="epComment" class="eplabel">תגובה לדיון (לא חובה)</label>
+    <textarea id="epComment" rows="3" placeholder="תתווסף ל-Discussion של הפריט"></textarea>
+    <div class="epcheck" id="epCheck" aria-live="polite"></div>
+  </div>
+  <div class="ep-foot">
+    <button class="btn" type="button" id="epSave" disabled>שמירה ב-Azure</button>
+    <button class="btn ghost" type="button" id="epCancel">ביטול</button>
+  </div>
+</aside>
+
 <div class="toast" id="toast"></div>
 
 <script src="js/team.js"></script>
 <script src="js/meta.js"></script>
 <script src="js/team-settings.js"></script>
+<script src="js/edit.js"></script>
 <script src="js/core.js"></script>
 </body>
 </html>

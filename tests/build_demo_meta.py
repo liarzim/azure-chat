@@ -132,5 +132,9 @@ for t in ["Epic","Feature","User Story","Task","Bug"]:
     out["typeFields"][t] = tf
     out["layouts"][t] = {"pages": [{"label": pl, "visible": True, "sections": [{"groups": [{"label": gl, "visible": True, "controls": ctrls} for gl, ctrls in groups]}]} for pl, groups in LAYOUT[t]],
                          "systemControls": [c("System.Title", ""), c("System.AssignedTo","Assi&gned To"), c("System.State","Stat&e"), c("System.Reason","Reason"), c("System.AreaPath","&Area"), c("System.IterationPath","Ite&ration"), c("System.History","History")]}
+def node(name, kids=()): return {"name": name, "children": list(kids)} if kids else {"name": name}
+out["classificationnodes"] = [
+ {"structureType": "area", "name": "Portfolio Merkava", "children": [node("MK2", [node("Meteor", [node("Meteor Sigma"), node("Meteor Alpha")]), node("LOG", [node("LOGST")])]), node("Payroll")]},
+ {"structureType": "iteration", "name": "Portfolio Merkava", "children": [node("PI3_26", [node("3.1"), node("3.2"), node("3.3")]), node("PI4_26", [node("4.1"), node("4.2"), node("4.3")])]}]
 json.dump(out, open(os.path.join(ROOT, "demo", "meta.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 print("ok", {t: len(v) for t, v in out["typeFields"].items()})

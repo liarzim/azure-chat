@@ -3435,5 +3435,74 @@
     }
    ]
   }
- }
+ },
+ "classificationnodes": [
+  {
+   "structureType": "area",
+   "name": "Portfolio Merkava",
+   "children": [
+    {
+     "name": "MK2",
+     "children": [
+      {
+       "name": "Meteor",
+       "children": [
+        {
+         "name": "Meteor Sigma"
+        },
+        {
+         "name": "Meteor Alpha"
+        }
+       ]
+      },
+      {
+       "name": "LOG",
+       "children": [
+        {
+         "name": "LOGST"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Payroll"
+    }
+   ]
+  },
+  {
+   "structureType": "iteration",
+   "name": "Portfolio Merkava",
+   "children": [
+    {
+     "name": "PI3_26",
+     "children": [
+      {
+       "name": "3.1"
+      },
+      {
+       "name": "3.2"
+      },
+      {
+       "name": "3.3"
+      }
+     ]
+    },
+    {
+     "name": "PI4_26",
+     "children": [
+      {
+       "name": "4.1"
+      },
+      {
+       "name": "4.2"
+      },
+      {
+       "name": "4.3"
+      }
+     ]
+    }
+   ]
+  }
+ ]
 }

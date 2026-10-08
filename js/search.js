@@ -42,7 +42,7 @@ const ChatSearch = {
     const head = document.createElement("div"); head.className = "srch-head";
     const title = document.createElement("div"); title.className = "srch-title";
     title.innerHTML = found.length
-      ? "מצאתי <b>" + found.length + (found.length >= this.LIMIT ? "+" : "") + "</b> פריטים " + (includeClosed ? "" : "פתוחים ") + 'עבור "<b>' + escHtml(q) + '</b>"'
+      ? (found.length === 1 ? "מצאתי <b>פריט " + (includeClosed ? "" : "פתוח ") + "אחד</b> " : "מצאתי <b>" + found.length + (found.length >= this.LIMIT ? "+" : "") + "</b> פריטים " + (includeClosed ? "" : "פתוחים ")) + 'עבור "<b>' + escHtml(q) + '</b>"'
       : 'לא מצאתי פריטים ' + (includeClosed ? "" : "פתוחים ") + 'עבור "<b>' + escHtml(q) + '</b>"';
     const scope = document.createElement("button"); scope.type = "button"; scope.className = "btn ghost sm";
     scope.textContent = includeClosed ? "רק פתוחים" : "כולל סגורים";

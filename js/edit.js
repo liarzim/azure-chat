@@ -508,7 +508,7 @@ const EditPanel = {
   async openCreate(opts) {
     opts = opts || {};
     const type = opts.type && TeamConfig.data.types.includes(opts.type) ? opts.type : "Task";
-    this.state = {mode: "create", type, editors: new Map(), parent: null, parentError: "", carry: {}, notes: [], hasParent: opts.parentId ? true : null};
+    this.state = {mode: "create", type, editors: new Map(), parent: null, parentError: "", carry: {}, notes: [], hasParent: opts.parentId ? true : null, typeChosen: !!opts.type, parentRaw: null};
     this.showMode("create");
     $("epTitle").textContent = "פריט חדש";
     $("epSub").textContent = "";
@@ -518,6 +518,8 @@ const EditPanel = {
     if (opts.title) this.state.carry["System.Title"] = opts.title;
     if (opts.parentId) await this.lookupParent(false);
     await this.loadType(type, opts.pairs || []);
+    // The parent comes first: focus it unless it is already filled (or not needed).
+    if (!opts.parentId && !OPTIONAL_PARENT[this.state.type]) { $("epParent").focus(); return; }
     const t = $("epFields").querySelector("input");
     if (t) t.focus();
   },
@@ -526,13 +528,14 @@ const EditPanel = {
     const box = $("epTypes"); box.innerHTML = "";
     TeamConfig.data.types.forEach(t => {
       const b = document.createElement("button"); b.type = "button"; b.className = "seg" + (t === this.state.type ? " on" : ""); b.textContent = t;
-      b.onclick = () => { if (t !== this.state.type) this.switchType(t); };
+      b.onclick = () => { this.state.typeChosen = true; if (t !== this.state.type) this.switchType(t); };
       box.appendChild(b);
     });
   },
-  async switchType(type) {
+  async switchType(type, fromParent) {
     const s = this.state;
     s.editors.forEach(({ed}, ref) => { const v = ed.get(); if (!isEmptyValue(ed.f, v) && !(s.template && ref === s.template.field)) s.carry[ref] = v; });
+    if (fromParent) { delete s.carry["System.AreaPath"]; delete s.carry["System.IterationPath"]; }   // the new parent's paths win
     await this.loadType(type, []);
   },
 
@@ -549,7 +552,7 @@ const EditPanel = {
     catch (e) {
       if (this.state !== s || s.type !== type) return;
       $("epFields").innerHTML = '<div class="err">לא ניתן לטעון את השדות של ' + escHtml(type) + ": " + escHtml(e.message || String(e)) + '<br><button type="button" class="btn ghost" id="epRetry">נסו שוב</button></div>';
-      $("epSave").textContent = "יצירה ב-Azure";
+      $("epSave").textContent = "יצירת " + type + " ב-Azure";
       $("epRetry").onclick = () => this.loadType(type, pairs);
       return;
     }
@@ -590,6 +593,8 @@ const EditPanel = {
     const s = this.state; if (!s || s.mode !== "create") return;
     const raw = $("epParent").value.trim(); const info = $("epParentInfo");
     if (OPTIONAL_PARENT[s.type] && s.hasParent === false) return;
+    if (reload && raw === s.parentRaw && (s.parent || s.parentError)) return;   // already looked up (input + change both fire)
+    s.parentRaw = raw;
     s.parent = null; s.parentError = "";
     if (!raw) { info.textContent = ""; if (reload) await this.refresh(); return; }
     const id = parseInt(raw.replace(/\D/g, ""), 10);
@@ -601,6 +606,11 @@ const EditPanel = {
       if (!p) throw new Error("לא נמצא");
       s.parent = p;
       info.textContent = "תחת " + p.fields["System.WorkItemType"] + " " + p.id + " · " + (p.fields["System.Title"] || "");
+      if (reload && !s.typeChosen) {
+        // No type picked yet: suggest the usual child of this parent (Epic → Feature, Feature → User Story...).
+        const pt = p.fields["System.WorkItemType"];
+        if (!(PARENT_TYPES[s.type] || []).includes(pt) && CHILD_TYPE[pt] && TeamConfig.data.types.includes(CHILD_TYPE[pt])) { await this.switchType(CHILD_TYPE[pt], true); return; }
+      }
       this.checkParentType();
       if (reload && s.editors) {
         ["System.AreaPath", "System.IterationPath"].forEach(ref => { const e = s.editors.get(ref); if (e && p.fields[ref]) e.ed.set(p.fields[ref]); });
@@ -692,7 +702,7 @@ const EditPanel = {
     const pendingPeople = $("epFields").querySelectorAll(".pk-input.pending").length > 0;
     const ok = plan.ok && !badPeople.length && !pendingPeople && !(create && (askOpen || s.parentError || needParent || (s.notes || []).length));
     $("epSave").disabled = !ok;
-    const label = create ? "יצירה ב-Azure" : "שמירה ב-Azure";
+    const label = create ? "יצירת " + s.type + " ב-Azure" : "שמירה ב-Azure";
     $("epSave").textContent = ok ? label : (plan.missing.length || plan.template || needParent || askOpen ? "יש למלא שדות חובה" : label);
     if (create) $("epParentLabel").textContent = optional ? "מספר ה-" + PARENT_TYPES[s.type].join(" או ") + " האב (חובה)" : "פריט אב (חובה)";
   },
@@ -722,7 +732,7 @@ const EditPanel = {
     } catch (e) {
       if (e instanceof AuthError) { toast(e.message); }
       $("epCheck").insertAdjacentHTML("afterbegin", '<div class="bad">' + escHtml(e.message || e) + "</div>");
-      btn.disabled = false; btn.textContent = s.mode === "create" ? "יצירה ב-Azure" : "שמירה ב-Azure";
+      btn.disabled = false; btn.textContent = s.mode === "create" ? "יצירת " + s.type + " ב-Azure" : "שמירה ב-Azure";
       if (e instanceof ConflictError) { btn.textContent = "שליפה מחדש"; btn.disabled = false; btn.onclick = () => this.reload(); }
     }
   },
@@ -740,6 +750,11 @@ const EditPanel = {
     $("epComment").oninput = () => this.refresh();
     $("epAskParent").querySelectorAll(".seg").forEach(b => { b.onclick = () => this.answerParent(b.dataset.v === "yes"); });
     $("epParent").onchange = () => this.lookupParent(true);
+    let pt; $("epParent").oninput = () => {   // show the parent as soon as a full number is typed
+      clearTimeout(pt); const v = $("epParent").value.replace(/\D/g, "");
+      if (v.length >= 3) pt = setTimeout(() => this.lookupParent(true), 450);
+      else if (!v) { const s = this.state; if (s) { s.parentRaw = null; this.lookupParent(true); } }
+    };
     $("epParent").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); this.lookupParent(true); } };
     $("epChild").onclick = () => { const s = this.state; if (s && s.item) this.openCreate({type: CHILD_TYPE[s.type] || "Task", parentId: s.item.id}); };
     $("newBtn").onclick = () => this.openCreate({});
@@ -772,7 +787,7 @@ const ChatCreate = {
     const pairs = [];
     for (const seg of cmd.rest) { const p = await ChatEdit.splitPair(seg); if (p) pairs.push(p); }
     await EditPanel.openCreate({type: cmd.type, parentId: cmd.parentId, title: cmd.title, pairs});
-    addMsg("bot", "פתחתי טופס ליצירת <b>" + escHtml(cmd.type) + "</b>" + (cmd.parentId ? " תחת " + cmd.parentId : "") + ". השלימו את השדות ולחצו <b>יצירה ב-Azure</b>.");
+    addMsg("bot", "פתחתי טופס ליצירת <b>" + escHtml(cmd.type) + "</b>" + (cmd.parentId ? " תחת " + cmd.parentId : "") + ". השלימו את השדות ולחצו <b>יצירת ' + escHtml(cmd.type) + ' ב-Azure</b>.");
   }
 };
 

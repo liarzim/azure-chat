@@ -1,4 +1,5 @@
-node_modules/
+*.pyc
 .DS_Store
-tests/artifacts/
 __pycache__/
+node_modules/
+tests/artifacts/

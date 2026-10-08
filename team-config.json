@@ -3,10 +3,23 @@
   "org": "GOI-Finance",
   "project": "Portfolio Merkava",
   "processId": "95ef57a0-7866-4020-8bcb-d9991ceaed89",
-  "types": ["Epic", "Feature", "User Story", "Task", "Bug"],
+  "types": [
+    "Epic",
+    "Feature",
+    "User Story",
+    "Task",
+    "Bug"
+  ],
   "requiredFields": {
     "Epic": [],
-    "Feature": [],
+    "Feature": [
+      "System.AreaPath",
+      "System.IterationPath",
+      "Custom.StoryPointsValues",
+      "Custom.LeadingSquad",
+      "Custom.Customer",
+      "Custom.Businesspriority"
+    ],
     "User Story": [],
     "Task": [],
     "Bug": []
@@ -16,16 +29,51 @@
       "field": "System.Description",
       "headingColor": "#0033CC",
       "headings": [
-        {"text": "תאור הדרישה", "required": true, "content": "", "aliases": []},
-        {"text": "ערך ללקוח", "required": true, "content": "", "aliases": []},
-        {"text": "Feature Specific ACCEPTENCE CRATIRIA (What to Demo?)", "required": false, "content": "", "aliases": []},
-        {"text": "פיתרון ארכיטקט (שהארכיטקט מכיר את הנושא)", "required": false, "content": "", "aliases": []},
-        {"text": "UX/UI- תרשים זרימה/סכימה (במידה ונדרש)", "required": false, "content": "", "aliases": []},
-        {"text": "תלויות בצוותים אחרים", "required": false, "content": "", "aliases": []},
-        {"text": "QA- הגדרת בדיקות ברמה גבוהה", "required": false, "content": "<div>0 - <span style=\"color:#E00000\">קריטי</span></div><div>3 - <span style=\"color:#ED7D31\">High</span></div><div>15 - <span style=\"color:#0070C0\">Medium</span></div>", "aliases": []}
+        {
+          "text": "תאור הדרישה",
+          "required": true,
+          "content": "",
+          "aliases": []
+        },
+        {
+          "text": "ערך ללקוח",
+          "required": true,
+          "content": "",
+          "aliases": []
+        },
+        {
+          "text": "Feature Specific ACCEPTENCE CRATIRIA (What to Demo?)",
+          "required": false,
+          "content": "",
+          "aliases": []
+        },
+        {
+          "text": "פיתרון ארכיטקט (שהארכיטקט מכיר את הנושא)",
+          "required": false,
+          "content": "",
+          "aliases": []
+        },
+        {
+          "text": "UX/UI- תרשים זרימה/סכימה (במידה ונדרש)",
+          "required": false,
+          "content": "",
+          "aliases": []
+        },
+        {
+          "text": "תלויות בצוותים אחרים",
+          "required": false,
+          "content": "",
+          "aliases": []
+        },
+        {
+          "text": "QA- הגדרת בדיקות ברמה גבוהה",
+          "required": false,
+          "content": "<div>0 - <span style=\"color: rgb(224, 0, 0);\">קריטי</span></div><div>3 - <span style=\"color: rgb(237, 125, 49);\">High</span></div><div>15 - <span style=\"color: rgb(0, 112, 192);\">Medium</span></div>",
+          "aliases": []
+        }
       ]
     }
   },
-  "updatedAt": null,
-  "updatedBy": null
+  "updatedAt": "2026-10-08T10:12:14.879Z",
+  "updatedBy": "מיכאל ליארזי"
 }

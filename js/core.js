@@ -678,6 +678,9 @@ function helpHtml(first) {
     "<li><code>112074 State Resolved</code> · <code>110047 112074 Iteration 4.2</code></li>" +
     "<li><code>112074 שייך לאני</code> · <code>112074 Priority=2; Tags +SAP</code></li>" +
     "<li><code>112074 תגובה: נבדק בסביבת QA</code></li></ul>" +
+    "<b>יצירה:</b> כפתור <b>+ פריט חדש</b> למעלה, <b>+ תת-פריט</b> בחלון העריכה, או פקודה. הטופס נפתח למילוי ולאישור.<ul>" +
+    "<li><code>חדש Task תחת 110047: בדיקת ממשק</code> · <code>צור באג: שגיאה בשמירה</code></li>" +
+    "<li><code>חדש Feature: דוח חודשי; Leading Squad Meteor</code></li></ul>" +
     '<div class="notes">העמודות שלך כרגע: ' + getDefaultFields().join(", ") + (hasPersonalFields() ? " (הגדרה אישית)" : "") +
     "<br>שדות נוספים שאפשר לבקש: " + FIELDS.filter(f => !getDefaultFields().some(d => sameField(d, f.name))).map(f => f.name).join(", ") +
     ", וגם כל שדה מותאם של הפרויקט לפי שמו. בבאג, עמודת Description מציגה את Repro Steps. תמונות מוצגות בתוך הטבלה, ולחיצה עליהן מגדילה. כפתור העתקת טבלה מעתיק גם את התמונות.</div></div>";
@@ -738,6 +741,14 @@ async function handleInput(text) {
   const req = parseRequest(text);
   if (req.cmd === "help") { addMsg("bot", helpHtml(false)); return; }
   if (req.cmd === "clear") { msgs.innerHTML = ""; addMsg("bot", helpHtml(true)); return; }
+  const cr = ChatCreate.parse(text);
+  if (cr) {
+    busy = true; $("sendBtn").disabled = true;
+    try { await ChatCreate.run(cr); }
+    catch (e) { addMsg("bot error", escHtml(e.message || String(e))); }
+    finally { busy = false; $("sendBtn").disabled = false; }
+    return;
+  }
   let upd = null;
   try { upd = await ChatEdit.parse(text); } catch (e) { upd = null; }
   if (upd) {

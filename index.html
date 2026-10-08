@@ -45,6 +45,7 @@
   <header>
     <h2>Azure Chat 2 · <span id="orgName"></span></h2>
     <span class="who" id="who"></span>
+    <button class="btn" id="newBtn">+ פריט חדש</button>
     <button class="btn ghost" id="teamBtn">הגדרות צוות</button>
     <button class="btn ghost" id="settingsBtn">עמודות</button>
     <button class="btn ghost" id="clearBtn">ניקוי</button>
@@ -113,14 +114,22 @@
 <aside class="epanel hidden" id="editPanel" role="dialog" aria-modal="true" aria-labelledby="epTitle">
   <div class="ep-head">
     <div class="ep-titles"><h2 id="epTitle"></h2><div class="muted" id="epSub"></div></div>
+    <button class="btn ghost sm" type="button" id="epChild">+ תת-פריט</button>
     <a class="btn ghost sm" id="epLink" target="_blank" rel="noopener">פתיחה ב-Azure</a>
     <button class="btn ghost sm" type="button" id="epClose" aria-label="סגירה">✕</button>
   </div>
   <div class="ep-body">
+    <div id="epCreateRow" class="hidden">
+      <div class="segs" id="epTypes" role="group" aria-label="סוג פריט"></div>
+      <label class="eplabel" for="epParent">פריט אב (לא חובה)</label>
+      <div class="parentrow"><input id="epParent" inputmode="numeric" placeholder="מספר פריט, למשל 112075" autocomplete="off"><span id="epParentInfo" class="muted"></span></div>
+    </div>
     <div id="epFields"></div>
     <select id="epAdd" aria-label="הוספת שדה לעריכה"></select>
-    <label for="epComment" class="eplabel">תגובה לדיון (לא חובה)</label>
-    <textarea id="epComment" rows="3" placeholder="תתווסף ל-Discussion של הפריט"></textarea>
+    <div id="epCommentWrap">
+      <label for="epComment" class="eplabel">תגובה לדיון (לא חובה)</label>
+      <textarea id="epComment" rows="3" placeholder="תתווסף ל-Discussion של הפריט"></textarea>
+    </div>
     <div class="epcheck" id="epCheck" aria-live="polite"></div>
   </div>
   <div class="ep-foot">

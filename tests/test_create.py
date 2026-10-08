@@ -1,0 +1,141 @@
+"""Creating work items: button, child from the edit panel, chat, Feature template, required fields, API request."""
+import os, sys, json, re, base64, copy
+from urllib.parse import unquote
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from server import start, ROOT
+from playwright.sync_api import sync_playwright
+fails = []
+def check(n, c, i=""):
+    print(("PASS " if c else "FAIL ") + n + ("" if c else "  -> " + str(i)[:600]))
+    if not c: fails.append(n)
+os.makedirs(os.path.join(ROOT, "tests", "artifacts"), exist_ok=True)
+shot = lambda pg, n: pg.screenshot(path=os.path.join(ROOT, "tests", "artifacts", n))
+srv = start(8786)
+with sync_playwright() as p:
+    b = p.chromium.launch(); ctx = b.new_context(viewport={"width": 1400, "height": 900})
+    pg = ctx.new_page(); errs = []
+    pg.on("pageerror", lambda e: errs.append(str(e)))
+    pg.goto("http://127.0.0.1:8786/"); pg.click("#demoBtn")
+    send = lambda t: (pg.fill("#input", t), pg.keyboard.press("Enter"))
+    oks = lambda: pg.locator(".msg.bot.ok")
+    # 1. new Task from the header button
+    pg.click("#newBtn"); pg.locator("#epCreateRow:not(.hidden)").wait_for()
+    check("create mode, Task by default", "פריט חדש" in pg.inner_text("#epTitle") and pg.locator("#epTypes .seg.on").inner_text() == "Task")
+    check("comment box hidden in create mode", pg.locator("#epCommentWrap").is_hidden())
+    check("save disabled until title", pg.locator("#epSave").is_disabled() and "Title" in pg.inner_text("#epCheck"))
+    pg.locator("#epFields input[aria-label='Title']").fill("בדיקת יצירה"); pg.wait_for_timeout(300)
+    check("save enabled with title", pg.locator("#epSave").is_enabled() and pg.inner_text("#epSave") == "יצירה ב-Azure")
+    shot(pg, "create_task.png")
+    pg.click("#epSave"); oks().first.wait_for()
+    t = oks().last.inner_text()
+    check("created + announced", "נוצר Task 300001" in t and "בדיקת יצירה" in t, t)
+    check("new item shown as a table row", pg.locator(".msg.bot table").last.locator("tbody tr").count() == 1 and "300001" in pg.locator(".msg.bot table").last.inner_text())
+    # 2. Feature: template prefilled and enforced
+    pg.click("#newBtn"); pg.locator("#epCreateRow:not(.hidden)").wait_for()
+    pg.locator("#epTypes .seg:has-text('Feature')").click(); pg.locator("#epFields .rich.big").wait_for()
+    check("feature description prefilled with template", "תאור הדרישה:" in pg.locator("#epFields .rich.big").inner_text())
+    pg.locator("#epFields input[aria-label='Title']").fill("פיצ'ר בדיקה"); pg.wait_for_timeout(300)
+    check("feature blocked until required headings filled", pg.locator("#epSave").is_disabled() and "ערך ללקוח" in pg.inner_text("#epCheck"), pg.inner_text("#epCheck"))
+    area = pg.locator("#epFields .rich.big")
+    for head, text in (("תאור הדרישה", "תיאור לבדיקה"), ("ערך ללקוח", "ערך לבדיקה")):
+        box = area.locator("div", has_text=head).first.bounding_box()
+        pg.mouse.click(box["x"] + 3, box["y"] + box["height"] / 2); pg.keyboard.press("End"); pg.keyboard.press("Enter"); pg.keyboard.type(text)
+    pg.wait_for_timeout(400)
+    check("feature can be created once filled", pg.locator("#epSave").is_enabled(), pg.inner_text("#epCheck"))
+    shot(pg, "create_feature.png")
+    pg.click("#epSave"); oks().nth(1).wait_for()
+    fid = int(re.search(r"Feature (\d+)", oks().last.inner_text()).group(1))
+    desc = pg.evaluate("(id) => DemoDB.get(id).fields['System.Description']", fid)
+    check("feature description saved rtl with text", "תיאור לבדיקה" in desc and "direction:rtl" in desc and "ערך לבדיקה" in desc, desc[:300])
+    # 3. child from the edit panel of an existing Feature
+    send("112075"); pg.locator(".msg.bot table").nth(2).wait_for()
+    pg.locator(".msg.bot table").nth(2).locator(".rowedit").first.click(); pg.locator("#editPanel:not(.hidden)").wait_for()
+    pg.click("#epChild"); pg.locator("#epCreateRow:not(.hidden)").wait_for(); pg.wait_for_timeout(500)
+    check("child type is User Story under the Feature", pg.locator("#epTypes .seg.on").inner_text() == "User Story" and "תחת Feature 112075" in pg.inner_text("#epParentInfo"), pg.inner_text("#epParentInfo"))
+    check("area/iteration from parent", pg.locator("#epFields input[aria-label='Iteration']").input_value() == pg.evaluate("() => DemoDB.get(112075).fields['System.IterationPath']"))
+    pg.locator("#epFields input[aria-label='Title']").fill("סיפור בן"); pg.wait_for_timeout(300)
+    pg.click("#epSave"); oks().nth(2).wait_for()
+    cid = int(re.search(r"User Story (\d+)", oks().last.inner_text()).group(1))
+    check("child linked to parent", pg.evaluate("(id) => DemoDB.get(id).fields['System.Parent']", cid) == 112075 and "תחת 112075" in oks().last.inner_text())
+    # 4. "+ עוד" reopens with the same type and parent
+    oks().last.locator("button.again").click(); pg.locator("#epCreateRow:not(.hidden)").wait_for(); pg.wait_for_timeout(500)
+    check("again keeps type and parent", pg.locator("#epTypes .seg.on").inner_text() == "User Story" and pg.locator("#epParent").input_value() == "112075")
+    # 5. unusual parent type warns but does not block
+    pg.locator("#epTypes .seg:has-text('Task')").click(); pg.wait_for_timeout(400)
+    check("parent type warning", "שימו לב" in pg.inner_text("#epParentInfo"), pg.inner_text("#epParentInfo"))
+    check("title carried over on type switch", pg.locator("#epFields input[aria-label='Title']").input_value() == "")
+    pg.click("#epCancel")
+    # 6. chat create with parent and extra field
+    send("חדש Task תחת 110047: בדיקת ממשק; Priority 1"); pg.locator("#editPanel:not(.hidden)").wait_for(); pg.wait_for_timeout(700)
+    check("chat opens prefilled form", pg.locator("#epFields input[aria-label='Title']").input_value() == "בדיקת ממשק" and pg.locator("#epFields select[aria-label='Priority']").input_value() == "1" and "110047" in pg.inner_text("#epParentInfo"))
+    check("chat message explains", "פתחתי טופס ליצירת" in pg.locator(".msg.bot").last.inner_text())
+    pg.click("#epSave"); oks().nth(3).wait_for()
+    check("chat-created task saved", "בדיקת ממשק" in oks().last.inner_text())
+    # 7. parent that does not exist blocks creation
+    send("צור באג תחת 112079: לא אמור להיווצר"); pg.locator("#editPanel:not(.hidden)").wait_for(); pg.wait_for_timeout(700)
+    check("missing parent blocks", pg.locator("#epSave").is_disabled() and "לא נמצא" in pg.inner_text("#epCheck"), pg.inner_text("#epCheck"))
+    pg.click("#epCancel")
+    # 8. team-required field on create
+    pg.evaluate("() => { TeamConfig.data.requiredFields['Task'] = ['Microsoft.VSTS.Scheduling.RemainingWork']; Meta.reset(); }")
+    pg.click("#newBtn"); pg.locator("#epCreateRow:not(.hidden)").wait_for()
+    pg.locator("#epFields input[aria-label='Title']").fill("עם שדה חובה"); pg.wait_for_timeout(400)
+    check("team-required field asked on create", "Remaining" in pg.inner_text("#epFields") and pg.locator("#epSave").is_disabled())
+    pg.locator("#epFields input[aria-label='Remaining']").fill("4"); pg.wait_for_timeout(300)
+    check("enabled after filling it", pg.locator("#epSave").is_enabled())
+    pg.click("#epCancel")
+    # 9. lookups and updates still work
+    send("110047 Priority=3"); pg.locator(".editcard").first.wait_for()
+    check("update command still recognised", "Priority" in pg.locator(".editcard").first.inner_text())
+    # phone header fits
+    pg.set_viewport_size({"width": 390, "height": 820}); pg.wait_for_timeout(200)
+    check("no horizontal scroll on phone", pg.evaluate("() => document.documentElement.scrollWidth") <= 390, pg.evaluate("() => document.documentElement.scrollWidth"))
+    shot(pg, "create_mobile.png")
+    check("no js errors", not errs, errs)
+    b.close()
+
+# ---- request sent to Azure DevOps
+META = json.load(open(os.path.join(ROOT, "demo", "meta.json"), encoding="utf-8"))
+PAT = "test-pat"; AUTH = "Basic " + base64.b64encode((":" + PAT).encode()).decode()
+CORS = {"access-control-allow-origin": "*", "access-control-allow-headers": "authorization, content-type, accept", "access-control-allow-methods": "GET, POST, PATCH, OPTIONS"}
+PARENT = {"id": 110047, "rev": 3, "url": "https://dev.azure.com/GOI-Finance/481b/_apis/wit/workItems/110047", "fields": {"System.WorkItemType": "User Story", "System.Title": "סיפור", "System.TeamProject": "Portfolio Merkava", "System.AreaPath": "Portfolio Merkava\\MK2\\Meteor\\Meteor Sigma", "System.IterationPath": "Portfolio Merkava\\PI4_26\\4.1"}, "relations": []}
+posts = []
+def handler(route, req):
+    if req.method == "OPTIONS": return route.fulfill(status=204, headers=CORS)
+    u = req.url; J = lambda d, s=200: route.fulfill(status=s, json=d, headers=CORS)
+    if req.all_headers().get("authorization") != AUTH: return route.fulfill(status=203, body="x", headers={**CORS, "content-type": "text/html"})
+    if "/_apis/projects?" in u: return J({"value": []})
+    if "/_apis/connectionData" in u: return J({"authenticatedUser": {"providerDisplayName": "מיכאל", "properties": {"Account": {"$value": "m@x.com"}}}})
+    if "/_apis/wit/fields?" in u: return J({"value": META["fields"]})
+    if "/classificationnodes?" in u: return J({"value": META["classificationnodes"]})
+    m = re.search(r"/workitemtypes/([^/?]+)/fields\?", u)
+    if m: return J({"value": META["typeFields"][unquote(m.group(1))]})
+    if re.search(r"/_apis/wit/workitemtypes\?", u): return J({"value": META["workitemtypes"]})
+    if re.search(r"/work/processes/[^/]+/workitemtypes\?", u): return J({"value": META["processWits"]})
+    m = re.search(r"/workItemTypes/([^/?]+)/layout\?", u)
+    if m: return J(META["layouts"][next(w["name"] for w in META["processWits"] if w["referenceName"] == m.group(1))])
+    if re.search(r"/_apis/wit/workitems\?ids=110047", u): return J({"value": [PARENT]})
+    m = re.search(r"/_apis/wit/workitems/\$([^?]+)\?", u)
+    if m and req.method == "POST":
+        ops = json.loads(req.post_data); posts.append({"type": unquote(m.group(1)), "ops": ops, "url": u, "ct": req.all_headers().get("content-type")})
+        f = {"System.WorkItemType": unquote(m.group(1)), "System.TeamProject": "Portfolio Merkava", "System.State": "New", "System.Parent": 110047}
+        for o in ops:
+            if o["path"].startswith("/fields/"): f[o["path"][8:]] = o["value"]
+        return J({"id": 555001, "rev": 1, "fields": f, "relations": []})
+    return J({"message": "not mocked " + u}, 404)
+with sync_playwright() as p:
+    b = p.chromium.launch(); ctx = b.new_context(viewport={"width": 1400, "height": 900}); ctx.route("https://dev.azure.com/**", handler)
+    pg = ctx.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
+    pg.goto("http://127.0.0.1:8786/"); pg.fill("#pat", PAT); pg.click("#patBtn"); pg.locator("#app:not(.hidden)").wait_for()
+    pg.fill("#input", "חדש Task תחת 110047: משימה אמיתית; Remaining Work 5"); pg.keyboard.press("Enter")
+    pg.locator("#editPanel:not(.hidden)").wait_for(); pg.wait_for_timeout(800)
+    pg.click("#epSave"); pg.locator(".msg.bot.ok").first.wait_for()
+    post = posts[-1]; ops = post["ops"]
+    check("POST to the Task endpoint with json-patch", post["type"] == "Task" and post["ct"] == "application/json-patch+json" and "/Portfolio%20Merkava/_apis/wit/workitems/$Task?" in post["url"], post)
+    check("title, remaining work, area and iteration sent", {"op": "add", "path": "/fields/System.Title", "value": "משימה אמיתית"} in ops and {"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.RemainingWork", "value": 5} in ops and {"op": "add", "path": "/fields/System.IterationPath", "value": "Portfolio Merkava\\PI4_26\\4.1"} in ops, ops)
+    check("parent link sent", {"op": "add", "path": "/relations/-", "value": {"rel": "System.LinkTypes.Hierarchy-Reverse", "url": PARENT["url"]}} in ops, ops)
+    check("defaults not re-sent", not any(o["path"] == "/fields/System.State" for o in ops), ops)
+    check("created item link to Azure", "_workitems/edit/555001" in pg.inner_html(".msg.bot.ok"))
+    check("no js errors (api)", not errs, errs)
+    b.close()
+srv.shutdown()
+print("FAILURES:", fails); sys.exit(1 if fails else 0)

@@ -380,9 +380,52 @@ function makeEditor(f, value, ctx) {
   return {el: wrap, get, set, f};
 }
 
-/* ---------- Edit panel (from the table) ---------- */
+/* ---------- Creating: hierarchy and defaults ---------- */
+const TYPE_ALIASES = {epic: "Epic", "אפיק": "Epic", feature: "Feature", "פיצר": "Feature", "פיצרים": "Feature", userstory: "User Story", us: "User Story", story: "User Story", "סיפור": "User Story", "סיפורמשתמש": "User Story", task: "Task", "משימה": "Task", "טאסק": "Task", bug: "Bug", "באג": "Bug"};
+const CHILD_TYPE = {"Epic": "Feature", "Feature": "User Story", "User Story": "Task", "Bug": "Task", "Task": "Task"};
+const PARENT_TYPES = {"Epic": [], "Feature": ["Epic"], "User Story": ["Feature"], "Task": ["User Story", "Bug"], "Bug": ["Feature", "User Story"]};
+const LAST_PATHS_KEY = "ado_last_paths";
+function resolveType(s) { const k = norm(s); return TYPE_ALIASES[k] || TeamConfig.data.types.find(t => norm(t) === k) || null; }
+function lastPaths() { try { return JSON.parse(localStorage.getItem(LAST_PATHS_KEY) || "{}"); } catch (e) { return {}; } }
+function rememberPaths(area, iteration) { try { localStorage.setItem(LAST_PATHS_KEY, JSON.stringify({area, iteration})); } catch (e) {} }
+function defaultFieldValue(f) {
+  const v = f.defaultValue;
+  if (v === null || v === undefined || v === "") return undefined;
+  if (f.type === "boolean") return v === true || v === "1" || v === "true";
+  if (f.type === "integer" || f.type === "double") return Number(v);
+  return v;
+}
+
+const Create = {
+  async commit(plan, parent) {
+    const pairs = plan.diffs.map(d => [d.ref, plan.changes[d.ref]]).filter(([ref, v]) => !isEmptyValue(plan.meta.byRef.get(ref), v));
+    if (Auth.mode === "demo") return DemoDB.create(plan.type, pairs, parent);
+    const ops = pairs.map(([ref, v]) => ({op: "add", path: "/fields/" + ref, value: v}));
+    if (parent) ops.push({op: "add", path: "/relations/-", value: {rel: "System.LinkTypes.Hierarchy-Reverse", url: parent.url || (ADO + "/_apis/wit/workItems/" + parent.id)}});
+    return apiSend("POST", Meta.projectUrl() + "/_apis/wit/workitems/$" + encodeURIComponent(plan.type) + "?$expand=all&api-version=7.1", ops);
+  }
+};
+
+/* ---------- Edit / create panel ---------- */
 const EditPanel = {
   state: null,
+
+  showMode(mode) {
+    const create = mode === "create";
+    $("epCreateRow").classList.toggle("hidden", !create);
+    $("epCommentWrap").classList.toggle("hidden", create);
+    $("epChild").classList.toggle("hidden", create);
+    $("editPanel").classList.remove("hidden");
+  },
+  fillAddList(meta) {
+    const add = $("epAdd"); add.innerHTML = ""; add.add(new Option("+ הוספת שדה", ""));
+    meta.groups.forEach(g => {
+      const og = document.createElement("optgroup"); og.label = g.label;
+      g.fields.forEach(f => og.appendChild(new Option(f.label, f.ref)));
+      add.appendChild(og);
+    });
+    add.onchange = () => { if (add.value) { this.addField(add.value, true); add.value = ""; } };
+  },
 
   async open(el, rowIndex, colIndex) {
     const found = Results.itemFor(el, rowIndex);
@@ -398,32 +441,126 @@ const EditPanel = {
       else focusRef = col.ref;
       if (!meta.byRef.has(focusRef)) { toast("השדה " + col.label + " לא ניתן לעריכה"); focusRef = null; }
     }
-    this.state = {item, type, meta, editors: new Map(), resEl: el};
-    $("editPanel").classList.remove("hidden");
+    this.state = {mode: "edit", item, type, meta, editors: new Map(), resEl: el};
+    this.showMode("edit");
     $("epTitle").textContent = type + " " + item.id;
     $("epSub").textContent = item.fields["System.Title"] || "";
     const link = $("epLink");
     if (Auth.mode === "demo") link.classList.add("hidden");
     else { link.classList.remove("hidden"); link.href = ADO + "/" + encodeURIComponent(item.fields["System.TeamProject"] || TeamConfig.data.project) + "/_workitems/edit/" + item.id; }
     $("epFields").innerHTML = ""; $("epComment").value = "";
-    const add = $("epAdd"); add.innerHTML = ""; add.add(new Option("+ הוספת שדה לעריכה", ""));
-    meta.groups.forEach(g => {
-      const og = document.createElement("optgroup"); og.label = g.label;
-      g.fields.forEach(f => og.appendChild(new Option(f.label, f.ref)));
-      add.appendChild(og);
-    });
-    add.onchange = () => { if (add.value) { this.addField(add.value, true); add.value = ""; } };
+    this.fillAddList(meta);
     if (focusRef) this.addField(focusRef, true);
     await this.refresh();
   },
 
-  addField(ref, focus, reason) {
+  /* opts: {type, parentId, title, pairs:[{name, raw}]} */
+  async openCreate(opts) {
+    opts = opts || {};
+    const type = opts.type && TeamConfig.data.types.includes(opts.type) ? opts.type : "Task";
+    this.state = {mode: "create", type, editors: new Map(), parent: null, parentError: "", carry: {}, notes: []};
+    this.showMode("create");
+    $("epTitle").textContent = "פריט חדש";
+    $("epSub").textContent = "";
+    $("epLink").classList.add("hidden");
+    $("epParent").value = opts.parentId ? String(opts.parentId) : "";
+    $("epParentInfo").textContent = ""; $("epParentInfo").className = "muted";
+    if (opts.title) this.state.carry["System.Title"] = opts.title;
+    if (opts.parentId) await this.lookupParent(false);
+    await this.loadType(type, opts.pairs || []);
+    const t = $("epFields").querySelector("input");
+    if (t) t.focus();
+  },
+
+  renderTypes() {
+    const box = $("epTypes"); box.innerHTML = "";
+    TeamConfig.data.types.forEach(t => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "seg" + (t === this.state.type ? " on" : ""); b.textContent = t;
+      b.onclick = () => { if (t !== this.state.type) this.switchType(t); };
+      box.appendChild(b);
+    });
+  },
+  async switchType(type) {
+    const s = this.state;
+    s.editors.forEach(({ed}, ref) => { const v = ed.get(); if (!isEmptyValue(ed.f, v) && !(s.template && ref === s.template.field)) s.carry[ref] = v; });
+    await this.loadType(type, []);
+  },
+
+  async loadType(type, pairs) {
+    const s = this.state;
+    let meta;
+    try { meta = await Meta.typeMeta(type); } catch (e) { toast("לא ניתן לטעון את שדות " + type + ": " + e.message); return; }
+    s.type = type; s.meta = meta; s.editors = new Map(); s.notes = [];
+    s.template = TeamConfig.template(type);
+    const fields = {"System.WorkItemType": type, "System.TeamProject": TeamConfig.data.project};
+    meta.byRef.forEach(f => { const d = defaultFieldValue(f); if (d !== undefined) fields[f.ref] = d; });
+    s.item = {id: null, rev: 0, fields, relations: []};
+    this.renderTypes();
+    this.checkParentType();
+    $("epFields").innerHTML = "";
+    this.fillAddList(meta);
+    const paths = s.parent ? {area: s.parent.fields["System.AreaPath"], iteration: s.parent.fields["System.IterationPath"]} : lastPaths();
+    const area = s.carry["System.AreaPath"] || paths.area || TeamConfig.data.project;
+    const iteration = s.carry["System.IterationPath"] || paths.iteration || TeamConfig.data.project;
+    const start = [
+      ["System.Title", s.carry["System.Title"] || ""],
+      ["System.AssignedTo", s.carry["System.AssignedTo"]],
+      ["System.AreaPath", area],
+      ["System.IterationPath", iteration]
+    ];
+    if (s.template && meta.byRef.has(s.template.field)) start.push([s.template.field, templateHtml(s.template)]);
+    else if (meta.byRef.has("System.Description")) start.push(["System.Description", s.carry["System.Description"]]);
+    start.forEach(([ref, v]) => { if (meta.byRef.has(ref)) this.addField(ref, false, null, v); });
+    Object.entries(s.carry).forEach(([ref, v]) => { if (!s.editors.has(ref) && meta.byRef.has(ref)) this.addField(ref, false, null, v); });
+    for (const p of pairs) {
+      const f = ChatEdit.fieldFor(meta, p.name);
+      if (!f) { s.notes.push("ל-" + type + " אין שדה " + p.name); continue; }
+      const r = await resolveValue(f, p.raw, meta, s.item);
+      if (r.error) { s.notes.push(r.error + (r.options && r.options.length ? " (אפשרויות: " + r.options.join(" | ") + ")" : "")); continue; }
+      if (s.editors.has(f.ref)) s.editors.get(f.ref).ed.set(r.value); else this.addField(f.ref, false, null, r.value);
+    }
+    await this.refresh();
+  },
+
+  async lookupParent(reload) {
+    const s = this.state; if (!s || s.mode !== "create") return;
+    const raw = $("epParent").value.trim(); const info = $("epParentInfo");
+    s.parent = null; s.parentError = "";
+    if (!raw) { info.textContent = ""; if (reload) await this.refresh(); return; }
+    const id = parseInt(raw.replace(/\D/g, ""), 10);
+    if (!id) { s.parentError = "מספר פריט אב לא תקין"; info.textContent = s.parentError; info.className = "bad"; if (reload) await this.refresh(); return; }
+    info.textContent = "בודק..."; info.className = "muted";
+    try {
+      const [p] = await Edit.fresh([id]);
+      if (!p) throw new Error("לא נמצא");
+      s.parent = p;
+      info.textContent = "תחת " + p.fields["System.WorkItemType"] + " " + p.id + " · " + (p.fields["System.Title"] || "");
+      this.checkParentType();
+      if (reload && s.editors) {
+        ["System.AreaPath", "System.IterationPath"].forEach(ref => { const e = s.editors.get(ref); if (e && p.fields[ref]) e.ed.set(p.fields[ref]); });
+      }
+    } catch (e) {
+      s.parentError = "פריט אב " + id + " לא נמצא או שאין הרשאה"; info.textContent = s.parentError; info.className = "bad";
+    }
+    if (reload) await this.refresh();
+  },
+  checkParentType() {
+    const s = this.state; if (!s.parent) return;
+    const pt = s.parent.fields["System.WorkItemType"], ok = (PARENT_TYPES[s.type] || []).includes(pt);
+    const info = $("epParentInfo");
+    info.className = ok ? "muted" : "warn";
+    const base = "תחת " + pt + " " + s.parent.id + " · " + (s.parent.fields["System.Title"] || "");
+    info.textContent = ok ? base : base + " · שימו לב: " + s.type + " נמצא בדרך כלל תחת " + ((PARENT_TYPES[s.type] || []).join(" או ") || "שום פריט");
+  },
+
+  addField(ref, focus, reason, initial) {
     const s = this.state; if (!s || s.editors.has(ref)) return;
     const f = s.meta.byRef.get(ref); if (!f) return;
     const row = document.createElement("div"); row.className = "eprow" + (reason ? " needed" : "");
     const lab = document.createElement("label"); lab.textContent = f.label; if (reason) { const r = document.createElement("span"); r.className = "need"; r.textContent = reason; lab.appendChild(r); }
-    const ed = makeEditor(f, s.item.fields[ref], {type: s.type, meta: s.meta, onChange: () => this.refresh()});
-    const rm = mkIconBtn("✕", "הסרה מהעריכה", false, () => { s.editors.delete(ref); row.remove(); this.refresh(); }, "del");
+    const value = arguments.length >= 4 ? initial : s.item.fields[ref];
+    const ed = makeEditor(f, value, {type: s.type, meta: s.meta, onChange: () => this.refresh()});
+    const rm = mkIconBtn("✕", "הסרה", false, () => { s.editors.delete(ref); row.remove(); this.refresh(); }, "del");
     const head = document.createElement("div"); head.className = "ephead"; head.append(lab, rm);
     row.append(head, ed.el);
     $("epFields").appendChild(row);
@@ -438,37 +575,57 @@ const EditPanel = {
   },
 
   async refresh() {
-    const s = this.state; if (!s) return;
-    const plan = await Edit.plan(s.item, this.changes(), $("epComment").value);
+    const s = this.state; if (!s || !s.meta) return;
+    const create = s.mode === "create";
+    const plan = await Edit.plan(s.item, this.changes(), create ? "" : $("epComment").value);
+    if (this.state !== s) return;
     s.plan = plan;
     plan.missing.forEach(f => { if (!s.editors.has(f.ref)) this.addField(f.ref, false, "חובה"); });
     s.editors.forEach(({row}, ref) => row.classList.toggle("needed", plan.missing.some(f => f.ref === ref)));
     const box = $("epCheck"); const parts = [];
+    (s.notes || []).forEach(n => parts.push('<div class="bad">' + escHtml(n) + "</div>"));
+    if (create && s.parentError) parts.push('<div class="bad">' + escHtml(s.parentError) + "</div>");
     if (plan.missing.length) parts.push('<div class="bad">חסרים שדות חובה: ' + plan.missing.map(f => escHtml(f.label)).join(", ") + "</div>");
     if (plan.template) parts.push('<div class="bad">בתבנית של ' + escHtml(s.type) + " חסר תוכן תחת: " + [...plan.template.missing, ...plan.template.empty].map(escHtml).join(", ") + "</div>");
-    if (plan.diffs.length) parts.push('<div class="diffs">' + plan.diffs.map(d => '<div><b>' + escHtml(d.label) + ":</b> " + '<span class="before">' + escHtml(d.before) + '</span> ← <span class="after">' + escHtml(d.after) + "</span></div>").join("") + "</div>");
-    if (plan.comment) parts.push('<div class="muted">תתווסף תגובה לדיון.</div>');
-    if (!plan.diffs.length && !plan.comment) parts.push('<div class="muted">עוד אין שינויים.</div>');
+    if (create) {
+      const filled = plan.diffs.filter(d => d.after !== "—");
+      if (filled.length) parts.push('<div class="diffs">' + filled.map(d => "<div><b>" + escHtml(d.label) + ":</b> " + '<span class="after">' + escHtml(d.after === "תוכן חדש" ? "מולא" : d.after) + "</span></div>").join("") + "</div>");
+    } else {
+      if (plan.diffs.length) parts.push('<div class="diffs">' + plan.diffs.map(d => '<div><b>' + escHtml(d.label) + ":</b> " + '<span class="before">' + escHtml(d.before) + '</span> ← <span class="after">' + escHtml(d.after) + "</span></div>").join("") + "</div>");
+      if (plan.comment) parts.push('<div class="muted">תתווסף תגובה לדיון.</div>');
+      if (!plan.diffs.length && !plan.comment) parts.push('<div class="muted">עוד אין שינויים.</div>');
+    }
     box.innerHTML = parts.join("");
-    $("epSave").disabled = !plan.ok;
-    $("epSave").textContent = plan.ok ? "שמירה ב-Azure" : (plan.missing.length || plan.template ? "יש למלא שדות חובה" : "שמירה ב-Azure");
+    const ok = plan.ok && !(create && (s.parentError || (s.notes || []).length));
+    $("epSave").disabled = !ok;
+    const label = create ? "יצירה ב-Azure" : "שמירה ב-Azure";
+    $("epSave").textContent = ok ? label : (plan.missing.length || plan.template ? "יש למלא שדות חובה" : label);
   },
 
   async save() {
-    const s = this.state; if (!s || !s.plan || !s.plan.ok) return;
-    const btn = $("epSave"); btn.disabled = true; btn.textContent = "שומר...";
+    const s = this.state; if (!s || !s.plan) return;
+    const btn = $("epSave"); btn.disabled = true; btn.textContent = s.mode === "create" ? "יוצר..." : "שומר...";
     try {
-      const plan = await Edit.plan(s.item, this.changes(), $("epComment").value);
+      const plan = await Edit.plan(s.item, this.changes(), s.mode === "create" ? "" : $("epComment").value);
       if (!plan.ok) { await this.refresh(); return; }
-      const updated = await Edit.commit(plan);
-      People.fromItems([updated]);
-      this.close();
-      Results.update([updated]);
-      addMsg("bot ok", resultLine(plan, true));
+      if (s.mode === "create") {
+        const created = await Create.commit(plan, s.parent);
+        People.fromItems([created]);
+        rememberPaths(created.fields["System.AreaPath"], created.fields["System.IterationPath"]);
+        const again = {type: s.type, parentId: s.parent ? s.parent.id : null};
+        this.close();
+        announceCreated(created, again);
+      } else {
+        const updated = await Edit.commit(plan);
+        People.fromItems([updated]);
+        this.close();
+        Results.update([updated]);
+        addMsg("bot ok", resultLine(plan, true));
+      }
     } catch (e) {
       if (e instanceof AuthError) { toast(e.message); }
       $("epCheck").insertAdjacentHTML("afterbegin", '<div class="bad">' + escHtml(e.message || e) + "</div>");
-      btn.disabled = false; btn.textContent = "שמירה ב-Azure";
+      btn.disabled = false; btn.textContent = s.mode === "create" ? "יצירה ב-Azure" : "שמירה ב-Azure";
       if (e instanceof ConflictError) { btn.textContent = "שליפה מחדש"; btn.disabled = false; btn.onclick = () => this.reload(); }
     }
   },
@@ -484,7 +641,40 @@ const EditPanel = {
     $("epCancel").onclick = () => this.close();
     $("epSave").onclick = () => this.save();
     $("epComment").oninput = () => this.refresh();
+    $("epParent").onchange = () => this.lookupParent(true);
+    $("epParent").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); this.lookupParent(true); } };
+    $("epChild").onclick = () => { const s = this.state; if (s && s.item) this.openCreate({type: CHILD_TYPE[s.type] || "Task", parentId: s.item.id}); };
+    $("newBtn").onclick = () => this.openCreate({});
     document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("editPanel").classList.contains("hidden")) this.close(); });
+  }
+};
+
+function announceCreated(item, again) {
+  const type = item.fields["System.WorkItemType"], title = item.fields["System.Title"] || "";
+  const link = Auth.mode === "demo" ? "<b>" + item.id + "</b>" : '<a target="_blank" rel="noopener" href="' + ADO + "/" + encodeURIComponent(item.fields["System.TeamProject"] || TeamConfig.data.project) + "/_workitems/edit/" + item.id + '"><b>' + item.id + "</b></a>";
+  const parent = item.fields["System.Parent"] ? " · תחת " + item.fields["System.Parent"] : "";
+  const m = addMsg("bot ok", "✓ נוצר " + escHtml(type) + " " + link + " · " + escHtml(title) + escHtml(parent) + ' <button type="button" class="btn ghost sm again">+ עוד ' + escHtml(type) + "</button>");
+  m.querySelector(".again").onclick = () => EditPanel.openCreate(again);
+  const fields = getDefaultFields();
+  renderResult(buildTable(fields, [item], [item.id]), {fields}, null, [item]);
+}
+
+/* ---------- Creating from chat ---------- */
+const ChatCreate = {
+  RX: /^(חדש|חדשה|צור|צרי|פתח|פתחי|new|create)\s+([^:：]+?)(?:\s+(?:תחת|under|ל-)\s*#?(\d{3,}))?\s*(?:[:：]\s*([\s\S]*))?$/i,
+  parse(text) {
+    const m = text.trim().match(this.RX);
+    if (!m) return null;
+    const type = resolveType(m[2]);
+    if (!type) return null;
+    const rest = (m[4] || "").split(/\s*[;\n]\s*/).filter(Boolean);
+    return {type, parentId: m[3] ? Number(m[3]) : null, title: rest.shift() || "", rest};
+  },
+  async run(cmd) {
+    const pairs = [];
+    for (const seg of cmd.rest) { const p = await ChatEdit.splitPair(seg); if (p) pairs.push(p); }
+    await EditPanel.openCreate({type: cmd.type, parentId: cmd.parentId, title: cmd.title, pairs});
+    addMsg("bot", "פתחתי טופס ליצירת <b>" + escHtml(cmd.type) + "</b>" + (cmd.parentId ? " תחת " + cmd.parentId : "") + ". השלימו את השדות ולחצו <b>יצירה ב-Azure</b>.");
   }
 };
 
@@ -679,6 +869,19 @@ const DemoDB = {
     it.rev++;
     it.fields["System.ChangedDate"] = new Date().toISOString();
     if (comment) it.fields["System.CommentCount"] = (it.fields["System.CommentCount"] || 0) + 1;
+    return new Promise(res => setTimeout(() => res(JSON.parse(JSON.stringify(it))), 250));
+  },
+  next: 300001,
+  create(type, pairs, parent) {
+    const id = this.next++;
+    const me = People.me() || {displayName: Auth.userName, uniqueName: Auth.userEmail};
+    const it = {id, rev: 1, fields: {"System.WorkItemType": type, "System.TeamProject": TeamConfig.data.project, "System.State": "New", "System.CreatedDate": new Date().toISOString(), "System.CreatedBy": me}, relations: []};
+    this.map.set(id, it);
+    pairs.forEach(([ref, v]) => {
+      if (/AssignedTo|ActualAttendee|OwnerName|Owner$|ApproverName/.test(ref) && typeof v === "string") { const m = v.match(/^(.*?)\s*<([^>]+)>$/); it.fields[ref] = {displayName: m ? m[1] : v, uniqueName: m ? m[2] : v}; }
+      else it.fields[ref] = v;
+    });
+    if (parent) { it.fields["System.Parent"] = parent.id; it.relations.push({rel: "System.LinkTypes.Hierarchy-Reverse", url: "demo:item-" + parent.id}); }
     return new Promise(res => setTimeout(() => res(JSON.parse(JSON.stringify(it))), 250));
   }
 };

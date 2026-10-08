@@ -50,13 +50,17 @@ const TeamUI = {
   /* ---------- Required fields ---------- */
   async renderFields(body) {
     const bar = document.createElement("div"); bar.className = "tbar";
-    bar.innerHTML = '<input type="search" id="fieldFilter" placeholder="חיפוש שדה" aria-label="חיפוש שדה"><label class="chk"><input type="checkbox" id="onlyReq"> רק שדות חובה</label><span class="sp"></span><span class="muted" id="reqCount"></span>';
+    bar.innerHTML = '<input type="search" id="fieldFilter" placeholder="חיפוש שדה" aria-label="חיפוש שדה"><label class="chk"><input type="checkbox" id="onlyReq"> רק שדות חובה</label><span class="sp"></span><span class="muted" id="reqCount"></span><button type="button" class="btn ghost" id="reqReset">איפוס לברירת המחדל</button>';
     body.appendChild(bar);
     const holder = document.createElement("div"); holder.className = "fieldgroups"; holder.innerHTML = '<div class="muted pad">טוען שדות מ-Azure DevOps...</div>';
     body.appendChild(holder);
     const ff = bar.querySelector("#fieldFilter"), oq = bar.querySelector("#onlyReq");
     ff.value = this.filter; oq.checked = this.onlyRequired;
     const type = this.type;
+    bar.querySelector("#reqReset").onclick = () => this.confirmBar("להחזיר את שדות החובה של " + type + " לברירת המחדל?", "איפוס", () => {
+      this.draft.requiredFields[type] = (TEAM_DEFAULT.requiredFields[type] || []).slice();
+      this.markDirty(); this.render();
+    });
     let meta;
     try { meta = await Meta.typeMeta(type); }
     catch (e) { holder.innerHTML = '<div class="err">לא ניתן לטעון את השדות: ' + escHtml(e.message || e) + "</div>"; return; }

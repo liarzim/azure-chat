@@ -422,7 +422,9 @@ function makeEditor(f, value, ctx) {
 /* ---------- Creating: hierarchy and defaults ---------- */
 const TYPE_ALIASES = {epic: "Epic", "אפיק": "Epic", feature: "Feature", "פיצר": "Feature", "פיצרים": "Feature", userstory: "User Story", us: "User Story", story: "User Story", "סיפור": "User Story", "סיפורמשתמש": "User Story", task: "Task", "משימה": "Task", "טאסק": "Task", bug: "Bug", "באג": "Bug"};
 const CHILD_TYPE = {"Epic": "Feature", "Feature": "User Story", "User Story": "Task", "Bug": "Task", "Task": "Task"};
-const PARENT_TYPES = {"Epic": [], "Feature": ["Epic"], "User Story": ["Feature"], "Task": ["User Story", "Bug"], "Bug": ["Feature", "User Story"]};
+/* Types where a parent is optional: the user is asked first ("האם יש Epic אב?"). If yes, the parent is required. */
+const OPTIONAL_PARENT = {"Epic": true};
+const PARENT_TYPES = {"Epic": ["Epic"], "Feature": ["Epic"], "User Story": ["Feature"], "Task": ["User Story", "Bug"], "Bug": ["Feature", "User Story"]};
 const LAST_PATHS_KEY = "ado_last_paths";
 function resolveType(s) { const k = norm(s); return TYPE_ALIASES[k] || TeamConfig.data.types.find(t => norm(t) === k) || null; }
 function lastPaths() { try { return JSON.parse(localStorage.getItem(LAST_PATHS_KEY) || "{}"); } catch (e) { return {}; } }
@@ -497,7 +499,7 @@ const EditPanel = {
   async openCreate(opts) {
     opts = opts || {};
     const type = opts.type && TeamConfig.data.types.includes(opts.type) ? opts.type : "Task";
-    this.state = {mode: "create", type, editors: new Map(), parent: null, parentError: "", carry: {}, notes: []};
+    this.state = {mode: "create", type, editors: new Map(), parent: null, parentError: "", carry: {}, notes: [], hasParent: opts.parentId ? true : null};
     this.showMode("create");
     $("epTitle").textContent = "פריט חדש";
     $("epSub").textContent = "";
@@ -564,6 +566,7 @@ const EditPanel = {
   async lookupParent(reload) {
     const s = this.state; if (!s || s.mode !== "create") return;
     const raw = $("epParent").value.trim(); const info = $("epParentInfo");
+    if (OPTIONAL_PARENT[s.type] && s.hasParent === false) return;
     s.parent = null; s.parentError = "";
     if (!raw) { info.textContent = ""; if (reload) await this.refresh(); return; }
     const id = parseInt(raw.replace(/\D/g, ""), 10);
@@ -571,6 +574,7 @@ const EditPanel = {
     info.textContent = "בודק..."; info.className = "muted";
     try {
       const [p] = await Edit.fresh([id]);
+      if (this.state !== s || $("epParent").value.trim() !== raw || (OPTIONAL_PARENT[s.type] && s.hasParent === false)) return;
       if (!p) throw new Error("לא נמצא");
       s.parent = p;
       info.textContent = "תחת " + p.fields["System.WorkItemType"] + " " + p.id + " · " + (p.fields["System.Title"] || "");
@@ -579,9 +583,27 @@ const EditPanel = {
         ["System.AreaPath", "System.IterationPath"].forEach(ref => { const e = s.editors.get(ref); if (e && p.fields[ref]) e.ed.set(p.fields[ref]); });
       }
     } catch (e) {
+      if (this.state !== s || $("epParent").value.trim() !== raw) return;
       s.parentError = "פריט אב " + id + " לא נמצא או שאין הרשאה"; info.textContent = s.parentError; info.className = "bad";
     }
     if (reload) await this.refresh();
+  },
+  updateParentUi() {
+    const s = this.state; const optional = !!OPTIONAL_PARENT[s.type];
+    $("epAskParent").classList.toggle("hidden", !optional);
+    $("epAskText").textContent = "האם יש " + s.type + " אב?";
+    $("epAskParent").querySelectorAll(".seg").forEach(b => {
+      const on = (b.dataset.v === "yes" && s.hasParent === true) || (b.dataset.v === "no" && s.hasParent === false);
+      b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on));
+    });
+    $("epParentWrap").classList.toggle("hidden", optional && s.hasParent !== true);
+  },
+  async answerParent(yes) {
+    const s = this.state; if (!s || s.mode !== "create") return;
+    s.hasParent = yes;
+    if (!yes) { $("epParent").value = ""; s.parent = null; s.parentError = ""; $("epParentInfo").textContent = ""; $("epParentInfo").className = "muted"; }
+    await this.refresh();
+    if (yes) $("epParent").focus();
   },
   checkParentType() {
     const s = this.state; if (!s.parent) return;
@@ -624,7 +646,12 @@ const EditPanel = {
     const box = $("epCheck"); const parts = [];
     (s.notes || []).forEach(n => parts.push('<div class="bad">' + escHtml(n) + "</div>"));
     if (create && s.parentError) parts.push('<div class="bad">' + escHtml(s.parentError) + "</div>");
-    const needParent = create && !s.parent && !s.parentError && (PARENT_TYPES[s.type] || []).length > 0;
+    const optional = create && !!OPTIONAL_PARENT[s.type];
+    const askOpen = optional && s.hasParent == null;
+    if (create) this.updateParentUi();
+    const parentNeeded = create && (PARENT_TYPES[s.type] || []).length > 0 && (!optional || s.hasParent === true);
+    const needParent = parentNeeded && !s.parent && !s.parentError;
+    if (askOpen) parts.push('<div class="bad">יש לענות: האם יש ' + escHtml(s.type) + " אב?</div>");
     if (needParent) parts.push('<div class="bad">חובה לבחור פריט אב (' + escHtml(PARENT_TYPES[s.type].join(" או ")) + ")</div>");
     const badPeople = [...$("epFields").querySelectorAll(".pk-input.invalid")].map(i => i.getAttribute("aria-label"));
     if (badPeople.length) parts.push('<div class="bad">לא נבחר אדם מהרשימה: ' + badPeople.map(escHtml).join(", ") + "</div>");
@@ -640,11 +667,11 @@ const EditPanel = {
     }
     box.innerHTML = parts.join("");
     const pendingPeople = $("epFields").querySelectorAll(".pk-input.pending").length > 0;
-    const ok = plan.ok && !badPeople.length && !pendingPeople && !(create && (s.parentError || needParent || (s.notes || []).length));
+    const ok = plan.ok && !badPeople.length && !pendingPeople && !(create && (askOpen || s.parentError || needParent || (s.notes || []).length));
     $("epSave").disabled = !ok;
     const label = create ? "יצירה ב-Azure" : "שמירה ב-Azure";
-    $("epSave").textContent = ok ? label : (plan.missing.length || plan.template || needParent ? "יש למלא שדות חובה" : label);
-    if (create) $("epParentLabel").textContent = (PARENT_TYPES[s.type] || []).length ? "פריט אב (חובה)" : "פריט אב (לא נדרש ל-" + s.type + ")";
+    $("epSave").textContent = ok ? label : (plan.missing.length || plan.template || needParent || askOpen ? "יש למלא שדות חובה" : label);
+    if (create) $("epParentLabel").textContent = optional ? "מספר ה-" + PARENT_TYPES[s.type].join(" או ") + " האב (חובה)" : "פריט אב (חובה)";
   },
 
   async save() {
@@ -655,10 +682,11 @@ const EditPanel = {
       const plan = await Edit.plan(s.item, this.changes(), s.mode === "create" ? "" : $("epComment").value);
       if (!plan.ok) { await this.refresh(); return; }
       if (s.mode === "create") {
-        const created = await Create.commit(plan, s.parent);
+        const parent = OPTIONAL_PARENT[s.type] && s.hasParent !== true ? null : s.parent;
+        const created = await Create.commit(plan, parent);
         People.fromItems([created]);
         rememberPaths(created.fields["System.AreaPath"], created.fields["System.IterationPath"]);
-        const again = {type: s.type, parentId: s.parent ? s.parent.id : null};
+        const again = {type: s.type, parentId: parent ? parent.id : null};
         this.close();
         announceCreated(created, again);
       } else {
@@ -687,6 +715,7 @@ const EditPanel = {
     $("epCancel").onclick = () => this.close();
     $("epSave").onclick = () => this.save();
     $("epComment").oninput = () => this.refresh();
+    $("epAskParent").querySelectorAll(".seg").forEach(b => { b.onclick = () => this.answerParent(b.dataset.v === "yes"); });
     $("epParent").onchange = () => this.lookupParent(true);
     $("epParent").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); this.lookupParent(true); } };
     $("epChild").onclick = () => { const s = this.state; if (s && s.item) this.openCreate({type: CHILD_TYPE[s.type] || "Task", parentId: s.item.id}); };

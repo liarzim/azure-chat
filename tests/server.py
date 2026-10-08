@@ -11,10 +11,15 @@ def _rules():
         out.append((re.compile(pat), h["headers"]))
     return out
 RULES = _rules()
+# Tests use a fixed team config, so the team's live settings never change test results.
+FIXTURE_CFG = os.path.join(ROOT, "tests", "fixtures", "team-config.json")
 
 class H(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **k): super().__init__(*a, directory=ROOT, **k)
     def log_message(self, *a): pass
+    def translate_path(self, path):
+        if path.split("?")[0] == "/team-config.json" and os.environ.get("LIVE_TEAM_CONFIG") != "1": return FIXTURE_CFG
+        return super().translate_path(path)
     def end_headers(self):
         path = self.path.split("?")[0]
         for rx, hs in RULES:

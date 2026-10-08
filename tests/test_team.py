@@ -8,7 +8,7 @@ def check(n, c, i=""):
     if not c: fails.append(n)
 srv = start(8778)
 BASE = "http://127.0.0.1:8778/"
-remote = {"json": json.load(open(os.path.join(ROOT, "team-config.json"), encoding="utf-8")), "sha": "sha1", "puts": []}
+remote = {"json": json.load(open(os.path.join(ROOT, "tests", "fixtures", "team-config.json"), encoding="utf-8")), "sha": "sha1", "puts": []}
 def gh(route, req):
     u = req.url; h = req.all_headers()
     if h.get("authorization") != "Bearer ghp_test": return route.fulfill(status=401, json={"message": "Bad credentials"})

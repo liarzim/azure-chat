@@ -101,7 +101,7 @@ async function apiSend(method, url, body, contentType) {
     r = await fetch(url, {method, credentials: "omit", headers: {Authorization: await Auth.header(), "Content-Type": contentType || "application/json-patch+json", Accept: "application/json"}, body: JSON.stringify(body)});
   } catch (e) {
     if (e instanceof AuthError) throw e;
-    throw new Error("אין חיבור ל-Azure DevOps (" + apiWhat(url) + "). בדקו את חיבור הרשת או ה-VPN.");
+    throw new Error(await writeDiagnose(url));
   }
   const ct = r.headers.get("content-type") || "";
   if (r.status === 401 || r.status === 203 || (r.ok && !ct.includes("json"))) throw new AuthError("הטוקן לא תקין, פג תוקפו, או שאין לו הרשאת Work Items: Read & Write.");
@@ -111,6 +111,15 @@ async function apiSend(method, url, body, contentType) {
   if (r.status === 403) throw new Error("אין לכם הרשאה לעדכן את הפריט הזה" + (msg ? ": " + msg : "."));
   if (!r.ok) throw new Error(msg ? cleanAzureMessage(msg) : "Azure DevOps החזיר שגיאה " + r.status);
   return data;
+}
+/* A write that fails at the network level: if reading with the same token still works, Azure rejected
+   the write itself, which almost always means the token has read-only permission. */
+async function writeDiagnose(url) {
+  const what = apiWhat(url);
+  let readOk = false;
+  try { await api(ADO + "/_apis/projects?$top=1&api-version=7.1"); readOk = true; } catch (e) { readOk = false; }
+  if (readOk) return "Azure DevOps דחה את השמירה (" + what + "). קריאה עם אותו טוקן עובדת, ולכן כנראה לטוקן יש רק הרשאת קריאה. צרו טוקן עם Work Items: Read & write, התנתקו והתחברו איתו. [קוד W1]";
+  return "אין חיבור ל-Azure DevOps (" + what + "). " + await netDiagnose(url);
 }
 function cleanAzureMessage(m) { return String(m).replace(/^TF\d+:\s*/, "").slice(0, 400); }
 

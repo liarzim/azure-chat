@@ -141,6 +141,7 @@ posts = []; block = {"mode": None}
 def handler(route, req):
     if block["mode"] == "auth" and req.method != "OPTIONS" and req.all_headers().get("authorization"): return route.abort()
     if block["mode"] == "all": return route.abort()
+    if block["mode"] == "write" and req.method == "POST" and "/_apis/wit/workitems/$" in req.url: return route.abort()
     if req.method == "OPTIONS": return route.fulfill(status=204, headers=CORS)
     u = req.url; J = lambda d, s=200: route.fulfill(status=s, json=d, headers=CORS)
     if req.all_headers().get("authorization") != AUTH: return route.fulfill(status=203, body="x", headers={**CORS, "content-type": "text/html"})
@@ -178,6 +179,9 @@ with sync_playwright() as p:
     check("token with invisible direction marks is cleaned", pg.evaluate("() => sessionStorage.getItem('ado_pat')") == PAT)
     pg.fill("#input", "חדש Task תחת 110047: משימה אמיתית; Remaining Work 5"); pg.keyboard.press("Enter")
     pg.locator("#editPanel:not(.hidden)").wait_for(); pg.wait_for_timeout(800)
+    block["mode"] = "write"; pg.click("#epSave"); pg.wait_for_timeout(2500)
+    check("read-only token: write rejection explained", "W1" in pg.inner_text("#editPanel") or "W1" in pg.inner_text("#toast"), pg.inner_text("#epCheck") + " | " + pg.inner_text("#toast"))
+    block["mode"] = None
     pg.click("#epSave"); pg.locator(".msg.bot.ok").first.wait_for()
     post = posts[-1]; ops = post["ops"]
     check("POST to the Task endpoint with json-patch", post["type"] == "Task" and post["ct"] == "application/json-patch+json" and "/Portfolio%20Merkava/_apis/wit/workitems/$Task?" in post["url"], post)

@@ -164,7 +164,11 @@ def handler(route, req):
 with sync_playwright() as p:
     b = p.chromium.launch(); ctx = b.new_context(viewport={"width": 1400, "height": 900}); ctx.route("https://dev.azure.com/**", handler)
     pg = ctx.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
-    pg.goto("http://127.0.0.1:8786/"); pg.fill("#pat", PAT); pg.click("#patBtn"); pg.locator("#app:not(.hidden)").wait_for()
+    pg.goto("http://127.0.0.1:8786/")
+    pg.fill("#pat", PAT + "ש"); pg.click("#patBtn"); pg.wait_for_timeout(500)
+    check("hebrew letter in token: clear message", "שאינם באנגלית" in pg.inner_text("#login") and pg.locator("#app").is_hidden(), pg.inner_text("#login"))
+    pg.fill("#pat", "\u200f " + PAT + "\u200e\u202c"); pg.click("#patBtn"); pg.locator("#app:not(.hidden)").wait_for()
+    check("token with invisible direction marks is cleaned", pg.evaluate("() => sessionStorage.getItem('ado_pat')") == PAT)
     pg.fill("#input", "חדש Task תחת 110047: משימה אמיתית; Remaining Work 5"); pg.keyboard.press("Enter")
     pg.locator("#editPanel:not(.hidden)").wait_for(); pg.wait_for_timeout(800)
     pg.click("#epSave"); pg.locator(".msg.bot.ok").first.wait_for()

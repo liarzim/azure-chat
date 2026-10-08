@@ -101,7 +101,7 @@ async function apiSend(method, url, body, contentType) {
     r = await fetch(url, {method, credentials: "omit", headers: {Authorization: await Auth.header(), "Content-Type": contentType || "application/json-patch+json", Accept: "application/json"}, body: JSON.stringify(body)});
   } catch (e) {
     if (e instanceof AuthError) throw e;
-    throw new Error("אין חיבור ל-Azure DevOps. בדקו את חיבור הרשת או ה-VPN.");
+    throw new Error("אין חיבור ל-Azure DevOps (" + apiWhat(url) + "). בדקו את חיבור הרשת או ה-VPN.");
   }
   const ct = r.headers.get("content-type") || "";
   if (r.status === 401 || r.status === 203 || (r.ok && !ct.includes("json"))) throw new AuthError("הטוקן לא תקין, פג תוקפו, או שאין לו הרשאת Work Items: Read & Write.");

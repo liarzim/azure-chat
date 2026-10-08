@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.0-beta.5",
+  VERSION: "2.0-beta.6",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -131,7 +131,7 @@ const Auth = {
     }
     for (const store of [sessionStorage, localStorage]) {
       const pat = store.getItem("ado_pat");
-      if (pat) { this.mode = "pat"; this.pat = pat; this.userName = store.getItem("ado_user") || ""; this.userEmail = store.getItem("ado_email") || ""; return true; }
+      if (pat) { this.mode = "pat"; try { this.pat = this.cleanPat(pat); } catch (e) { store.removeItem("ado_pat"); continue; } this.userName = store.getItem("ado_user") || ""; this.userEmail = store.getItem("ado_email") || ""; return true; }
     }
     if (sessionStorage.getItem("ado_demo")) { this.mode = "demo"; this.userName = "משתמש הדגמה"; this.userEmail = "demo.user@example.com"; return true; }
     return false;
@@ -139,8 +139,16 @@ const Auth = {
 
   async loginMicrosoft() { await this.msal.loginRedirect({scopes: [ADO_SCOPE], prompt: "select_account"}); },
 
+  /* A pasted token can carry invisible direction marks (common on Hebrew systems) or spaces.
+     Azure DevOps tokens are plain English letters and digits, so anything else is removed or rejected. */
+  cleanPat(pat) {
+    const clean = String(pat || "").replace(/[\s\u00A0\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/g, "");
+    if (/[^\x21-\x7E]/.test(clean)) throw new AuthError("הטוקן מכיל תווים שאינם באנגלית (אולי המקלדת הייתה בעברית). העתיקו את הטוקן שוב מ-Azure DevOps והדביקו אותו.");
+    return clean;
+  },
+
   async loginPat(pat, remember) {
-    this.mode = "pat"; this.pat = pat.trim();
+    this.mode = "pat"; this.pat = this.cleanPat(pat);
     await api(ADO + "/_apis/projects?$top=1&api-version=7.1");   // validates the token
     try {
       const cd = await api(ADO + "/_apis/connectionData");
@@ -156,7 +164,10 @@ const Auth = {
   },
 
   async header() {
-    if (this.mode === "pat") return "Basic " + btoa(":" + this.pat);
+    if (this.mode === "pat") {
+      try { return "Basic " + btoa(":" + this.pat); }
+      catch (e) { throw new AuthError("הטוקן מכיל תווים לא חוקיים. התנתקו והדביקו את הטוקן מחדש."); }
+    }
     if (this.mode === "msal") {
       try {
         const r = await this.msal.acquireTokenSilent({scopes: [ADO_SCOPE], account: this.account});
@@ -186,9 +197,10 @@ function apiWhat(url) {
 }
 async function api(url) {
   let r;
+  const authorization = await Auth.header();
   for (let attempt = 0; ; attempt++) {
     try {
-      r = await fetch(url, {headers: {Authorization: await Auth.header(), Accept: "application/json"}, credentials: "omit"});
+      r = await fetch(url, {headers: {Authorization: authorization, Accept: "application/json"}, credentials: "omit"});
       break;
     } catch (e) {
       if (e instanceof AuthError) throw e;

@@ -159,10 +159,59 @@ const Meta = {
   },
 
   /* Required = required in Azure itself, plus the team's list. */
-  async requiredRefs(type) {
+  /* "Make required" rules of the process. Azure does not flag these as alwaysRequired in the field list,
+     so without them a save fails with "Rule Error ... Required". Each entry: {ref, conds}. */
+  requiredRules(type) {
+    return this._once("rules:" + type, async () => {
+      try {
+        const w = (await this.processTypes()).find(x => x.name === type);
+        if (!w) return [];
+        const d = await this.get(ADO + "/_apis/work/processes/" + TeamConfig.data.processId + "/workItemTypes/" + w.referenceName + "/rules?api-version=7.1");
+        const out = [];
+        (d && d.value || []).forEach(r => {
+          if (r.isDisabled) return;
+          (r.actions || []).forEach(a => { if (/^makeRequired$/i.test(a.actionType || "") && a.targetField) out.push({ref: a.targetField, conds: r.conditions || []}); });
+        });
+        return out;
+      } catch (e) { return []; }   // no rights to read rules: the save-time safety net still catches them
+    });
+  },
+
+  /* Fields Azure rejected as required during this session (safety net), per type. */
+  learned: {},
+  learnRequired(type, ref) { (this.learned[type] = this.learned[type] || new Set()).add(ref); },
+
+  /* Required = required in Azure itself (field flag + rules that apply now), plus the team's list.
+     ctx: {creating, val(ref), changed(ref)} describes the save being checked. */
+  async requiredRefs(type, ctx) {
     const m = await this.typeMeta(type);
     const set = new Set(TeamConfig.requiredFor(type));
     m.byRef.forEach(f => { if (f.azureRequired) set.add(f.ref); });
+    (this.learned[type] || []).forEach(r => set.add(r));
+    (await this.requiredRules(type)).forEach(r => { if (ruleApplies(r.conds, ctx)) set.add(r.ref); });
     return set;
   }
 };
+
+/* Evaluates the conditions of a process rule against the save being checked. Unknown condition kinds
+   count as "does not apply" (Azure still enforces them; the safety net then asks for the field). */
+function ruleApplies(conds, ctx) {
+  if (!conds || !conds.length) return true;
+  if (!ctx) return false;
+  const str = v => v == null ? "" : String(typeof v === "object" ? (v.uniqueName || v.displayName || "") : v).trim().toLowerCase();
+  const empty = v => v == null || str(v) === "";
+  return conds.every(c => {
+    const t = String(c.conditionType || "").toLowerCase(), f = c.field, want = str(c.value);
+    switch (t) {
+      case "when": return str(ctx.val(f)) === want;
+      case "whennot": return str(ctx.val(f)) !== want;
+      case "whenworkitemiscreated": return !!ctx.creating;
+      case "whenvalueisdefined": return !empty(ctx.val(f));
+      case "whenvalueisnotdefined": return empty(ctx.val(f));
+      case "whenchanged": return ctx.changed(f);
+      case "whennotchanged": return !ctx.changed(f);
+      case "whenstatechangedto": return ctx.changed("System.State") && str(ctx.val("System.State")) === want;
+      default: return false;
+    }
+  });
+}

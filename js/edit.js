@@ -10,6 +10,8 @@
    ============================================================ */
 
 class ConflictError extends Error {}
+/* Azure refused a value by a process rule: "Rule Error for field X. Error code: Required, ...". */
+class RuleError extends Error { constructor(msg, field, codes) { super(msg); this.field = field; this.codes = codes; } }
 
 /* ---------- People seen in this session (for Assigned To etc.) ---------- */
 const People = {
@@ -109,6 +111,12 @@ async function apiSend(method, url, body, contentType) {
   const msg = (data && (data.message || (data.value && data.value.Message))) || "";
   if (r.status === 412 || r.status === 409 || /TF26071|changed by someone else|test operation/i.test(msg)) throw new ConflictError("הפריט עודכן בינתיים על ידי מישהו אחר. שלפו אותו מחדש ונסו שוב.");
   if (r.status === 403) throw new Error("אין לכם הרשאה לעדכן את הפריט הזה" + (msg ? ": " + msg : "."));
+  const rule = /Rule Error for field ([^.]+)\.\s*Error code:\s*([^\n]+)/i.exec(msg);
+  if (!r.ok && rule) {
+    const field = rule[1].trim(), codes = rule[2];
+    const req = /Required|InvalidEmpty/i.test(codes);
+    throw new RuleError(req ? "Azure דורש למלא את השדה " + field + ". מלאו אותו ונסו שוב." : "Azure לא קיבל את הערך בשדה " + field + " (" + codes.trim() + ").", field, codes);
+  }
   if (!r.ok) throw new Error(msg ? cleanAzureMessage(msg) : "Azure DevOps החזיר שגיאה " + r.status);
   return data;
 }
@@ -249,8 +257,9 @@ const Edit = {
   async plan(item, changes, comment) {
     const type = item.fields["System.WorkItemType"];
     const meta = await Meta.typeMeta(type);
-    const required = await Meta.requiredRefs(type);
     const finalVal = ref => Object.prototype.hasOwnProperty.call(changes, ref) ? changes[ref] : item.fields[ref];
+    const creating = !item.id;
+    const required = await Meta.requiredRefs(type, {creating, val: finalVal, changed: ref => creating || Object.prototype.hasOwnProperty.call(changes, ref)});
     const diffs = [], errors = [];
     Object.entries(changes).forEach(([ref, v]) => {
       const f = meta.byRef.get(ref);
@@ -446,6 +455,35 @@ function defaultFieldValue(f) {
   return v;
 }
 
+/* ---------- Text search (parent picker now; chat search later) ----------
+   Finds open items whose title contains the text, or whose Description contains its words. */
+const SEARCH_CLOSED = ["Closed", "Removed", "Done"];
+async function searchItems(text, types, limit) {
+  text = String(text || "").trim(); limit = limit || 20;
+  if (text.length < 2) return [];
+  if (Auth.mode === "demo") {
+    const pool = [900001, 900002, 112075, 112080, 110047, 110051, 112074, 112076];
+    const items = (await fetchItems(pool)).concat([...DemoDB.map.values()].filter(it => it.id >= 300001));
+    const seen = new Set(), q = norm(text);
+    return items.filter(it => { if (seen.has(it.id)) return false; seen.add(it.id); const f = it.fields;
+      return (!types || !types.length || types.includes(f["System.WorkItemType"])) && !SEARCH_CLOSED.includes(f["System.State"]) &&
+        (norm(f["System.Title"] || "").includes(q) || norm(String(f["System.Description"] || "").replace(/<[^>]+>/g, " ")).includes(q)); }).slice(0, limit);
+  }
+  const q = text.replace(/'/g, "''");
+  const base = "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project" +
+    (types && types.length ? " AND [System.WorkItemType] IN (" + types.map(t => "'" + t.replace(/'/g, "''") + "'").join(", ") + ")" : "") +
+    " AND [System.State] NOT IN (" + SEARCH_CLOSED.map(x => "'" + x + "'").join(", ") + ")";
+  const url = Meta.projectUrl() + "/_apis/wit/wiql?$top=" + limit + "&api-version=7.1";
+  let w;
+  try { w = await apiSend("POST", url, {query: base + " AND ([System.Title] CONTAINS '" + q + "' OR [System.Description] CONTAINS WORDS '" + q + "') ORDER BY [System.ChangedDate] DESC"}, "application/json"); }
+  catch (e) { w = await apiSend("POST", url, {query: base + " AND [System.Title] CONTAINS '" + q + "' ORDER BY [System.ChangedDate] DESC"}, "application/json"); }   // full-text not available: title only
+  const ids = (w.workItems || []).map(x => x.id).slice(0, limit);
+  if (!ids.length) return [];
+  const d = await api(ADO + "/_apis/wit/workitems?ids=" + ids.join(",") + "&fields=System.Id,System.Title,System.WorkItemType,System.State,System.AreaPath,System.IterationPath&errorPolicy=omit&api-version=7.1");
+  const byId = new Map((d.value || []).filter(Boolean).map(it => [it.id, it]));
+  return ids.map(id => byId.get(id)).filter(Boolean);
+}
+
 const Create = {
   async commit(plan, parent) {
     const pairs = plan.diffs.map(d => [d.ref, plan.changes[d.ref]]).filter(([ref, v]) => !isEmptyValue(plan.meta.byRef.get(ref), v));
@@ -621,6 +659,27 @@ const EditPanel = {
     }
     if (reload) await this.refresh();
   },
+  hideParentList() { const l = $("epParentList"); if (l) l.classList.add("hidden"); },
+  async searchParent(text) {
+    const s = this.state; if (!s || s.mode !== "create") return;
+    const list = $("epParentList");
+    const types = s.typeChosen ? (PARENT_TYPES[s.type] || []) : ["Epic", "Feature", "User Story", "Bug"];
+    list.innerHTML = '<div class="pk-empty">מחפש...</div>'; list.classList.remove("hidden");
+    let found;
+    try { found = await searchItems(text, types, 20); }
+    catch (e) { list.innerHTML = '<div class="pk-empty">' + escHtml(e.message || String(e)) + "</div>"; return; }
+    if (this.state !== s || $("epParent").value.trim() !== text) return;
+    list.innerHTML = "";
+    if (!found.length) { list.innerHTML = '<div class="pk-empty">לא נמצאו פריטים פתוחים מסוג ' + escHtml(types.join(" / ")) + ' עם "' + escHtml(text) + '"</div>'; return; }
+    found.forEach((it, i) => {
+      const f = it.fields, d = document.createElement("div");
+      d.className = "pk-opt" + (i === 0 ? " on" : ""); d.setAttribute("role", "option");
+      d.innerHTML = '<b dir="ltr">' + it.id + "</b> " + escHtml(f["System.Title"] || "") + " <small>" + escHtml(f["System.WorkItemType"] + " · " + (f["System.State"] || "")) + "</small>";
+      d.onmousedown = e => { e.preventDefault(); $("epParent").value = String(it.id); this.hideParentList(); this.lookupParent(true); };
+      list.appendChild(d);
+    });
+    list.insertAdjacentHTML("beforeend", '<div class="pk-hint">מוצגים פריטים פתוחים בלבד. אפשר גם להקליד מספר.</div>');
+  },
   updateParentUi() {
     const s = this.state; const optional = !!OPTIONAL_PARENT[s.type];
     $("epAskParent").classList.toggle("hidden", !optional);
@@ -731,8 +790,14 @@ const EditPanel = {
       }
     } catch (e) {
       if (e instanceof AuthError) { toast(e.message); }
-      $("epCheck").insertAdjacentHTML("afterbegin", '<div class="bad">' + escHtml(e.message || e) + "</div>");
       btn.disabled = false; btn.textContent = s.mode === "create" ? "יצירת " + s.type + " ב-Azure" : "שמירה ב-Azure";
+      if (e instanceof RuleError && s.meta && /Required|InvalidEmpty/i.test(e.codes)) {
+        // Safety net: show the field Azure insists on, marked required, and keep requiring it this session.
+        const key = norm(e.field);
+        const f = [...s.meta.byRef.values()].find(x => norm(x.name) === key || norm(x.label) === key || norm(x.ref.split(".").pop()) === key);
+        if (f) { Meta.learnRequired(s.type, f.ref); this.addField(f.ref, true, "חובה"); await this.refresh(); }
+      }
+      $("epCheck").insertAdjacentHTML("afterbegin", '<div class="bad">' + escHtml(e.message || e) + "</div>");
       if (e instanceof ConflictError) { btn.textContent = "שליפה מחדש"; btn.disabled = false; btn.onclick = () => this.reload(); }
     }
   },
@@ -749,13 +814,28 @@ const EditPanel = {
     $("epSave").onclick = () => this.save();
     $("epComment").oninput = () => this.refresh();
     $("epAskParent").querySelectorAll(".seg").forEach(b => { b.onclick = () => this.answerParent(b.dataset.v === "yes"); });
-    $("epParent").onchange = () => this.lookupParent(true);
-    let pt; $("epParent").oninput = () => {   // show the parent as soon as a full number is typed
-      clearTimeout(pt); const v = $("epParent").value.replace(/\D/g, "");
+    const isText = v => /[^\d\s#]/.test(v);
+    $("epParent").onchange = () => { if (!isText($("epParent").value)) this.lookupParent(true); };
+    let pt; $("epParent").oninput = () => {   // a number: show the parent at once; words: search by title / description
+      clearTimeout(pt); const raw = $("epParent").value.trim();
+      if (isText(raw)) { if (raw.length >= 2) pt = setTimeout(() => this.searchParent(raw), 400); else this.hideParentList(); return; }
+      this.hideParentList();
+      const v = raw.replace(/\D/g, "");
       if (v.length >= 3) pt = setTimeout(() => this.lookupParent(true), 450);
       else if (!v) { const s = this.state; if (s) { s.parentRaw = null; this.lookupParent(true); } }
     };
-    $("epParent").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); this.lookupParent(true); } };
+    $("epParent").onkeydown = e => {
+      const list = $("epParentList"), opts = [...list.querySelectorAll(".pk-opt")];
+      if (e.key === "Escape" && !list.classList.contains("hidden")) { e.stopPropagation(); this.hideParentList(); return; }
+      if (!list.classList.contains("hidden") && opts.length) {
+        let i = opts.findIndex(o => o.classList.contains("on"));
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); i = (i + (e.key === "ArrowDown" ? 1 : opts.length - 1) + (i < 0 && e.key === "ArrowUp" ? 1 : 0)) % opts.length; opts.forEach((o, k) => o.classList.toggle("on", k === i)); opts[i].scrollIntoView({block: "nearest"}); return; }
+        if (e.key === "Enter") { e.preventDefault(); (opts[i] || opts[0]).dispatchEvent(new MouseEvent("mousedown")); return; }
+        if (e.key === "Escape") { e.stopPropagation(); this.hideParentList(); return; }
+      }
+      if (e.key === "Enter") { e.preventDefault(); if (!isText($("epParent").value)) this.lookupParent(true); }
+    };
+    $("epParent").onblur = () => setTimeout(() => this.hideParentList(), 150);
     $("epChild").onclick = () => { const s = this.state; if (s && s.item) this.openCreate({type: CHILD_TYPE[s.type] || "Task", parentId: s.item.id}); };
     $("newBtn").onclick = () => this.openCreate({});
     document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("editPanel").classList.contains("hidden")) this.close(); });

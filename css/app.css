@@ -193,7 +193,7 @@ td.idc{white-space:nowrap}
 #epCreateRow{display:flex;flex-direction:column;gap:8px}
 #epCreateRow.hidden{display:none}
 .parentrow{display:flex;flex-direction:column;gap:4px}
-.parentrow input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font:inherit;color:inherit;direction:ltr;text-align:right}
+.parentrow input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font:inherit;color:inherit;direction:rtl;unicode-bidi:plaintext;text-align:right}
 #epParentInfo.bad{color:var(--bad)}
 #epParentInfo.warn{color:#9a6700}
 .msg.bot.ok .again{margin-inline-start:8px;vertical-align:middle}
@@ -251,3 +251,5 @@ header .btn.iconbtn svg{width:20px;height:20px}
   header .btn.danger-ic{color:#ff8a80;border-color:#7a2e28}
   header .btn.danger-ic:hover{background:#3a1f1f}
 }
+#epParentList{top:42px}
+#epParentList .pk-opt b{margin-inline-end:6px}

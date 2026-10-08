@@ -128,6 +128,19 @@ with sync_playwright() as p:
     pg.locator("#epFields input[aria-label='Title']").fill("x"); pg.wait_for_timeout(400)
     check("save button names the type", "יצירת Bug ב-Azure" in pg.inner_text("#epSave"), pg.inner_text("#epSave"))
     pg.click("#epCancel")
+    # 8a2. parent search by words
+    pg.click("#newBtn"); pg.locator("#epCreateRow:not(.hidden)").wait_for(); pg.wait_for_timeout(400)
+    pg.locator("#epParent").press_sequentially("דיווח", delay=30); pg.locator("#epParentList .pk-opt").first.wait_for(timeout=5000)
+    opts = pg.locator("#epParentList .pk-opt").all_inner_texts()
+    check("search by words lists open matching items", len(opts) >= 1 and all("דיווח" in o for o in opts) and not any("Closed" in o for o in opts), opts)
+    pg.keyboard.press("ArrowDown"); pg.keyboard.press("Enter"); pg.wait_for_timeout(1200)
+    check("choosing a result sets the parent", pg.locator("#epParent").input_value().isdigit() and "תחת Feature" in pg.inner_text("#epParentInfo") and pg.locator("#epParentList").is_hidden(), pg.locator("#epParent").input_value() + " | " + pg.inner_text("#epParentInfo"))
+    check("type follows the chosen parent", pg.locator("#epTypes .seg.on").inner_text() == "User Story", pg.locator("#epTypes .seg.on").inner_text())
+    pg.click("#epCancel")
+    pg.click("#newBtn"); pg.locator("#epCreateRow:not(.hidden)").wait_for(); pg.locator("#epTypes .seg:has-text('Feature')").click(); pg.wait_for_timeout(400)
+    pg.locator("#epParent").press_sequentially("סינון", delay=30); pg.wait_for_timeout(1500)
+    check("search limited to parent types of the chosen type", "לא נמצאו" in pg.inner_text("#epParentList") and "Epic" in pg.inner_text("#epParentList"), pg.inner_text("#epParentList"))
+    pg.keyboard.press("Escape"); pg.click("#epCancel")
     # 8b. loading failure stays visible with a retry button
     pg.evaluate("""() => { const orig = Meta.typeMeta.bind(Meta); let n = 0; Meta.typeMeta = t => (t === 'Bug' && n++ === 0) ? Promise.reject(new Error('Failed to fetch')) : orig(t); }""")
     pg.click("#newBtn"); pg.locator("#epCreateRow:not(.hidden)").wait_for(); pg.wait_for_timeout(300)
@@ -151,7 +164,7 @@ META = json.load(open(os.path.join(ROOT, "demo", "meta.json"), encoding="utf-8")
 PAT = "test-pat"; AUTH = "Basic " + base64.b64encode((":" + PAT).encode()).decode()
 CORS = {"access-control-allow-origin": "*", "access-control-allow-headers": "authorization, content-type, accept", "access-control-allow-methods": "GET, POST, PATCH, OPTIONS"}
 PARENT = {"id": 110047, "rev": 3, "url": "https://dev.azure.com/GOI-Finance/481b/_apis/wit/workItems/110047", "fields": {"System.WorkItemType": "User Story", "System.Title": "סיפור", "System.TeamProject": "Portfolio Merkava", "System.AreaPath": "Portfolio Merkava\\MK2\\Meteor\\Meteor Sigma", "System.IterationPath": "Portfolio Merkava\\PI4_26\\4.1"}, "relations": []}
-posts = []; block = {"mode": None}
+posts = []; block = {"mode": None}; wiqls = []
 def handler(route, req):
     if block["mode"] == "auth" and req.method != "OPTIONS" and req.all_headers().get("authorization"): return route.abort()
     if block["mode"] == "all": return route.abort()
@@ -160,6 +173,7 @@ def handler(route, req):
     u = req.url; J = lambda d, s=200: route.fulfill(status=s, json=d, headers=CORS)
     if req.all_headers().get("authorization") != AUTH: return route.fulfill(status=203, body="x", headers={**CORS, "content-type": "text/html"})
     if "/_apis/projects?" in u: return J({"value": []})
+    if "/_apis/wit/wiql" in u: wiqls.append(json.loads(req.post_data)["query"]); return J({"workItems": [{"id": 110047}]})
     if "/_apis/connectionData" in u: return J({"authenticatedUser": {"providerDisplayName": "מיכאל", "properties": {"Account": {"$value": "m@x.com"}}}})
     if "/_apis/wit/fields?" in u: return J({"value": META["fields"]})
     if "/classificationnodes?" in u: return J({"value": META["classificationnodes"]})
@@ -167,12 +181,21 @@ def handler(route, req):
     if m: return J({"value": META["typeFields"][unquote(m.group(1))]})
     if re.search(r"/_apis/wit/workitemtypes\?", u): return J({"value": META["workitemtypes"]})
     if re.search(r"/work/processes/[^/]+/workitemtypes\?", u): return J({"value": META["processWits"]})
+    m = re.search(r"/workItemTypes/([^/?]+)/rules\?", u)
+    if m:
+        if m.group(1) == "Merkava.Bug": return J({"value": [
+            {"name": "env required", "conditions": [], "actions": [{"actionType": "makeRequired", "targetField": "Custom.FoundInEnviroment1"}]},
+            {"name": "severity on resolve", "conditions": [{"conditionType": "when", "field": "System.State", "value": "Resolved"}], "actions": [{"actionType": "makeRequired", "targetField": "Microsoft.VSTS.Common.Severity"}]},
+            {"name": "disabled", "isDisabled": True, "conditions": [], "actions": [{"actionType": "makeRequired", "targetField": "System.Tags"}]}]})
+        return J({"message": "no rights"}, 403)
     m = re.search(r"/workItemTypes/([^/?]+)/layout\?", u)
     if m: return J(META["layouts"][next(w["name"] for w in META["processWits"] if w["referenceName"] == m.group(1))])
     if re.search(r"/_apis/wit/workitems\?ids=110047", u): return J({"value": [PARENT]})
     m = re.search(r"/_apis/wit/workitems/\$([^?]+)\?", u)
     if m and req.method == "POST":
         ops = json.loads(req.post_data); posts.append({"type": unquote(m.group(1)), "ops": ops, "url": u, "ct": req.all_headers().get("content-type")})
+        if any(o.get("value") == "rule test" for o in ops) and not any(o["path"] == "/fields/Microsoft.VSTS.Scheduling.RemainingWork" for o in ops):
+            return J({"message": "TF401320: Rule Error for field Remaining Work. Error code: Required, HasValues, InvalidEmpty."}, 400)
         f = {"System.WorkItemType": unquote(m.group(1)), "System.TeamProject": "Portfolio Merkava", "System.State": "New", "System.Parent": 110047}
         for o in ops:
             if o["path"].startswith("/fields/"): f[o["path"][8:]] = o["value"]
@@ -203,6 +226,29 @@ with sync_playwright() as p:
     check("parent link sent", {"op": "add", "path": "/relations/-", "value": {"rel": "System.LinkTypes.Hierarchy-Reverse", "url": PARENT["url"]}} in ops, ops)
     check("defaults not re-sent", not any(o["path"] == "/fields/System.State" for o in ops), ops)
     check("created item link to Azure", "_workitems/edit/555001" in pg.inner_html(".msg.bot.ok"))
+    # parent search builds a WIQL query limited to open items of the parent types
+    pg.click("#newBtn"); pg.locator("#epCreateRow:not(.hidden)").wait_for(); pg.locator("#epTypes .seg:has-text('Task')").click(); pg.wait_for_timeout(600)
+    pg.locator("#epParent").press_sequentially("סיפור", delay=30); pg.locator("#epParentList .pk-opt").first.wait_for(timeout=5000)
+    q = wiqls[-1] if wiqls else ""
+    check("search query: title + description words, parent types, open only", "[System.Title] CONTAINS 'סיפור'" in q and "CONTAINS WORDS 'סיפור'" in q and "'User Story', 'Bug'" in q and "NOT IN ('Closed'" in q, q)
+    check("search result shown", "110047" in pg.inner_text("#epParentList"), pg.inner_text("#epParentList"))
+    pg.keyboard.press("Escape"); pg.click("#epCancel")
+    # Azure process rules: an unconditional "make required" is enforced up front, a conditional one is not
+    pg.fill("#input", "צור באג תחת 110047: באג עם חוק"); pg.keyboard.press("Enter"); pg.locator("#editPanel:not(.hidden)").wait_for(); pg.wait_for_timeout(1500)
+    chk = pg.inner_text("#epCheck")
+    check("rule-required field asked before saving", "Found In" in chk and pg.locator("#epSave").is_disabled(), chk)
+    check("conditional rule not applied on create", "Severity" not in chk, chk)
+    check("disabled rule ignored", "Tags" not in chk, chk)
+    pg.click("#epCancel")
+    # safety net: Azure rejects with a rule error that the tool did not know about
+    pg.fill("#input", "חדש Task תחת 110047: rule test"); pg.keyboard.press("Enter"); pg.locator("#editPanel:not(.hidden)").wait_for(); pg.wait_for_timeout(1200)
+    pg.click("#epSave"); pg.wait_for_timeout(1500)
+    chk = pg.inner_text("#epCheck")
+    check("rule error explained", "Azure דורש למלא את השדה Remaining Work" in chk, chk)
+    check("rejected field added as required", pg.locator("#epFields .eprow.needed input[aria-label='Remaining']").count() == 1 and pg.locator("#epSave").is_disabled(), [pg.evaluate("[...document.querySelectorAll('#epFields .eprow')].map(r=>r.className+':'+r.querySelector('label').textContent)"), pg.locator("#epSave").is_disabled()])
+    pg.locator("#epFields input[aria-label='Remaining']").fill("3"); pg.wait_for_timeout(400)
+    pg.click("#epSave"); pg.locator(".msg.bot.ok").nth(1).wait_for()
+    check("saved after filling the rule field", any(o["path"] == "/fields/Microsoft.VSTS.Scheduling.RemainingWork" for o in posts[-1]["ops"]), posts[-1]["ops"])
     check("no js errors (api)", not errs, errs)
     b.close()
 srv.shutdown()

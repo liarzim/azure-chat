@@ -168,7 +168,7 @@ with sync_playwright() as p:
     pg = ctx.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.goto("http://127.0.0.1:8786/")
     block["mode"] = "auth"; pg.fill("#pat", PAT); pg.click("#patBtn"); pg.locator("#login .err:visible, #loginErr:visible").first.wait_for(timeout=15000)
-    check("diagnosis: only token requests blocked", "N2" in pg.inner_text("#login") and "_apis/projects" in pg.inner_text("#login"), pg.inner_text("#login"))
+    check("diagnosis: token rejected", "N2" in pg.inner_text("#login") and "_apis/projects" in pg.inner_text("#login"), pg.inner_text("#login"))
     block["mode"] = "all"; pg.click("#patBtn"); pg.wait_for_timeout(3000)
     check("diagnosis: azure not reachable", "N0" in pg.inner_text("#login"), pg.inner_text("#login"))
     block["mode"] = None

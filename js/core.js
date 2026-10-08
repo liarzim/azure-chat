@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.0-beta.7",
+  VERSION: "2.0-beta.8",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -199,7 +199,7 @@ async function netDiagnose(url) {
   if (!reach) return "הדפדפן לא מצליח להגיע ל-dev.azure.com בכלל. בדקו חיבור רשת / VPN, או אם תוכנת אבטחה חוסמת. [קוד: N0]";
   const cors = await tryFetch({});
   if (!cors) return "הרשת מגיעה ל-Azure, אבל הדפדפן חוסם בקשות מהאתר הזה ל-Azure. בדרך כלל זה תוסף בדפדפן (חוסם פרסומות / אבטחה) או פרוקסי ארגוני. נסו בחלון InPrivate/Incognito או בדפדפן אחר. [קוד: N1]";
-  return "רק בקשות עם הטוקן נחסמות. בדרך כלל זה תוסף בדפדפן או פרוקסי ארגוני שחוסם כותרת Authorization. נסו בחלון InPrivate/Incognito או בדפדפן אחר. [קוד: N2]";
+  return "Azure DevOps דחה את הטוקן. בדרך כלל הטוקן פג תוקף, בוטל, או לא נוצר לארגון GOI-Finance. צרו טוקן חדש (User settings ← Personal access tokens) והתחברו איתו. [קוד: N2]";
 }
 
 /* Short name of the call, shown in network errors so a failure can be traced. */

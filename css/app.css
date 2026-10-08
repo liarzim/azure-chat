@@ -262,3 +262,19 @@ header .btn.iconbtn svg{width:20px;height:20px}
 #epParentInfo.parentcard .pc-state{display:inline-block;font-size:12px;color:var(--muted);margin-inline-start:6px}
 #epParentInfo.parentcard.warn{border-color:#d4a72c;background:var(--warn-soft)}
 #epParentInfo.parentcard .pc-warn{color:#9a6700;font-size:13px;margin-top:2px}
+
+/* Azuri branding */
+.brand{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+.brand-bot{width:112px;height:112px;flex:none;border-radius:26px;box-shadow:0 8px 22px rgba(11,37,69,.18)}
+.brand h1{font-size:30px;margin:0}
+.card p.brand-sub{margin:2px 0 0;font-size:14px}
+header h2{display:flex;align-items:center;gap:8px}
+header h2 .logo{width:30px;height:30px;border-radius:8px;flex:none}
+header h2 .org{color:var(--muted);font-weight:500;font-size:14px}
+.hello{display:flex;align-items:flex-start;gap:16px}
+.hello-bot{width:84px;height:84px;flex:none;border-radius:20px;box-shadow:0 6px 16px rgba(11,37,69,.14)}
+.hello h3{margin:4px 0 6px;font-size:17px}
+.hello p{margin:0 0 6px;line-height:1.6}
+.hello .hello-tip{color:var(--muted);font-size:14px}
+.hello code{background:var(--accent-soft);padding:1px 6px;border-radius:4px;unicode-bidi:plaintext}
+@media (max-width:480px){.brand-bot{width:84px;height:84px}.hello-bot{width:56px;height:56px;border-radius:14px}}

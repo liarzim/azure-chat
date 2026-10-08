@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="אז'ורי">
+<rect width="100" height="100" rx="24" fill="#0EA5E9"/>
+<path d="M50 17 Q49 11 52 7" fill="none" stroke="#0B2545" stroke-width="3.5" stroke-linecap="round"/>
+<circle cx="53.5" cy="6.5" r="4" fill="#7DD3FC"/>
+<circle cx="17" cy="55" r="7" fill="#0B2545"/>
+<circle cx="83" cy="55" r="7" fill="#0B2545"/>
+<circle cx="50" cy="55" r="33" fill="#FFFFFF"/>
+<ellipse cx="50" cy="58" rx="25" ry="20" fill="#0B2545"/>
+<path d="M34 44 Q39.5 40.5 45 44" fill="none" stroke="#7DD3FC" stroke-width="2.6" stroke-linecap="round"/>
+<path d="M55 44 Q60.5 40.5 66 44" fill="none" stroke="#7DD3FC" stroke-width="2.6" stroke-linecap="round"/>
+<ellipse cx="39.5" cy="54" rx="5.5" ry="6.8" fill="#38BDF8"/>
+<ellipse cx="60.5" cy="54" rx="5.5" ry="6.8" fill="#38BDF8"/>
+<circle cx="41.4" cy="51.8" r="1.8" fill="#FFFFFF"/>
+<circle cx="62.4" cy="51.8" r="1.8" fill="#FFFFFF"/>
+<path d="M41.5 65 Q50 74 58.5 65 Z" fill="#7DD3FC"/>
+</svg>

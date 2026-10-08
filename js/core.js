@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.0-beta.17",
+  VERSION: "2.1",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -543,7 +543,7 @@ function tableToXlsx(t, rowPics) {
       '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
       '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>'],
     ["docProps/core.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
-      '<dc:title>Work Items</dc:title><dc:creator>Azure Chat</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">' + now + '</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">' + now + "</dcterms:modified></cp:coreProperties>"],
+      '<dc:title>Work Items</dc:title><dc:creator>Azuri</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">' + now + '</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">' + now + "</dcterms:modified></cp:coreProperties>"],
     ["docProps/app.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Microsoft Excel</Application></Properties>'],
     ["xl/workbook.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
       '<bookViews><workbookView xWindow="0" yWindow="0" windowWidth="28800" windowHeight="12300"/></bookViews>' +
@@ -698,8 +698,18 @@ function toast(text) { const el = $("toast"); el.textContent = text; el.classLis
 function scrollDown() { const c = $("chat"); c.scrollTop = c.scrollHeight; }
 function addMsg(cls, html) { const d = document.createElement("div"); d.className = "msg " + cls; d.innerHTML = html; msgs.appendChild(d); scrollDown(); return d; }
 
+/* Azuri's short opening line; the full command list stays behind "עזרה" and in the guide. */
+function welcomeHtml() {
+  const first = (Auth.userName || "").trim().split(/\s+/)[0];
+  return '<div class="hello"><img class="hello-bot" src="img/azuri.svg" alt="" width="84" height="84"><div>' +
+    "<h3>היי" + (first ? " " + escHtml(first) : "") + ", אני אז'ורי!</h3>" +
+    "<p>תנו לי מספר של פריט, או כמה, ואביא לכם אותו בטבלה מסודרת. אפשר גם לעדכן פריטים ולפתוח חדשים.</p>" +
+    '<p class="hello-tip">לדוגמה <code>110047</code> או <code>112074 State Resolved</code>. כל הפקודות: <code>עזרה</code> או ה<a href="help.html#usage" target="_blank" rel="noopener">מדריך</a>.</p>' +
+    "</div></div>";
+}
 function helpHtml(first) {
-  return '<div class="help">' + (first ? "<h3>שלום" + (Auth.userName ? " " + escHtml(Auth.userName) : "") + "!</h3>" : "<h3>איך משתמשים</h3>") +
+  if (first) return welcomeHtml();
+  return '<div class="help">' + "<h3>איך משתמשים באז'ורי</h3>" +
     "כתבו מספרים של Work Items, וקבלו טבלה. כמה דוגמאות:<ul>" +
     "<li><code>110047, 112074</code> שדות ברירת המחדל</li>" +
     "<li><code>110047 112074 רק Title ו-State</code> רק השדות האלה</li>" +

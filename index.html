@@ -1,10 +1,11 @@
 <!doctype html>
-<!-- Azure Chat 2 -->
+<!-- אז'ורי (Azure Chat 2) -->
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Azure Chat 2</title>
+<title>אז'ורי</title>
+<link rel="icon" href="img/azuri-face.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -12,8 +13,8 @@
 <!-- Login screen -->
 <section id="login">
   <div class="card">
-    <h1>Azure Chat 2</h1>
-    <p>הזינו מספרי באגים, משימות, User Stories או פיצ'רים, וקבלו טבלה מסודרת מ-Azure DevOps.</p>
+    <div class="brand"><img class="brand-bot" src="img/azuri.svg" alt="" width="112" height="112"><div><h1>אז'ורי</h1><p class="brand-sub">העוזר שלכם ל-Azure DevOps</p></div></div>
+    <p>שואלים על פריטים, ומקבלים טבלה מסודרת. אפשר גם לעדכן ולפתוח פריטים חדשים.</p>
 
     <div id="msBlock">
       <button class="btn block ms" id="msLogin">
@@ -43,7 +44,7 @@
 <!-- Main app -->
 <section id="app" class="hidden">
   <header>
-    <h2>Azure Chat 2 · <span id="orgName"></span></h2>
+    <h2><img class="logo" src="img/azuri-face.svg" alt="" width="30" height="30"><span>אז'ורי</span> <span class="org">· <span id="orgName"></span></span></h2>
     <span class="who" id="who"></span>
     <button class="btn" id="newBtn">+ פריט חדש</button>
     <div class="menuwrap">

@@ -292,6 +292,6 @@ const GitHubStore = {
     const text = JSON.stringify(data, null, 2) + "\n";
     const bytes = new TextEncoder().encode(text);
     let bin = ""; for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
-    return this.call("PUT", this.url(), {message: "עדכון הגדרות צוות (Azure Chat 2)" + (data.updatedBy ? " · " + data.updatedBy : ""), content: btoa(bin), sha: remote.sha, branch: GITHUB.branch});
+    return this.call("PUT", this.url(), {message: "עדכון הגדרות צוות (אז'ורי)" + (data.updatedBy ? " · " + data.updatedBy : ""), content: btoa(bin), sha: remote.sha, branch: GITHUB.branch});
   }
 };

@@ -69,20 +69,26 @@ function bdSpValue(sp, allowed) {
   const hit = nums.find(x => x.n >= sp);
   return (hit || nums[nums.length - 1]).v;
 }
-/* Sprints with dates, from the current one on, around the Feature's iteration. */
-function bdSprints(tree, featureIter, today) {
+/* ---------- Iterations: PI = the node right above the sprints (the dated leaves) ---------- */
+function bdFind(tree, p) { if (!tree || !p) return null; const f = n => n.path === p ? n : (n.children || []).reduce((r, c) => r || f(c), null); return f(tree); }
+function bdParent(tree, p) { if (!tree) return null; const f = n => (n.children || []).reduce((r, c) => r || (c.path === p ? n : f(c)), null); return f(tree); }
+function bdIsLeaf(n) { return !n.children || !n.children.length; }
+/* The PI of a sprint (its parent), or the node itself when it is a PI (all its children are sprints). */
+function bdPiOf(tree, p) {
+  const n = bdFind(tree, p); if (!n) return null;
+  if (bdIsLeaf(n)) { const par = bdParent(tree, p); return par && par !== tree ? par : null; }
+  return n !== tree && n.children.every(bdIsLeaf) ? n : null;
+}
+/* Sprints with dates from the current one on, across the PIs next to the given iteration. */
+function bdSprints(tree, near, today) {
   if (!tree) return [];
-  const find = (n, p) => n.path === p ? n : (n.children || []).reduce((r, c) => r || find(c, p), null);
-  const parentOf = (n, p) => (n.children || []).reduce((r, c) => r || (c.path === p ? n : parentOf(c, p)), null);
-  const node = find(tree, featureIter) || tree;
-  const scope = node.children && node.children.length ? node : (parentOf(tree, node.path) || tree);
-  const anchor = scope === tree ? tree : (parentOf(tree, scope.path) || tree);
+  const pi = bdPiOf(tree, near);
+  const anchor = pi ? (bdParent(tree, pi.path) || tree) : (bdFind(tree, near) || tree);
   const leaves = [];
-  const walk = n => { if (n.children && n.children.length) n.children.forEach(walk); else if (n.start && n.finish) leaves.push(n); };
+  const walk = n => { if (!bdIsLeaf(n)) n.children.forEach(walk); else if (n.start && n.finish) leaves.push(n); };
   walk(anchor);
-  const t = today || new Date(); t.setHours(0, 0, 0, 0);
-  const from = node.start ? Math.max(t.getTime(), new Date(node.start).getTime() - 86400000) : t.getTime();
-  return leaves.filter(l => new Date(l.finish).getTime() + 86400000 > from).sort((a, c) => new Date(a.start) - new Date(c.start));
+  const t = today ? new Date(today) : new Date(); t.setHours(0, 0, 0, 0);
+  return leaves.filter(l => new Date(l.finish).getTime() + 86400000 > t.getTime()).sort((a, c) => new Date(a.start) - new Date(c.start));
 }
 function bdDate(d) { const x = new Date(d); return x.getUTCDate() + "." + (x.getUTCMonth() + 1); }
 
@@ -106,7 +112,7 @@ const BreakdownCreate = {
     }
     const last = lastPaths();
     this.s = {b, input, metas, tree: paths && paths.trees ? paths.trees.iteration : null, hasEpic: null, epic: null, epicReq: 0,
-      fEd: new Map(), usEd: new Map(), taskEd: new Map(), touched: new Set(), stories: [], firstSprint: 0, sprints: [], running: false,
+      fEd: new Map(), usEd: new Map(), taskEd: new Map(), touched: new Set(), stories: [], firstSprint: 0, sprints: [], running: false, fcards: {}, groups: [],
       defaults: {area: last.area || TeamConfig.data.project, iter: last.iteration || TeamConfig.data.project}};
     this.render();
   },
@@ -120,11 +126,11 @@ const BreakdownCreate = {
     const s = this.s, b = s.b, body = $("bcBody");
     body.innerHTML = "";
     const intro = document.createElement("p"); intro.className = "bc-intro";
-    intro.innerHTML = "ייווצרו Feature חדש, " + b.stories.length + " User Stories וה-Tasks שלהם. כל הפריטים יקבלו את התגית <b>" + escHtml(BD_TAG) + "</b>. בדקו, השלימו שדות חובה ואשרו. שום דבר לא נשמר לפני האישור.";
+    intro.innerHTML = "ייווצרו Feature (ברמת PI), " + b.stories.length + " User Stories וה-Tasks שלהם. אם ה-User Stories חורגים מ-PI אחד או מ-" + this.maxSprints() + " ספרינטים, הפירוק מתחלק לכמה Features. כל הפריטים יקבלו את התגית <b>" + escHtml(BD_TAG) + "</b>. שום דבר לא נשמר לפני האישור.";
     body.appendChild(intro);
 
     // 1. Feature
-    const fs = this.section(body, "1. ה-Feature");
+    const fs = this.section(body, "1. Epic ושדות לכל ה-Features");
     const ask = document.createElement("div"); ask.className = "bc-ask";
     ask.innerHTML = '<span class="bc-q">האם יש Epic אב?</span>';
     [["כן", true], ["לא", false]].forEach(([t, v]) => {
@@ -140,27 +146,18 @@ const BreakdownCreate = {
     epicRow.append(epicIn, epicList, epicInfo);
     fs.append(ask, epicRow);
     const fGrid = document.createElement("div"); fGrid.className = "bc-grid"; fs.appendChild(fGrid); s.fGrid = fGrid;
-    const fm = s.metas["Feature"];
-    const spAllowed = (fm.byRef.get(BD_REF.spv) || {}).allowed;
-    const fInit = [[BD_REF.title, b.feature.title], [BD_REF.area, s.defaults.area], [BD_REF.iter, s.defaults.iter],
-      [BD_REF.spv, bdSpValue(b.feature.sp, spAllowed)], [BD_REF.who, undefined]];
-    fInit.forEach(([ref, v]) => this.addEditor("Feature", ref, v, fGrid, s.fEd));
-    if (fm.byRef.has(BD_REF.spv)) {
-      const hint = document.createElement("div"); hint.className = "bc-hint";
-      hint.textContent = "לפי הפירוק: \u2066" + b.feature.sp + " SP\u2069 לפיצ'ר. סך ה-User Stories: \u2066" + b.totalSp + " SP\u2069.";
-      const fsel = s.fEd.get(BD_REF.spv).row.querySelector("select"); if (fsel) fsel.dir = "ltr";
-      s.fEd.get(BD_REF.spv).row.appendChild(hint);
-    }
+    [[BD_REF.area, s.defaults.area], [BD_REF.who, undefined]].forEach(([ref, v]) => this.addEditor("Feature", ref, v, fGrid, s.fEd));
     this.requiredOf("Feature").forEach(ref => this.addEditor("Feature", ref, undefined, fGrid, s.fEd, "חובה"));
-    if (fm.byRef.has(BD_REF.desc)) {
-      const d = document.createElement("details"); d.className = "bc-desc";
-      d.innerHTML = "<summary>Description של ה-Feature (נבנה מהתבנית ומהפירוק, אפשר לערוך)</summary>";
-      fs.appendChild(d);
-      this.addEditor("Feature", BD_REF.desc, bdFeatureDescription(b, s.input), d, s.fEd);
-    }
+
+    // 2. The features (one per PI, up to N sprints each), rebuilt when the sprints change
+    const fsec = this.section(body, "2. ה-Features");
+    const fNote = document.createElement("p"); fNote.className = "muted";
+    fNote.textContent = "Feature תמיד ברמת PI. כל Feature מכסה עד " + this.maxSprints() + " ספרינטים בתוך PI אחד. השם וה-Story Points Values ניתנים לשינוי.";
+    s.featBox = document.createElement("div"); s.featBox.className = "bc-feats";
+    fsec.append(fNote, s.featBox);
 
     // 2. Shared fields
-    const ss = this.section(body, "2. שדות לכל ה-User Stories");
+    const ss = this.section(body, "3. שדות לכל ה-User Stories");
     const sNote = document.createElement("p"); sNote.className = "muted";
     sNote.textContent = "ממולאים מה-Feature. שינוי כאן חל על כל ה-User Stories. Area לקוח מה-Feature.";
     ss.appendChild(sNote);
@@ -180,7 +177,7 @@ const BreakdownCreate = {
     } else ss.appendChild(tGrid);
 
     // 3. Stories and tasks
-    const st = this.section(body, "3. User Stories ו-Tasks");
+    const st = this.section(body, "4. User Stories ו-Tasks");
     const um = s.metas["User Story"];
     const sprintOf = new Map(); b.sprints.forEach((ix, k) => ix.forEach(i => sprintOf.set(i, k)));
     b.stories.forEach((story, i) => {
@@ -200,8 +197,11 @@ const BreakdownCreate = {
       }
       const fi = um.byRef.get(BD_REF.iter);
       if (fi) {
-        rec.iter = makeEditor(fi, s.defaults.iter, {type: "User Story", meta: um, onChange: () => { rec.iterTouched = true; this.refresh(); }});
-        row.appendChild(this.labeled("Iteration", rec.iter.el, "ספרינט " + (rec.sprint + 1) + " בתכנון"));
+        rec.iter = makeEditor(fi, s.defaults.iter, {type: "User Story", meta: um, onChange: () => { rec.iterTouched = true; rec.noSprint = false; this.refresh(); }});
+        const lab = this.labeled("Iteration", rec.iter.el, "ספרינט " + (rec.sprint + 1) + " בתכנון");
+        rec.warn = document.createElement("span"); rec.warn.className = "bc-warn hidden"; rec.warn.textContent = "אין ספרינט: ה-PI הבא עוד לא קיים ב-Azure. בחרו Iteration או הורידו את הסימון.";
+        lab.appendChild(rec.warn);
+        row.appendChild(lab);
       }
       const tl = document.createElement("div"); tl.className = "bc-tasks";
       story.tasks.forEach((t, k) => {
@@ -268,8 +268,8 @@ const BreakdownCreate = {
   featureChanged(ref) {
     const s = this.s, v = this.featureVal(ref);
     [["User Story", s.usEd], ["Task", s.taskEd]].forEach(([type, map]) => { const e = map.get(ref); if (e && !s.touched.has(type + "|" + ref)) e.ed.set(v); });
-    if (ref === BD_REF.iter) this.updateSprints();
   },
+  maxSprints() { const n = Number(TeamConfig.data && TeamConfig.data.featureMaxSprints); return n >= 1 ? Math.floor(n) : 3; },
 
   /* ---------- parent Epic ---------- */
   async lookupEpic(raw, list, info) {
@@ -304,7 +304,7 @@ const BreakdownCreate = {
     info.innerHTML = '<span class="pc-type">' + escHtml(type) + "</span> <b dir=\"ltr\">" + it.id + '</b> <span class="pc-title">' + escHtml(f["System.Title"] || "") + "</span>" +
       (type === "Epic" ? "" : '<div class="pc-warn">זה לא Epic. בדרך כלל Feature נפתח תחת Epic.</div>');
     // the Epic's paths, unless the user already chose
-    [[BD_REF.area, f["System.AreaPath"]], [BD_REF.iter, f["System.IterationPath"]]].forEach(([ref, v]) => {
+    [[BD_REF.area, f["System.AreaPath"]]].forEach(([ref, v]) => {
       const e = s.fEd.get(ref); if (e && v && !s.touched.has("Feature|" + ref)) { e.ed.set(v); this.featureChanged(ref); }
     });
     this.refresh();
@@ -312,23 +312,110 @@ const BreakdownCreate = {
 
   /* ---------- sprints ---------- */
   updateSprints() {
-    const s = this.s;
-    s.sprints = bdSprints(s.tree, this.featureVal(BD_REF.iter), this.today ? new Date(this.today) : null);
+    const s = this.s, today = this.today ? new Date(this.today) : new Date();
+    s.sprints = bdSprints(s.tree, s.defaults.iter, today);
     const sel = s.firstSel; sel.innerHTML = "";
-    s.sprints.forEach((n, k) => sel.add(new Option(n.path.split("\\").slice(-2).join(" \\ ") + " (" + bdDate(n.start) + "–" + bdDate(n.finish) + ")" + (new Date(n.start) <= (this.today ? new Date(this.today) : new Date()) ? " · נוכחי" : ""), String(k))));
+    s.sprints.forEach((n, k) => sel.add(new Option(n.path.split("\\").slice(-2).join(" \\ ") + " (" + bdDate(n.start) + "–" + bdDate(n.finish) + ")" + (new Date(n.start) <= today ? " · נוכחי" : ""), String(k))));
     if (!s.sprints.length) sel.add(new Option("לא נמצאו ספרינטים עם תאריכים", "0"));
     s.firstSprint = Math.min(s.firstSprint, Math.max(0, s.sprints.length - 1)); sel.value = String(s.firstSprint);
     sel.disabled = !s.sprints.length;
-    s.sprNote.textContent = s.sprints.length ? "כל US מקבל ספרינט לפי התכנון (ספרינט 1, 2...). אפשר לשנות לכל US בנפרד." : "ה-User Stories יקבלו את ה-Iteration של ה-Feature. אפשר לשנות לכל US בנפרד.";
+    s.sprNote.textContent = s.sprints.length ? "כל US מקבל ספרינט לפי התכנון (ספרינט 1, 2...). אפשר לשנות לכל US בנפרד." : "לא נמצאו ספרינטים עם תאריכים. בחרו Iteration לכל US.";
     this.assignSprints();
   },
   assignSprints() {
     const s = this.s;
     s.stories.forEach(r => {
       if (!r.iter || r.iterTouched) return;
-      const n = s.sprints.length ? s.sprints[Math.min(s.firstSprint + r.sprint, s.sprints.length - 1)] : null;
-      r.iter.set(n ? n.path : this.featureVal(BD_REF.iter));
+      const k = s.firstSprint + r.sprint;
+      r.noSprint = s.sprints.length > 0 && k >= s.sprints.length;      // the next PI is not in Azure yet
+      r.iter.set(r.noSprint ? null : (s.sprints[k] ? s.sprints[k].path : s.defaults.iter));
     });
+  },
+
+  /* ---------- features: one per PI, at most maxSprints sprints each ---------- */
+  groups() {
+    const s = this.s, max = this.maxSprints(), byPi = new Map();
+    s.stories.forEach(r => {
+      if (!r.inc.checked || r.noSprint) return;
+      const path = r.iter ? r.iter.get() : s.defaults.iter;
+      const pi = bdPiOf(s.tree, path);
+      const key = pi ? pi.path : (path || TeamConfig.data.project);
+      if (!byPi.has(key)) byPi.set(key, {pi, piPath: key, recs: []});
+      byPi.get(key).recs.push(r);
+    });
+    const out = [];
+    byPi.forEach(g => {
+      const node = r => bdFind(s.tree, r.iter ? r.iter.get() : "");
+      const start = r => { const n = node(r); return n && n.start ? new Date(n.start).getTime() : 0; };
+      const sprints = [...new Set(g.recs.map(r => r.iter ? r.iter.get() : ""))].sort((a, b) => {
+        const na = bdFind(s.tree, a), nb = bdFind(s.tree, b);
+        return (na && na.start ? new Date(na.start) : 0) - (nb && nb.start ? new Date(nb.start) : 0);
+      });
+      const chunks = Math.max(1, Math.ceil(sprints.length / max));
+      for (let c = 0; c < chunks; c++) {
+        const mine = sprints.slice(c * max, (c + 1) * max);
+        const recs = g.recs.filter(r => mine.includes(r.iter ? r.iter.get() : ""));
+        if (!recs.length) continue;
+        out.push({key: g.piPath + "#" + c, piPath: g.piPath, sprints: mine, recs, first: Math.min(...recs.map(start))});
+      }
+    });
+    return out.sort((a, b) => a.first - b.first || a.key.localeCompare(b.key));
+  },
+  /* One feature keeps the breakdown's name. Split features are named by what their US do:
+     "<topic> – <US>, <US> ועוד N", real work first, Spikes last. */
+  autoTitle(g, k, n) {
+    const s = this.s, b = s.b;
+    if (n === 1) return b.feature.title;
+    const topic = BreakdownEngine.subject(s.input.text || b.feature.title, b.feature.title);
+    const recs = g.recs.slice().sort((x, y) => (x.story.pattern === BD_PATTERNS.spike) - (y.story.pattern === BD_PATTERNS.spike));
+    const names = recs.map(r => r.title.value.trim()).filter(Boolean);
+    const list = names.slice(0, 2).join(", ") + (names.length > 2 ? " ועוד " + (names.length - 2) : "");
+    return ((topic && topic !== "הפיצ'ר" ? topic + " – " : "") + list).slice(0, 200);
+  },
+  /* Rebuilds the feature cards; titles and values the user changed are kept per PI part. */
+  renderFeatures(groups) {
+    const s = this.s, box = s.featBox, fm = s.metas["Feature"], n = groups.length;
+    const sig = groups.map(g => g.key + ":" + g.recs.map(r => r.i).join(",")).join("|");
+    if (sig === s.featSig) { groups.forEach(g => { const c = s.fcards[g.key]; if (c && !c.titleTouched) c.title.value = this.autoTitle(g, 0, n); }); return; }
+    s.featSig = sig; box.innerHTML = "";
+    if (!n) { box.innerHTML = '<div class="muted">אין User Stories עם ספרינט.</div>'; return; }
+    groups.forEach((g, k) => {
+      const prev = s.fcards[g.key] || {};
+      const card = document.createElement("div"); card.className = "bc-feat";
+      const top = document.createElement("div"); top.className = "bc-us-top";
+      const num = document.createElement("span"); num.className = "bd-num"; num.textContent = "Feature " + (k + 1);
+      const title = document.createElement("input"); title.className = "bc-title"; title.setAttribute("aria-label", "כותרת Feature " + (k + 1));
+      title.value = prev.titleTouched ? prev.title.value : this.autoTitle(g, k, n);
+      const c = {title, titleTouched: !!prev.titleTouched, spv: null, spvTouched: !!prev.spvTouched};
+      title.oninput = () => { c.titleTouched = true; this.refresh(); };
+      top.append(num, title);
+      const row = document.createElement("div"); row.className = "bc-us-fields";
+      const sprintNames = g.sprints.map(p => p.split("\\").pop());
+      const pi = document.createElement("div"); pi.className = "bc-lab";
+      pi.innerHTML = "<span>Iteration (PI)</span><b class=\"bc-pi\">" + escHtml(g.piPath.split("\\").pop()) + '</b><span class="bc-hint">' + escHtml(g.piPath) + "</span>";
+      row.appendChild(pi);
+      const f = fm.byRef.get(BD_REF.spv);
+      if (f) {
+        const maxSp = Math.max(...g.recs.map(r => r.story.sp));
+        const auto = bdSpValue(n === 1 ? s.b.feature.sp : maxSp, f.allowed);
+        c.spv = makeEditor(f, prev.spvTouched && prev.spv ? prev.spv.get() : auto, {type: "Feature", meta: fm, onChange: () => { c.spvTouched = true; this.refresh(); }});
+        const sel = c.spv.el.querySelector("select"); if (sel) sel.dir = "ltr";
+        row.appendChild(this.labeled("Story Points Values", c.spv.el, n === 1 ? "לפי הפירוק: \u2066" + s.b.feature.sp + " SP\u2069 לפיצ'ר. סך ה-User Stories: \u2066" + s.b.totalSp + " SP\u2069." : "לפי ה-US הגבוה: \u2066" + maxSp + " SP\u2069"));
+      }
+      const what = document.createElement("div"); what.className = "bc-hint bc-what";
+      what.textContent = "US " + g.recs.map(r => r.i + 1).join(", ") + " · ספרינטים: " + sprintNames.join(", ");
+      const dd = document.createElement("details"); dd.className = "bc-desc";
+      dd.innerHTML = "<summary>Description של ה-Feature (נבנה מהתבנית ומהפירוק)</summary>";
+      c.preview = document.createElement("div"); c.preview.className = "bc-preview"; dd.appendChild(c.preview);
+      card.append(top, row, what, dd); box.appendChild(card);
+      s.fcards[g.key] = c;
+    });
+  },
+  featureDescription(g, k, n) {
+    const s = this.s;
+    const stories = g.recs.map(r => Object.assign({}, r.story, {title: r.title.value.trim()}));
+    const input = n > 1 ? Object.assign({}, s.input, {text: (s.input.text || s.b.feature.title) + "\n" + "חלק " + (k + 1) + " מתוך " + n + " (" + g.piPath.split("\\").pop() + ")."}) : s.input;
+    return bdFeatureDescription(Object.assign({}, s.b, {stories}), input);
   },
 
   /* ---------- what will be created ---------- */
@@ -341,20 +428,33 @@ const BreakdownCreate = {
   put(ch, type, ref, v) { if (this.s.metas[type].byRef.has(ref) && v != null && v !== "") ch[ref] = v; },
   shared(type, map, ch) { map.forEach(({ed}, ref) => this.put(ch, type, ref, ed.get())); },
   async plans() {
-    const s = this.s, fch = {};
-    s.fEd.forEach(({ed}, ref) => this.put(fch, "Feature", ref, ed.get()));
-    this.put(fch, "Feature", BD_REF.tags, BD_TAG);
-    const area = fch[BD_REF.area];
-    const feature = await Edit.plan(this.newItem("Feature"), fch, "");
+    const s = this.s, shared = {};
+    s.fEd.forEach(({ed}, ref) => this.put(shared, "Feature", ref, ed.get()));
+    const area = shared[BD_REF.area];
+    s.stories.forEach(r => { if (r.warn) r.warn.classList.toggle("hidden", !(r.noSprint && r.inc.checked)); });
+    const groups = this.groups(); s.groups = groups;
+    this.renderFeatures(groups);
+    const features = [];
+    for (const [k, g] of groups.entries()) {
+      const c = s.fcards[g.key], fch = Object.assign({}, shared);
+      this.put(fch, "Feature", BD_REF.title, c.title.value.trim());
+      this.put(fch, "Feature", BD_REF.iter, g.piPath);
+      if (c.spv) this.put(fch, "Feature", BD_REF.spv, c.spv.get());
+      const desc = this.featureDescription(g, k, groups.length);
+      if (c.preview.dataset.html !== desc) { c.preview.innerHTML = desc; c.preview.dataset.html = desc; }
+      this.put(fch, "Feature", BD_REF.desc, desc);
+      this.put(fch, "Feature", BD_REF.tags, BD_TAG);
+      features.push({g, c, plan: await Edit.plan(this.newItem("Feature"), fch, "")});
+    }
+    const featOf = new Map(); groups.forEach((g, k) => g.recs.forEach(r => featOf.set(r, k)));
     const stories = [];
     for (const r of s.stories) {
       if (!r.inc.checked) continue;
       const ch = {};
-      // Feature values first for fields the US shares with it, then the shared US fields
       this.shared("User Story", s.usEd, ch);
       this.put(ch, "User Story", BD_REF.title, r.title.value.trim());
       this.put(ch, "User Story", BD_REF.area, area);
-      this.put(ch, "User Story", BD_REF.iter, r.iter ? r.iter.get() : fch[BD_REF.iter]);
+      this.put(ch, "User Story", BD_REF.iter, r.iter ? r.iter.get() : s.defaults.iter);
       this.put(ch, "User Story", BD_REF.desc, bdStoryDescription(Object.assign({}, r.story, {title: r.title.value.trim()}), s.b));
       if (r.spv) this.put(ch, "User Story", BD_REF.spv, r.spv.get());
       this.put(ch, "User Story", BD_REF.tags, BD_TAG);
@@ -371,9 +471,9 @@ const BreakdownCreate = {
         this.put(tch, "Task", BD_REF.tags, BD_TAG);
         tasks.push({t, plan: await Edit.plan(this.newItem("Task"), tch, "")});
       }
-      stories.push({r, plan, tasks});
+      stories.push({r, plan, tasks, fk: featOf.has(r) ? featOf.get(r) : -1});
     }
-    return {feature, stories};
+    return {features, stories};
   },
 
   refresh() {
@@ -386,7 +486,7 @@ const BreakdownCreate = {
     try { p = await this.plans(); } catch (e) { $("bcCheck").innerHTML = '<div class="bad">' + escHtml(e.message || String(e)) + "</div>"; return; }
     if (this.s !== s) return;
     // Required fields found only now (process rules that depend on values): ask for them in the right place
-    p.feature.missing.forEach(f => { if (!BD_HANDLED["Feature"].includes(f.ref)) this.addEditor("Feature", f.ref, undefined, s.fGrid, s.fEd, "חובה"); });
+    p.features.forEach(x => x.plan.missing.forEach(f => { if (!BD_HANDLED["Feature"].includes(f.ref)) this.addEditor("Feature", f.ref, undefined, s.fGrid, s.fEd, "חובה"); }));
     p.stories.forEach(x => {
       x.plan.missing.forEach(f => { if (!BD_HANDLED["User Story"].includes(f.ref)) this.addEditor("User Story", f.ref, this.featureVal(f.ref), s.usGrid, s.usEd, "חובה"); });
       x.tasks.forEach(y => y.plan.missing.forEach(f => { if (!BD_HANDLED["Task"].includes(f.ref)) this.addEditor("Task", f.ref, this.featureVal(f.ref), s.tGrid, s.taskEd, "חובה"); }));
@@ -399,8 +499,14 @@ const BreakdownCreate = {
       if (plan.template) msgs.push(who + ": בתבנית חסר תוכן תחת " + [...plan.template.missing, ...plan.template.empty].join(", "));
       plan.errors.forEach(e => msgs.push(who + ": " + e));
     };
-    miss(p.feature, "Feature");
-    s.fEd.forEach(({row}, ref) => row.classList.toggle("needed", p.feature.missing.some(f => f.ref === ref)));
+    const nf = p.features.length;
+    p.features.forEach((x, k) => {
+      miss(x.plan, nf > 1 ? "Feature " + (k + 1) : "Feature");
+      x.c.title.classList.toggle("needed", !x.c.title.value.trim());
+    });
+    s.fEd.forEach(({row}, ref) => row.classList.toggle("needed", p.features.some(x => x.plan.missing.some(f => f.ref === ref))));
+    const lost = s.stories.filter(r => r.inc.checked && r.noSprint).map(r => r.i + 1);
+    if (lost.length) msgs.push("אין ספרינט ל-US " + lost.join(", ") + ": ה-PI הבא עוד לא קיים ב-Azure. בחרו להם Iteration, בחרו ספרינט התחלה מוקדם יותר, או הורידו את הסימון.");
     const usMissing = new Set(), taskMissing = new Set();
     let estMissing = 0, tasks = 0;
     p.stories.forEach(x => {
@@ -426,18 +532,20 @@ const BreakdownCreate = {
     const people = $("bcBody").querySelectorAll(".pk-input.invalid, .pk-input.pending").length;
     if (people) msgs.push("יש שדה אנשים שלא נבחר מהרשימה");
     s.p = p; s.ok = !msgs.length;
-    s.count = {us: p.stories.length, tasks};
+    s.count = {features: nf, us: p.stories.length, tasks};
     $("bcCheck").innerHTML = msgs.length ? '<div class="bad">' + msgs.slice(0, 8).map(escHtml).join("<br>") + (msgs.length > 8 ? "<br>ועוד " + (msgs.length - 8) + "..." : "") + "</div>"
-      : '<div class="ok">הכל מוכן. ייווצרו Feature אחד, ' + p.stories.length + " User Stories ו-" + tasks + " Tasks.</div>";
-    const n = 1 + p.stories.length + tasks;
+      : '<div class="ok">הכל מוכן. ייווצרו ' + this.featWord(nf) + ", " + p.stories.length + " User Stories ו-" + tasks + " Tasks.</div>";
+    const n = nf + p.stories.length + tasks;
     $("bcGo").disabled = !s.ok;
     $("bcGo").textContent = s.ok ? "יצירת " + n + " פריטים ב-Azure" : "יש להשלים פרטים";
   },
 
+  featWord(n) { return n === 1 ? "Feature אחד" : n + " Features"; },
+
   /* ---------- creating ---------- */
   ask() {
     const s = this.s; if (!s || !s.ok) return;
-    $("bcConfirmText").textContent = "לאשר יצירה ב-Azure DevOps של Feature אחד, " + s.count.us + " User Stories ו-" + s.count.tasks + " Tasks" + (s.hasEpic && s.epic ? " תחת " + s.epic.id : "") + "? אחרי היצירה אי אפשר לבטל אוטומטית.";
+    $("bcConfirmText").textContent = "לאשר יצירה ב-Azure DevOps של " + this.featWord(s.count.features) + ", " + s.count.us + " User Stories ו-" + s.count.tasks + " Tasks" + (s.hasEpic && s.epic ? " תחת " + s.epic.id : "") + "? אחרי היצירה אי אפשר לבטל אוטומטית.";
     $("bcGo").classList.add("hidden"); $("bcConfirm").classList.remove("hidden"); $("bcYes").focus();
   },
   back() { $("bcConfirm").classList.add("hidden"); $("bcGo").classList.remove("hidden"); $("bcGo").focus(); },
@@ -447,34 +555,44 @@ const BreakdownCreate = {
     s.running = true; $("bcYes").disabled = true; $("bcClose").disabled = true;
     let p;
     try { p = await this.plans(); } catch (e) { p = null; }
-    const all = p ? [p.feature, ...p.stories.map(x => x.plan), ...p.stories.flatMap(x => x.tasks.map(y => y.plan))] : [];
-    if (!p || !all.every(x => x.ok)) { s.running = false; $("bcYes").disabled = false; $("bcClose").disabled = false; this.back(); this.refresh(); return; }
+    const all = p ? [...p.features.map(x => x.plan), ...p.stories.map(x => x.plan), ...p.stories.flatMap(x => x.tasks.map(y => y.plan))] : [];
+    if (!p || !p.features.length || !all.every(x => x.ok) || p.stories.some(x => x.fk < 0)) { s.running = false; $("bcYes").disabled = false; $("bcClose").disabled = false; this.back(); this.refresh(); return; }
     const total = all.length; let done = 0;
     const prog = document.createElement("div"); prog.className = "bc-prog"; prog.setAttribute("role", "status");
     prog.innerHTML = '<div class="bc-bar"><span></span></div><div class="bc-ptext"></div>';
     $("bcBody").prepend(prog); $("bcBody").scrollTop = 0;
     $("bcConfirm").classList.add("hidden");
     const tick = label => { done++; prog.querySelector(".bc-bar span").style.width = Math.round(done / total * 100) + "%"; prog.querySelector(".bc-ptext").textContent = "נוצרו " + done + " מתוך " + total + (label ? " · " + label : ""); };
-    const result = {feature: null, stories: [], failed: []};
+    const result = {features: [], failed: []};
     const parentRef = it => ({id: it.id, url: it.url});
-    try {
-      result.feature = await Create.commit(p.feature, s.hasEpic ? s.epic : null);
-      tick("Feature " + result.feature.id);
-    } catch (e) {
-      s.running = false; $("bcYes").disabled = false; $("bcClose").disabled = false; prog.remove();
-      if (e instanceof RuleError && /Required|InvalidEmpty/i.test(e.codes)) {
-        const key = norm(e.field), f = [...s.metas["Feature"].byRef.values()].find(x => norm(x.name) === key || norm(x.label) === key || norm(x.ref.split(".").pop()) === key);
-        if (f) { Meta.learnRequired("Feature", f.ref); this.addEditor("Feature", f.ref, undefined, s.fGrid, s.fEd, "חובה"); }
+    for (const [k, x] of p.features.entries()) {
+      const rec = {title: x.c.title.value.trim(), item: null, stories: []};
+      try { rec.item = await Create.commit(x.plan, s.hasEpic ? s.epic : null); tick("Feature " + rec.item.id); }
+      catch (e) {
+        if (k === 0) {        // the first one failed: stop before anything is created
+          s.running = false; $("bcYes").disabled = false; $("bcClose").disabled = false; prog.remove();
+          if (e instanceof RuleError && /Required|InvalidEmpty/i.test(e.codes)) {
+            const key = norm(e.field), f = [...s.metas["Feature"].byRef.values()].find(y => norm(y.name) === key || norm(y.label) === key || norm(y.ref.split(".").pop()) === key);
+            if (f) { Meta.learnRequired("Feature", f.ref); this.addEditor("Feature", f.ref, undefined, s.fGrid, s.fEd, "חובה"); }
+          }
+          this.back(); await this.check();
+          $("bcCheck").insertAdjacentHTML("afterbegin", '<div class="bad">יצירת ה-Feature נכשלה, לא נוצר שום פריט: ' + escHtml(e.message || String(e)) + "</div>");
+          if (e instanceof AuthError) toast(e.message);
+          return;
+        }
+        result.failed.push({what: "Feature: " + rec.title, why: e.message || String(e)}); tick();
       }
-      this.back(); await this.check();
-      $("bcCheck").insertAdjacentHTML("afterbegin", '<div class="bad">יצירת ה-Feature נכשלה, לא נוצר שום פריט: ' + escHtml(e.message || String(e)) + "</div>");
-      if (e instanceof AuthError) toast(e.message);
-      return;
+      result.features.push(rec);
     }
     for (const x of p.stories) {
-      const title = x.r.title.value.trim(), rec = {title, item: null, tasks: []};
-      result.stories.push(rec);
-      try { rec.item = await Create.commit(x.plan, parentRef(result.feature)); tick("US " + rec.item.id); }
+      const title = x.r.title.value.trim(), rec = {title, item: null, tasks: []}, feat = result.features[x.fk];
+      if (!feat || !feat.item) {
+        result.failed.push({what: "US: " + title + " (לא נוצר כי ה-Feature שלו נכשל)", why: ""}); tick();
+        x.tasks.forEach(y => { result.failed.push({what: "Task: " + y.t.title.value.trim() + " (לא נוצר כי ה-US נכשל)", why: ""}); tick(); });
+        continue;
+      }
+      feat.stories.push(rec);
+      try { rec.item = await Create.commit(x.plan, parentRef(feat.item)); tick("US " + rec.item.id); }
       catch (e) {
         result.failed.push({what: "US: " + title, why: e.message || String(e)});
         x.tasks.forEach(y => { result.failed.push({what: "Task: " + y.t.title.value.trim() + " (לא נוצר כי ה-US נכשל)", why: ""}); tick(); });
@@ -486,9 +604,10 @@ const BreakdownCreate = {
         catch (e) { result.failed.push({what: "Task: " + tt, why: e.message || String(e)}); tick(); }
       }
     }
-    const created = [result.feature, ...result.stories.map(r => r.item).filter(Boolean), ...result.stories.flatMap(r => r.tasks)];
+    const created = result.features.flatMap(f => f.item ? [f.item, ...f.stories.map(r => r.item).filter(Boolean), ...f.stories.flatMap(r => r.tasks)] : []);
     People.fromItems(created);
-    rememberPaths(result.feature.fields[BD_REF.area], result.feature.fields[BD_REF.iter]);
+    const f0 = result.features[0].item;
+    rememberPaths(f0.fields[BD_REF.area], f0.fields[BD_REF.iter]);
     s.running = false; $("bcYes").disabled = false; $("bcClose").disabled = false;
     this.close();
     this.announce(result, created.length);
@@ -499,19 +618,23 @@ const BreakdownCreate = {
     return Auth.mode === "demo" ? "<b>" + id + "</b>" : '<a target="_blank" rel="noopener" href="' + ADO + "/" + encodeURIComponent(it.fields["System.TeamProject"] || TeamConfig.data.project) + "/_workitems/edit/" + id + '"><b>' + id + "</b></a>";
   },
   announce(r, n) {
-    const f = r.feature;
-    let h = '<div class="bc-done"><div class="bc-done-t">' + (r.failed.length ? "⚠ " : "✓ ") + "נוצרו " + n + " פריטים ב-Azure" + (r.failed.length ? ", " + r.failed.length + " לא נוצרו" : "") + "</div>" +
-      "<div>Feature " + this.link(f) + " · " + escHtml(f.fields[BD_REF.title] || "") + (f.fields["System.Parent"] ? " · תחת " + f.fields["System.Parent"] : "") + "</div><ul>";
-    r.stories.forEach(st => {
-      if (!st.item) return;
-      h += "<li>US " + this.link(st.item) + " · " + escHtml(st.title) + (st.tasks.length ? '<ul class="bc-tl">' + st.tasks.map(t => "<li>Task " + this.link(t) + " · " + escHtml(t.fields[BD_REF.title] || "") + "</li>").join("") + "</ul>" : "") + "</li>";
+    let h = '<div class="bc-done"><div class="bc-done-t">' + (r.failed.length ? "⚠ " : "✓ ") + "נוצרו " + n + " פריטים ב-Azure" + (r.failed.length ? ", " + r.failed.length + " לא נוצרו" : "") + "</div>";
+    const ids = [];
+    r.features.forEach(fr => {
+      if (!fr.item) return;
+      const f = fr.item; ids.push(f.id);
+      h += '<div class="bc-done-f">Feature ' + this.link(f) + " · " + escHtml(f.fields[BD_REF.title] || "") + " · " + escHtml(String(f.fields[BD_REF.iter] || "").split("\\").pop()) + (f.fields["System.Parent"] ? " · תחת " + f.fields["System.Parent"] : "") + "</div><ul>";
+      fr.stories.forEach(st => {
+        if (!st.item) return;
+        ids.push(st.item.id, ...st.tasks.map(t => t.id));
+        h += "<li>US " + this.link(st.item) + " · " + escHtml(st.title) + (st.tasks.length ? '<ul class="bc-tl">' + st.tasks.map(t => "<li>Task " + this.link(t) + " · " + escHtml(t.fields[BD_REF.title] || "") + "</li>").join("") + "</ul>" : "") + "</li>";
+      });
+      h += "</ul>";
     });
-    h += "</ul>";
     if (r.failed.length) h += '<div class="bc-fail"><b>לא נוצרו:</b><ul>' + r.failed.map(x => "<li>" + escHtml(x.what) + (x.why ? ": " + escHtml(x.why) : "") + "</li>").join("") + "</ul>אפשר ליצור אותם ידנית עם \"+ תת-פריט\".</div>";
     h += '<div class="muted">לכל הפריטים נוספה התגית ' + escHtml(BD_TAG) + '.</div><div class="bc-done-acts"></div></div>';
     const m = addMsg(r.failed.length ? "bot" : "bot ok", h);
     const show = document.createElement("button"); show.type = "button"; show.className = "btn ghost sm"; show.textContent = "הצגה בטבלה";
-    const ids = [f.id, ...r.stories.filter(x => x.item).flatMap(x => [x.item.id, ...x.tasks.map(t => t.id)])];
     show.onclick = () => ChatSearch.show(ids.slice(0, CONFIG.MAX_IDS));
     m.querySelector(".bc-done-acts").appendChild(show);
   },

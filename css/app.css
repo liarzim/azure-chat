@@ -426,3 +426,10 @@ header h2 .org{color:var(--muted);font-weight:500;font-size:14px}
 .bd-airow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .bd-tool{padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;font-size:13px}
 .btn.bd-open{background:#7c3aed;color:#fff}
+.bc-feats{display:flex;flex-direction:column;gap:10px}
+.bc-feat{border:1px solid var(--accent);border-inline-start:4px solid var(--accent);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.bc-pi{font-size:15px}
+.bc-what{margin-top:6px}
+.bc-warn{display:block;color:var(--bad);font-size:12px;font-weight:600;margin-top:4px}
+.bc-warn.hidden{display:none}
+.bc-done-f{font-weight:600;margin-top:6px}

@@ -3533,6 +3533,36 @@
       "startDate": "2026-10-01T00:00:00Z",
       "finishDate": "2026-12-31T00:00:00Z"
      }
+    },
+    {
+     "name": "PI1_27",
+     "children": [
+      {
+       "name": "1.1",
+       "attributes": {
+        "startDate": "2027-01-01T00:00:00Z",
+        "finishDate": "2027-01-31T00:00:00Z"
+       }
+      },
+      {
+       "name": "1.2",
+       "attributes": {
+        "startDate": "2027-02-01T00:00:00Z",
+        "finishDate": "2027-02-28T00:00:00Z"
+       }
+      },
+      {
+       "name": "1.3",
+       "attributes": {
+        "startDate": "2027-03-01T00:00:00Z",
+        "finishDate": "2027-03-31T00:00:00Z"
+       }
+      }
+     ],
+     "attributes": {
+      "startDate": "2027-01-01T00:00:00Z",
+      "finishDate": "2027-03-31T00:00:00Z"
+     }
     }
    ]
   }

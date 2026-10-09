@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.3",
+  VERSION: "2.4",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -718,7 +718,7 @@ function helpHtml(first) {
     "<li><code>עזרה</code> להציג את ההסבר הזה שוב · <code>נקה</code> לנקות את השיחה</li></ul>" +
     "<b>חיפוש:</b> כתבו מילים במקום מספר, ותקבלו רשימה לבחירה (אחד, כמה או הכל). בכותרת מחפשים גם חלק ממילה, בתיאור מילים שלמות. עם מספרים בטקסט: <code>חפש: גרסה 2026</code>.<ul>" +
     "<li><code>ייצוא לאקסל</code> · <code>מסך חיפוש</code></li></ul>" +
-    "<b>פירוק פיצ'ר:</b> כפתור \"פירוק פיצ'ר\" למעלה, או <code>פרק: מסך שבו החשב רואה את המוסדות שקיבלו תמיכה</code>. מקבלים User Stories עם SP, עדיפות, תנאי קבלה, בדיקות ו-Tasks. אפשר להעתיק, להוריד CSV או Excel, ולשפר עם AI.<br>" +
+    "<b>פירוק פיצ'ר:</b> כפתור \"פירוק פיצ'ר\" למעלה, או <code>פרק: מסך שבו החשב רואה את המוסדות שקיבלו תמיכה</code>. מקבלים User Stories עם SP, עדיפות, תנאי קבלה, בדיקות ו-Tasks. אפשר להעתיק, להוריד CSV או Excel, לשפר עם AI, וליצור הכל ב-Azure אחרי אישור.<br>" +
     "<b>עדכון:</b> לחצו על תא בטבלה או על ✎, או כתבו פקודה. כל עדכון מוצג קודם לאישור.<ul>" +
     "<li><code>112074 State Resolved</code> · <code>110047 112074 Iteration 4.2</code></li>" +
     "<li><code>112074 שייך לאני</code> · <code>112074 Priority=2; Tags +SAP</code></li>" +

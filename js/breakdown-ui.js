@@ -109,11 +109,12 @@ const BreakdownUI = {
       this.btn("שיפור עם AI", "sm bd-ai", () => this.toggleAi(card, b, input)));
     const ag = this.agentCfg();
     if (ag) acts.append(this.btn(ag.label || "פירוק עם הסוכן", "sm bd-ai", e => this.runAgent(b, input, e.currentTarget)));
+    if (typeof BreakdownCreate !== "undefined") acts.append(this.btn("יצירה ב-Azure", "sm bd-create", () => BreakdownCreate.open(b, input)));
     acts.append(this.btn("פירוק מחדש", "ghost sm", () => this.open(Object.assign({keep: true}, input))));
     card.appendChild(acts);
 
     const note = document.createElement("div"); note.className = "bd-note";
-    note.textContent = "זו הצעה לבדיקה. בשלב הזה שום דבר לא נשמר ב-Azure.";
+    note.textContent = "זו הצעה לבדיקה. שום דבר לא נשמר ב-Azure עד שתלחצו \"יצירה ב-Azure\", תשלימו פרטים ותאשרו.";
     card.appendChild(note);
     el.appendChild(card);
     scrollDown();

@@ -127,6 +127,26 @@
   <figure class="lb"><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure>
 </div>
 
+<div class="tpanel hidden" id="bcPanel" role="dialog" aria-modal="true" aria-labelledby="bcTitle">
+  <div class="tp-head">
+    <h2 id="bcTitle">יצירת הפירוק ב-Azure</h2>
+    <span class="sp"></span>
+    <button class="btn ghost" id="bcClose" type="button">סגירה</button>
+  </div>
+  <div class="tp-body" id="bcBody"></div>
+  <div class="bc-foot hidden" id="bcFoot">
+    <div id="bcCheck" aria-live="polite"></div>
+    <div class="bc-foot-acts">
+      <button class="btn" type="button" id="bcGo" disabled>יש להשלים פרטים</button>
+      <div class="bc-confirm hidden" id="bcConfirm">
+        <span id="bcConfirmText"></span>
+        <button class="btn" type="button" id="bcYes">כן, ליצור</button>
+        <button class="btn ghost" type="button" id="bcNo">חזרה</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="tpanel hidden" id="teamPanel" role="dialog" aria-modal="true" aria-labelledby="teamTitle">
   <div class="tp-head">
     <h2 id="teamTitle">הגדרות לפתיחת פריט חדש</h2>
@@ -190,6 +210,7 @@
 <script src="js/search.js"></script>
 <script src="js/breakdown.js"></script>
 <script src="js/breakdown-ui.js"></script>
+<script src="js/breakdown-create.js"></script>
 <script src="js/core.js"></script>
 </body>
 </html>

@@ -11,7 +11,7 @@
 
 const BreakdownUI = {
   CMD: /^\s*(פרק|פרקי|פירוק(?:\s+פיצ['׳]?ר)?|breakdown)\s*[:：]\s*/i,
-  ENGINE_LABEL: {rules: "כללים פנימיים", ai: "שופר עם AI", agent: "סוכן"},
+  ENGINE_LABEL: {rules: "כללים פנימיים", ai: "שופר עם AI", agent: "סוכן", manual: "נערך ידנית"},
   last: null,
 
   match(text) { return this.CMD.test(text); },
@@ -70,6 +70,9 @@ const BreakdownUI = {
       '<span class="bd-pill" title="לפי ה-Skill, הערכת הפיצ\'ר מתחילה תמיד מ-3">פיצ\'ר: ' + b.feature.sp + " SP</span>" +
       '<span class="bd-pill bd-eng">' + escHtml(this.ENGINE_LABEL[b.engine] || b.engine) + "</span></div>" +
       (b.feature.value ? '<div class="bd-value"><span>ערך ללקוח:</span> ' + escHtml(b.feature.value) + "</div>" : "");
+    const pen = this.btn("✎ עריכת הפירוק", "ghost sm bd-pen", () => this.edit(el, b, input));
+    pen.title = "עריכה: לשנות, להוסיף או להוריד User Stories, תנאי קבלה, בדיקות ו-Tasks";
+    head.appendChild(pen);
     card.appendChild(head);
 
     const plan = document.createElement("div"); plan.className = "bd-plan";
@@ -89,6 +92,9 @@ const BreakdownUI = {
         '<div class="bd-sec"><h4>Acceptance Criteria</h4>' + ul(s.acceptance) + "</div>" +
         '<div class="bd-tests"><div class="bd-sec pos"><h4>בדיקות חיוביות</h4>' + ul(s.positive) + '</div><div class="bd-sec neg"><h4>בדיקות שליליות</h4>' + ul(s.negative) + "</div></div>" +
         '<div class="bd-sec"><h4>Tasks</h4>' + ul(s.tasks.map(t => t.title)) + "</div></details>";
+      const upen = this.btn("✎", "ghost sm bd-upen", () => this.edit(el, b, input, i));
+      upen.title = "עריכת US " + (i + 1); upen.setAttribute("aria-label", "עריכת US " + (i + 1));
+      li.querySelector(".bd-us-top").appendChild(upen);
       list.appendChild(li);
     });
     card.appendChild(list);
@@ -119,6 +125,96 @@ const BreakdownUI = {
     el.appendChild(card);
     scrollDown();
     return el;
+  },
+
+  /* ---------- editing the breakdown (✎): any change, add or remove parts, after the rules or the AI ---------- */
+  edit(el, b, input, focusIndex) {
+    const self = this;
+    el.innerHTML = "";
+    const card = document.createElement("div"); card.className = "bd bd-editing";
+    const head = document.createElement("div"); head.className = "bd-head";
+    head.innerHTML = '<div class="bd-title">✎ עריכת הפירוק</div><div class="bd-small">משנים כל שדה, מוחקים או מוסיפים User Stories. בתאים של תנאים, בדיקות ו-Tasks: שורה לכל פריט.</div>';
+    card.appendChild(head);
+    const field = (label, value, opts) => {
+      opts = opts || {};
+      const w = document.createElement("label"); w.className = "bd-f" + (opts.wide ? " wide" : "");
+      const l = document.createElement("span"); l.textContent = label;
+      let inp;
+      if (opts.lines) { inp = document.createElement("textarea"); inp.rows = Math.max(2, String(value || "").split("\n").length + 1); }
+      else if (opts.options) { inp = document.createElement("select"); opts.options.forEach(o => inp.add(new Option(o, o))); }
+      else { inp = document.createElement("input"); if (opts.number) { inp.type = "number"; inp.min = opts.min || "0"; } }
+      inp.className = "bd-in"; inp.value = value == null ? "" : value; inp.setAttribute("aria-label", label);
+      w.append(l, inp); return {w, inp};
+    };
+    // feature
+    const fbox = document.createElement("div"); fbox.className = "bd-ef";
+    const fTitle = field("שם הפיצ'ר", b.feature.title, {wide: true});
+    const fValue = field("ערך ללקוח", b.feature.value, {wide: true});
+    fbox.append(fTitle.w, fValue.w);
+    let fUi = null;
+    if (b.feature.ui) { fUi = field("פרומפט UI/UX", b.uiPrompt, {lines: true, wide: true}); fbox.appendChild(fUi.w); }
+    card.appendChild(fbox);
+    // stories
+    const list = document.createElement("div"); list.className = "bd-elist"; card.appendChild(list);
+    const pats = Object.values(BD_PATTERNS);
+    const rows = [];
+    const addRow = (s, focus) => {
+      const box = document.createElement("div"); box.className = "bd-eus";
+      const top = document.createElement("div"); top.className = "bd-eus-top";
+      const num = document.createElement("span"); num.className = "bd-num";
+      const del = this.btn("✕ מחיקת ה-US", "ghost sm bd-edel", () => { box.remove(); rows.splice(rows.indexOf(r), 1); renum(); });
+      top.append(num, del);
+      const grid = document.createElement("div"); grid.className = "bd-egrid";
+      const r = {box, num,
+        title: field("כותרת", s.title, {wide: true}), asA: field("כ... (סוג משתמש)", s.asA), iWant: field("אני רוצה...", s.iWant, {wide: true}),
+        soThat: field("כך ש...", s.soThat, {wide: true}), sp: field("Story Points", s.sp, {number: true, min: "2"}),
+        priority: field("עדיפות (1-4)", String(s.priority || 2), {options: ["1", "2", "3", "4"]}),
+        pattern: field("תבנית פירוק", s.pattern, {options: pats.includes(s.pattern) || !s.pattern ? pats : pats.concat([s.pattern])}),
+        acceptance: field("תנאי קבלה", (s.acceptance || []).join("\n"), {lines: true, wide: true}),
+        positive: field("בדיקות חיוביות", (s.positive || []).join("\n"), {lines: true, wide: true}),
+        negative: field("בדיקות שליליות", (s.negative || []).join("\n"), {lines: true, wide: true}),
+        tasks: field("Tasks", (s.tasks || []).map(t => t.title + (t.hours ? " (" + t.hours + " שעות)" : "")).join("\n"), {lines: true, wide: true})};
+      if (!s.pattern) r.pattern.inp.value = BD_PATTERNS.ops;
+      ["title", "asA", "sp", "priority", "pattern", "iWant", "soThat", "acceptance", "positive", "negative", "tasks"].forEach(k => grid.appendChild(r[k].w));
+      box.append(top, grid); list.appendChild(box); rows.push(r);
+      if (focus) { box.scrollIntoView({block: "nearest"}); r.title.inp.focus(); }
+      return r;
+    };
+    const renum = () => rows.forEach((r, k) => { r.num.textContent = "US " + (k + 1); });
+    b.stories.forEach((s, k) => addRow(s, false));
+    renum();
+    const err = document.createElement("div"); err.className = "bd-err hidden"; err.setAttribute("role", "alert");
+    const acts = document.createElement("div"); acts.className = "bd-acts";
+    const add = this.btn("+ User Story", "ghost sm bd-eadd", () => { addRow({asA: b.role || input.role || "משתמש", soThat: b.feature.value || "", sp: 2, priority: 4, pattern: BD_PATTERNS.ops}, true); renum(); });
+    const save = this.btn("שמירת השינויים", "sm bd-esave", () => {
+      const lines = v => String(v || "").split("\n").map(x => BreakdownEngine.clean(x.replace(/^\s*(?:\d+[.)]|[-•*–])\s*/, ""))).filter(Boolean);
+      const stories = [], bad = [];
+      rows.forEach((r, k) => {
+        const title = BreakdownEngine.clean(r.title.inp.value), want = BreakdownEngine.clean(r.iWant.inp.value);
+        if (!title && !want) { bad.push("US " + (k + 1) + ": חסרים כותרת וניסוח"); return; }
+        const tasks = lines(r.tasks.inp.value).map(t => {
+          const hm = /\(?\s*(\d+(?:\.\d+)?)\s*(?:ש(?:עות|')?|h|hours?)\s*\)?\s*$/i.exec(t);
+          return hm ? {title: BreakdownEngine.clean(t.slice(0, hm.index)).replace(/[-–:,]\s*$/, ""), hours: Number(hm[1])} : {title: t};
+        });
+        stories.push({title, asA: BreakdownEngine.clean(r.asA.inp.value) || "משתמש", iWant: want, soThat: BreakdownEngine.clean(r.soThat.inp.value),
+          pattern: r.pattern.inp.value, sp: Number(r.sp.inp.value) || 2, priority: Number(r.priority.inp.value) || 2,
+          acceptance: lines(r.acceptance.inp.value), positive: lines(r.positive.inp.value), negative: lines(r.negative.inp.value), tasks: tasks.length ? tasks : null});
+      });
+      if (!stories.length) bad.push("צריך לפחות User Story אחד");
+      if (bad.length) { err.textContent = bad.join(" · "); err.classList.remove("hidden"); return; }
+      const nb = BreakdownEngine.finish({feature: {title: BreakdownEngine.clean(fTitle.inp.value) || b.feature.title, value: BreakdownEngine.clean(fValue.inp.value), ui: b.feature.ui},
+        role: stories[0].asA, uiPrompt: fUi ? fUi.inp.value.trim() : "", stories}, "manual");
+      if (b.feature.ui && !nb.uiPrompt) nb.uiPrompt = "";
+      self.render(nb, Object.assign({}, input, {value: nb.feature.value}), el);
+      toast("הפירוק עודכן");
+    });
+    const cancel = this.btn("ביטול", "ghost sm", () => self.render(b, input, el));
+    acts.append(add, save, cancel);
+    card.append(err, acts);
+    el.appendChild(card);
+    const target = focusIndex != null ? rows[focusIndex] : null;
+    (target ? target.box : card).scrollIntoView({block: "start"});
+    if (target) target.title.inp.focus();
   },
 
   btn(text, cls, fn) {

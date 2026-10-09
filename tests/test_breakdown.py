@@ -178,6 +178,32 @@ with sync_playwright() as p:
     pg.click("#bdBtn"); pg.locator("#bdImportFile").set_input_files(files=[{"name": "x.csv", "mimeType": "text/csv", "buffer": "a,b\n1,2".encode("utf-8")}]); pg.wait_for_timeout(400)
     check("dialog: wrong file explained", pg.is_visible("#bdErr") and "US Name" in pg.inner_text("#bdErr"), pg.inner_text("#bdErr"))
     pg.click("#bdCancel")
+    # ✎ edit the breakdown after the AI: change, remove and add parts
+    bd = pg.locator(".bd").last
+    n0 = bd.locator(".bd-us").count()
+    bd.locator(".bd-us").first.locator(".bd-upen").click()
+    ed = pg.locator(".bd-editing").last; ed.wait_for()
+    check("per-US pencil opens the editor on that US", pg.evaluate("document.activeElement.getAttribute('aria-label')") == "כותרת" and ed.locator(".bd-eus").count() == n0)
+    ed.locator(".bd-eus").first.locator("input[aria-label='כותרת']").fill("כותרת שנערכה ידנית")
+    ed.locator(".bd-eus").first.locator("textarea[aria-label='תנאי קבלה']").fill("תנאי חדש 1\nתנאי חדש 2")
+    ed.locator(".bd-eus").first.locator("textarea[aria-label='Tasks']").fill("פיתוח: משהו (5 שעות)\nבדיקות QA: משהו")
+    ed.locator(".bd-eadd").click()
+    newb = ed.locator(".bd-eus").last
+    newb.locator("input[aria-label='כותרת']").fill("US שנוסף ביד"); newb.locator("input[aria-label='אני רוצה...']").fill("להוסיף דבר חדש")
+    ed.locator(".bd-esave").click(); pg.wait_for_timeout(300)
+    bd = pg.locator(".bd").last; t = bd.inner_text()
+    check("edit saved: changed, added, label 'נערך ידנית'", "כותרת שנערכה ידנית" in t and "US שנוסף ביד" in t and "נערך ידנית" in t and bd.locator(".bd-us").count() == n0 + 1, t[:300])
+    bd.locator(".bd-pen").click(); ed = pg.locator(".bd-editing").last; ed.wait_for()
+    ed.locator(".bd-eus").first.locator(".bd-edel").click()
+    ed.locator(".bd-esave").click(); pg.wait_for_timeout(300)
+    bd = pg.locator(".bd").last
+    check("edit: a US can be removed", bd.locator(".bd-us").count() == n0, bd.locator(".bd-us").count())
+    bd.locator(".bd-pen").click(); ed = pg.locator(".bd-editing").last; ed.wait_for()
+    for i in range(ed.locator(".bd-eus").count()): ed.locator(".bd-eus").first.locator(".bd-edel").click()
+    ed.locator(".bd-esave").click()
+    check("edit: cannot save an empty breakdown", ed.locator(".bd-err").is_visible() and "לפחות" in ed.locator(".bd-err").inner_text())
+    ed.locator("button", has_text="ביטול").click(); pg.wait_for_timeout(200)
+    check("edit: cancel keeps the last saved breakdown", pg.locator(".bd").last.locator(".bd-us").count() == n0)
     pg.fill("#input", "עזרה"); pg.keyboard.press("Enter"); pg.wait_for_timeout(300)
     check("help mentions the breakdown", "פירוק פיצ'ר" in pg.locator(".msg.bot").last.inner_text())
     # phone

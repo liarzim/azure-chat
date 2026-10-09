@@ -83,6 +83,27 @@ with sync_playwright() as p:
     pg.check('input[name="bcEpicQ"][value="1"]'); pg.fill("#bcEpic", "900001"); pg.locator("#bcEpicInfo.parentcard").wait_for(timeout=5000)
     check("Epic card shows its title", "Epic" in pg.inner_text("#bcEpicInfo") and "900001" in pg.inner_text("#bcEpicInfo"))
     fill_all(pg)
+    # edit everything about a US before it is sent
+    us0 = pg.locator(".bc-us").first
+    us0.locator("details.bc-edit > summary").click()
+    us0.locator("input[aria-label='אני רוצה...']").fill("לבדוק את הממשק מול מרכבה בגרסה ערוכה")
+    us0.locator("textarea[aria-label='תנאי קבלה (שורה לכל תנאי)']").fill("תנאי ערוך א\nתנאי ערוך ב")
+    us0.locator("textarea[aria-label='בדיקות שליליות (שורה לכל בדיקה)']").fill("שלילית ערוכה")
+    us0.locator("select[aria-label='תבנית פירוק']").select_option("Workflow")
+    us0.locator(".bc-add-task").click()
+    us0.locator(".bc-task").last.locator(".bc-title").fill("Task חדש שנוסף")
+    us0.locator(".bc-task").nth(0).locator(".bc-del").click()
+    pg.wait_for_timeout(400)
+    us0.locator(".bc-edit details > summary").click()
+    pv = us0.locator(".bc-preview").inner_text()
+    check("edited US: Description preview follows the edits", "בגרסה ערוכה" in pv and "תנאי ערוך ב" in pv and "שלילית ערוכה" in pv and "Workflow" in pv, pv[:300])
+    pg.locator(".bc-add-us").click(); pg.wait_for_timeout(300)
+    newus = pg.locator(".bc-us").last
+    check("+ User Story adds an empty card that must be filled", "חסרה כותרת" in pg.inner_text("#bcCheck") or pg.locator("#bcGo").is_disabled(), pg.inner_text("#bcCheck"))
+    newus.locator(".bc-del-us").click(); pg.wait_for_timeout(400)
+    n_tasks = pg.locator(".bc-task").count()
+    for i in range(n_tasks): pg.locator(".bc-est").nth(i).fill(str(2 + i % 3))
+    pg.wait_for_timeout(400)
     # leave out the last US
     last = pg.locator(".bc-us").last; last.locator(".bc-us-top input[type=checkbox]").uncheck(); pg.wait_for_timeout(500)
     chk = pg.inner_text("#bcCheck")
@@ -110,9 +131,13 @@ with sync_playwright() as p:
     check("Feature Description: template headings filled", "תאור הדרישה" in F["System.Description"] and "המוסדות שקיבלו תמיכה" in F["System.Description"] and "החשב יודע מהר" in F["System.Description"] and "סינון לפי שנה" in F["System.Description"], F["System.Description"][:300])
     U = uss[0]["fields"]
     check("US under the Feature, area from Feature, shared fields, sprint", all(u["fields"].get("System.Parent") == feat[0]["id"] for u in uss) and U.get("Custom.LeadingSquad") == "CRM" and U.get("Custom.Customer") == "סיגמה" and U["System.IterationPath"].endswith("4.1") and U.get("System.Tags") == "אז'ורי-פירוק", U)
-    d = U["System.Description"]
+    d = next(u for u in uss if "בגרסה ערוכה" not in u["fields"]["System.Description"])["fields"]["System.Description"]
     check("US Description: template headings, sentence, criteria and 3+3 tests", "תאור הדרישה" in d and "כחשב, אני רוצה" in d and "בדיקות חיוביות" in d and "בדיקות שליליות" in d and d.count("<li>") >= 9, d[:400])
     us_ids = {u["id"] for u in uss}
+    e0 = next(u for u in uss if "בגרסה ערוכה" in u["fields"]["System.Description"])
+    check("edited US content reached Azure", "תנאי ערוך א" in e0["fields"]["System.Description"] and "שלילית ערוכה" in e0["fields"]["System.Description"], e0["fields"]["System.Description"][:300])
+    e0_tasks = [t["fields"]["System.Title"] for t in tks if t["fields"].get("System.Parent") == e0["id"]]
+    check("added Task created, deleted Task not", "Task חדש שנוסף" in e0_tasks and not any(t.startswith("בדיקת היתכנות") for t in e0_tasks), e0_tasks)
     check("Tasks under their US, with estimate and the US sprint", all(t["fields"].get("System.Parent") in us_ids and t["fields"].get("Microsoft.VSTS.Scheduling.OriginalEstimate") in (2, 3, 4) for t in tks)
           and all(t["fields"]["System.IterationPath"] == next(u for u in uss if u["id"] == t["fields"]["System.Parent"])["fields"]["System.IterationPath"] for t in tks), tks[:2])
     pg.locator(".bc-done button", has_text="הצגה בטבלה").click(); pg.wait_for_timeout(1500)

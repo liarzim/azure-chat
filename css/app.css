@@ -433,3 +433,13 @@ header h2 .org{color:var(--muted);font-weight:500;font-size:14px}
 .bc-warn{display:block;color:var(--bad);font-size:12px;font-weight:600;margin-top:4px}
 .bc-warn.hidden{display:none}
 .bc-done-f{font-weight:600;margin-top:6px}
+.bc-edit > summary{font-weight:600}
+.bc-edit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:8px}
+.bc-edit-grid .bc-want,.bc-edit-grid .bc-so,.bc-edit-grid .bc-lines{grid-column:1/-1}
+.bc-ta{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font:inherit;color:inherit;resize:vertical;line-height:1.5}
+.bc-sel{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font:inherit;color:inherit}
+.bc-lines > span,.bc-edit-grid .bc-lab > span:first-child{font-weight:600;color:var(--ink)}
+.bc-del{padding:4px 8px;color:var(--bad)}
+.bc-us-acts{display:flex;gap:8px;margin-top:8px}
+.bc-del-us{color:var(--bad)}
+.bc-add-us{margin-top:10px}

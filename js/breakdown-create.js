@@ -176,60 +176,128 @@ const BreakdownCreate = {
       taskReq.forEach(ref => this.addEditor("Task", ref, this.featureVal(ref), tGrid, s.taskEd, "חובה"));
     } else ss.appendChild(tGrid);
 
-    // 3. Stories and tasks
+    // 4. Stories and tasks: everything editable before anything is sent
     const st = this.section(body, "4. User Stories ו-Tasks");
-    const um = s.metas["User Story"];
+    const stNote = document.createElement("p"); stNote.className = "muted";
+    stNote.textContent = "אפשר לערוך כל US לפני היצירה: כותרת, ניסוח, תנאי קבלה, בדיקות ו-Tasks. אפשר גם להוסיף US ו-Tasks או להוריד אותם.";
+    st.appendChild(stNote);
+    s.usList = document.createElement("div"); st.appendChild(s.usList);
     const sprintOf = new Map(); b.sprints.forEach((ix, k) => ix.forEach(i => sprintOf.set(i, k)));
-    b.stories.forEach((story, i) => {
-      const card = document.createElement("div"); card.className = "bc-us";
-      const top = document.createElement("div"); top.className = "bc-us-top";
-      const inc = document.createElement("input"); inc.type = "checkbox"; inc.checked = true; inc.setAttribute("aria-label", "ליצור את US " + (i + 1));
-      const num = document.createElement("span"); num.className = "bd-num"; num.textContent = "US " + (i + 1);
-      const title = document.createElement("input"); title.className = "bc-title"; title.value = story.title; title.setAttribute("aria-label", "כותרת US " + (i + 1));
-      top.append(inc, num, title);
-      const row = document.createElement("div"); row.className = "bc-us-fields";
-      const rec = {story, i, sprint: sprintOf.has(i) ? sprintOf.get(i) : 0, card, inc, title, tasks: [], spv: null, iter: null, iterTouched: false};
-      if (um.byRef.has(BD_REF.spv)) {
-        const f = um.byRef.get(BD_REF.spv);
-        rec.spv = makeEditor(f, bdSpValue(story.sp, f.allowed), {type: "User Story", meta: um, onChange: () => this.refresh()});
-        const ssel = rec.spv.el.querySelector("select"); if (ssel) ssel.dir = "ltr";
-        row.appendChild(this.labeled("Story Points Values", rec.spv.el, "בפירוק: \u2066" + story.sp + " SP\u2069"));
-      }
-      const fi = um.byRef.get(BD_REF.iter);
-      if (fi) {
-        rec.iter = makeEditor(fi, s.defaults.iter, {type: "User Story", meta: um, onChange: () => { rec.iterTouched = true; rec.noSprint = false; this.refresh(); }});
-        const lab = this.labeled("Iteration", rec.iter.el, "ספרינט " + (rec.sprint + 1) + " בתכנון");
-        rec.warn = document.createElement("span"); rec.warn.className = "bc-warn hidden"; rec.warn.textContent = "אין ספרינט: ה-PI הבא עוד לא קיים ב-Azure. בחרו Iteration או הורידו את הסימון.";
-        lab.appendChild(rec.warn);
-        row.appendChild(lab);
-      }
-      const tl = document.createElement("div"); tl.className = "bc-tasks";
-      story.tasks.forEach((t, k) => {
-        const tr = document.createElement("div"); tr.className = "bc-task";
-        const tinc = document.createElement("input"); tinc.type = "checkbox"; tinc.checked = true; tinc.setAttribute("aria-label", "ליצור את ה-Task");
-        const tt = document.createElement("input"); tt.className = "bc-title"; tt.value = t.title; tt.setAttribute("aria-label", "כותרת Task " + (k + 1) + " של US " + (i + 1));
-        const est = document.createElement("input"); est.type = "number"; est.min = "0"; est.step = "0.5"; est.className = "bc-est"; est.placeholder = "שעות";
-        est.setAttribute("aria-label", "Original Estimate (שעות) של " + t.title);
-        if (t.hours != null && t.hours !== "") est.value = t.hours;
-        [tinc, tt, est].forEach(x => x.addEventListener(x.type === "checkbox" ? "change" : "input", () => this.refresh()));
-        tr.append(tinc, tt, est); tl.appendChild(tr);
-        rec.tasks.push({inc: tinc, title: tt, est, row: tr});
-      });
-      const th = document.createElement("div"); th.className = "bc-th"; th.innerHTML = "<span>Tasks</span><span>Original Estimate (שעות)</span>";
-      const dd = document.createElement("details"); dd.className = "bc-desc";
-      dd.innerHTML = "<summary>Description של ה-US</summary>";
-      const pv = document.createElement("div"); pv.className = "bc-preview"; pv.innerHTML = bdStoryDescription(story, b); dd.appendChild(pv);
-      card.append(top, row, dd, th, tl);
-      inc.onchange = () => { card.classList.toggle("off", !inc.checked); this.refresh(); };
-      title.oninput = () => this.refresh();
-      st.appendChild(card);
-      s.stories.push(rec);
+    b.stories.forEach((story, i) => this.addStory(JSON.parse(JSON.stringify(story)), sprintOf.has(i) ? sprintOf.get(i) : 0));
+    const addUs = this.btnEl("+ User Story", "ghost sm bc-add-us", () => {
+      const last = s.stories.length ? Math.max(...s.stories.map(r => r.sprint)) : 0;
+      const role = s.b.role || "משתמש";
+      const rec = this.addStory({title: "", asA: role, iWant: "", soThat: s.b.feature.value || "", pattern: BD_PATTERNS.ops, sp: 2, priority: 4,
+        acceptance: [], positive: [], negative: [], tasks: [{title: "פיתוח: "}, {title: "בדיקות QA: "}]}, last);
+      this.assignSprints(); rec.details.open = true; rec.title.focus(); this.refresh();
     });
+    st.appendChild(addUs);
     this.updateSprints();
     $("bcFoot").classList.remove("hidden");
     $("bcConfirm").classList.add("hidden");
     $("bcGo").classList.remove("hidden");
     this.refresh();
+  },
+
+  btnEl(text, cls, fn) { const b = document.createElement("button"); b.type = "button"; b.className = "btn " + cls; b.textContent = text; b.onclick = fn; return b; },
+  /* A text area holding one item per line (criteria, tests). */
+  linesEl(label, arr, onChange) {
+    const w = document.createElement("label"); w.className = "bc-lab bc-lines";
+    const l = document.createElement("span"); l.textContent = label;
+    const ta = document.createElement("textarea"); ta.className = "bc-ta"; ta.rows = Math.max(3, (arr || []).length + 1); ta.value = (arr || []).join("\n");
+    ta.setAttribute("aria-label", label);
+    ta.oninput = () => onChange(ta.value.split("\n").map(x => x.trim()).filter(Boolean));
+    w.append(l, ta); return w;
+  },
+  inputEl(label, value, onChange, cls) {
+    const w = document.createElement("label"); w.className = "bc-lab " + (cls || "");
+    const l = document.createElement("span"); l.textContent = label;
+    const inp = document.createElement("input"); inp.className = "bc-title"; inp.value = value || ""; inp.setAttribute("aria-label", label);
+    inp.oninput = () => onChange(inp.value.trim());
+    w.append(l, inp); return w;
+  },
+  /* One US card. story is the screen's own copy, edited in place. */
+  addStory(story, sprint) {
+    const s = this.s, b = s.b, um = s.metas["User Story"];
+    const i = s.stories.length ? Math.max(...s.stories.map(r => r.i)) + 1 : 0;
+    const card = document.createElement("div"); card.className = "bc-us";
+    const top = document.createElement("div"); top.className = "bc-us-top";
+    const inc = document.createElement("input"); inc.type = "checkbox"; inc.checked = true; inc.setAttribute("aria-label", "ליצור את US " + (i + 1));
+    const num = document.createElement("span"); num.className = "bd-num"; num.textContent = "US " + (i + 1);
+    const title = document.createElement("input"); title.className = "bc-title"; title.value = story.title; title.setAttribute("aria-label", "כותרת US " + (i + 1));
+    title.placeholder = "כותרת ה-US";
+    top.append(inc, num, title);
+    const row = document.createElement("div"); row.className = "bc-us-fields";
+    const rec = {story, i, sprint, card, inc, title, tasks: [], spv: null, iter: null, iterTouched: false};
+    if (um.byRef.has(BD_REF.spv)) {
+      const f = um.byRef.get(BD_REF.spv);
+      rec.spv = makeEditor(f, bdSpValue(story.sp, f.allowed), {type: "User Story", meta: um, onChange: () => this.refresh()});
+      const ssel = rec.spv.el.querySelector("select"); if (ssel) ssel.dir = "ltr";
+      row.appendChild(this.labeled("Story Points Values", rec.spv.el, "בפירוק: \u2066" + story.sp + " SP\u2069"));
+    }
+    const fi = um.byRef.get(BD_REF.iter);
+    if (fi) {
+      rec.iter = makeEditor(fi, s.defaults.iter, {type: "User Story", meta: um, onChange: () => { rec.iterTouched = true; rec.noSprint = false; this.refresh(); }});
+      const lab = this.labeled("Iteration", rec.iter.el, "ספרינט " + (sprint + 1) + " בתכנון");
+      rec.warn = document.createElement("span"); rec.warn.className = "bc-warn hidden"; rec.warn.textContent = "אין ספרינט: ה-PI הבא עוד לא קיים ב-Azure. בחרו Iteration או הורידו את הסימון.";
+      lab.appendChild(rec.warn);
+      row.appendChild(lab);
+    }
+    // the US content: sentence, pattern, criteria, tests, with a live Description preview
+    const dd = document.createElement("details"); dd.className = "bc-desc bc-edit";
+    dd.innerHTML = "<summary>עריכת ה-US: ניסוח, תנאי קבלה ובדיקות</summary>";
+    const ed = document.createElement("div"); ed.className = "bc-edit-grid";
+    const changed = () => { this.refresh(); };
+    ed.append(
+      this.inputEl("כ... (סוג משתמש)", story.asA, v => { story.asA = v; changed(); }, "bc-as"),
+      this.inputEl("אני רוצה...", story.iWant, v => { story.iWant = v; changed(); }, "bc-want"),
+      this.inputEl("כך ש...", story.soThat, v => { story.soThat = v; changed(); }, "bc-so"));
+    const pw = document.createElement("label"); pw.className = "bc-lab";
+    const pl = document.createElement("span"); pl.textContent = "תבנית פירוק";
+    const psel = document.createElement("select"); psel.className = "bc-sel"; psel.setAttribute("aria-label", "תבנית פירוק");
+    const pats = Object.values(BD_PATTERNS);
+    if (story.pattern && !pats.includes(story.pattern)) pats.push(story.pattern);
+    pats.forEach(x => psel.add(new Option(x, x))); psel.value = story.pattern || BD_PATTERNS.ops;
+    story.pattern = psel.value;
+    psel.onchange = () => { story.pattern = psel.value; changed(); };
+    pw.append(pl, psel); ed.appendChild(pw);
+    ed.append(
+      this.linesEl("תנאי קבלה (שורה לכל תנאי)", story.acceptance, v => { story.acceptance = v; changed(); }),
+      this.linesEl("בדיקות חיוביות (שורה לכל בדיקה)", story.positive, v => { story.positive = v; changed(); }),
+      this.linesEl("בדיקות שליליות (שורה לכל בדיקה)", story.negative, v => { story.negative = v; changed(); }));
+    const pvd = document.createElement("details"); pvd.className = "bc-desc";
+    pvd.innerHTML = "<summary>תצוגה מקדימה של ה-Description</summary>";
+    rec.preview = document.createElement("div"); rec.preview.className = "bc-preview"; pvd.appendChild(rec.preview);
+    dd.append(ed, pvd);
+    rec.details = dd;
+    const tl = document.createElement("div"); tl.className = "bc-tasks";
+    const th = document.createElement("div"); th.className = "bc-th"; th.innerHTML = "<span>Tasks</span><span>Original Estimate (שעות)</span>";
+    const addTask = t => {
+      const tr = document.createElement("div"); tr.className = "bc-task";
+      const tinc = document.createElement("input"); tinc.type = "checkbox"; tinc.checked = true; tinc.setAttribute("aria-label", "ליצור את ה-Task");
+      const tt = document.createElement("input"); tt.className = "bc-title"; tt.value = t.title || ""; tt.placeholder = "כותרת ה-Task";
+      tt.setAttribute("aria-label", "כותרת Task של US " + (i + 1));
+      const est = document.createElement("input"); est.type = "number"; est.min = "0"; est.step = "0.5"; est.className = "bc-est"; est.placeholder = "שעות";
+      est.setAttribute("aria-label", "Original Estimate (שעות) של " + (t.title || "Task"));
+      if (t.hours != null && t.hours !== "") est.value = t.hours;
+      const tr_ = {inc: tinc, title: tt, est, row: tr};
+      const del = this.btnEl("✕", "ghost sm bc-del", () => { tr.remove(); rec.tasks.splice(rec.tasks.indexOf(tr_), 1); this.refresh(); });
+      del.title = "מחיקת ה-Task"; del.setAttribute("aria-label", "מחיקת ה-Task");
+      [tinc, tt, est].forEach(x => x.addEventListener(x.type === "checkbox" ? "change" : "input", () => this.refresh()));
+      tr.append(tinc, tt, est, del); tl.appendChild(tr);
+      rec.tasks.push(tr_);
+      return tr_;
+    };
+    (story.tasks || []).forEach(addTask);
+    const plusTask = this.btnEl("+ Task", "ghost sm bc-add-task", () => { const t = addTask({title: ""}); t.title.focus(); this.refresh(); });
+    const delUs = this.btnEl("מחיקת ה-US", "ghost sm bc-del-us", () => { card.remove(); s.stories.splice(s.stories.indexOf(rec), 1); this.refresh(); });
+    const acts = document.createElement("div"); acts.className = "bc-us-acts"; acts.append(plusTask, delUs);
+    card.append(top, row, dd, th, tl, acts);
+    inc.onchange = () => { card.classList.toggle("off", !inc.checked); this.refresh(); };
+    title.oninput = () => this.refresh();
+    s.usList.appendChild(card);
+    s.stories.push(rec);
+    return rec;
   },
 
   section(body, title) {
@@ -455,7 +523,9 @@ const BreakdownCreate = {
       this.put(ch, "User Story", BD_REF.title, r.title.value.trim());
       this.put(ch, "User Story", BD_REF.area, area);
       this.put(ch, "User Story", BD_REF.iter, r.iter ? r.iter.get() : s.defaults.iter);
-      this.put(ch, "User Story", BD_REF.desc, bdStoryDescription(Object.assign({}, r.story, {title: r.title.value.trim()}), s.b));
+      const udesc = bdStoryDescription(Object.assign({}, r.story, {title: r.title.value.trim()}), s.b);
+      if (r.preview && r.preview.dataset.html !== udesc) { r.preview.innerHTML = udesc; r.preview.dataset.html = udesc; }
+      this.put(ch, "User Story", BD_REF.desc, udesc);
       if (r.spv) this.put(ch, "User Story", BD_REF.spv, r.spv.get());
       this.put(ch, "User Story", BD_REF.tags, BD_TAG);
       const plan = await Edit.plan(this.newItem("User Story"), ch, "");
@@ -520,6 +590,8 @@ const BreakdownCreate = {
         if (!y.t.title.value.trim()) msgs.push("Task בלי כותרת ב-US " + (x.r.i + 1));
       });
       x.r.title.classList.toggle("needed", !x.r.title.value.trim());
+      if (!x.r.title.value.trim()) msgs.push("US " + (x.r.i + 1) + ": חסרה כותרת");
+      if (!String(x.r.story.iWant || "").trim()) msgs.push("US " + (x.r.i + 1) + ": חסר \"אני רוצה...\" בניסוח");
     });
     s.usEd.forEach(({row}, ref) => row.classList.toggle("needed", usMissing.has(ref)));
     s.taskEd.forEach(({row}, ref) => row.classList.toggle("needed", taskMissing.has(ref)));

@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.2.1",
+  VERSION: "2.3",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -593,8 +593,8 @@ function xlsxFileName() {
 }
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-async function downloadXlsx(t, btn) {
-  const name = xlsxFileName();
+async function downloadXlsx(t, btn, fileName) {
+  const name = fileName || xlsxFileName();
   // Ask for the save location first, while the click still counts as a user action.
   let handle = null;
   if (window.showSaveFilePicker) {
@@ -703,7 +703,7 @@ function welcomeHtml() {
   const first = (Auth.userName || "").trim().split(/\s+/)[0];
   return '<div class="hello"><img class="hello-bot" src="img/azuri.svg" alt="" width="84" height="84"><div>' +
     "<h3>היי" + (first ? " " + escHtml(first) : "") + ", אני אז'ורי!</h3>" +
-    "<p>תנו לי מספר של פריט, או כמה מילים לחיפוש, ואביא לכם את הפריטים בטבלה מסודרת. אפשר גם לעדכן פריטים ולפתוח חדשים.</p>" +
+    "<p>תנו לי מספר של פריט, או כמה מילים לחיפוש, ואביא לכם את הפריטים בטבלה מסודרת. אפשר גם לעדכן פריטים, לפתוח חדשים ולפרק פיצ'ר ל-User Stories.</p>" +
     '<p class="hello-tip">לדוגמה <code>110047</code>, <code>ייצוא לאקסל</code> או <code>112074 State Resolved</code>. כל הפקודות: <code>עזרה</code> או ה<a href="help.html#usage" target="_blank" rel="noopener">מדריך</a>.</p>' +
     "</div></div>";
 }
@@ -718,6 +718,7 @@ function helpHtml(first) {
     "<li><code>עזרה</code> להציג את ההסבר הזה שוב · <code>נקה</code> לנקות את השיחה</li></ul>" +
     "<b>חיפוש:</b> כתבו מילים במקום מספר, ותקבלו רשימה לבחירה (אחד, כמה או הכל). בכותרת מחפשים גם חלק ממילה, בתיאור מילים שלמות. עם מספרים בטקסט: <code>חפש: גרסה 2026</code>.<ul>" +
     "<li><code>ייצוא לאקסל</code> · <code>מסך חיפוש</code></li></ul>" +
+    "<b>פירוק פיצ'ר:</b> כפתור \"פירוק פיצ'ר\" למעלה, או <code>פרק: מסך שבו החשב רואה את המוסדות שקיבלו תמיכה</code>. מקבלים User Stories עם SP, עדיפות, תנאי קבלה, בדיקות ו-Tasks. אפשר להעתיק, להוריד CSV או Excel, ולשפר עם AI.<br>" +
     "<b>עדכון:</b> לחצו על תא בטבלה או על ✎, או כתבו פקודה. כל עדכון מוצג קודם לאישור.<ul>" +
     "<li><code>112074 State Resolved</code> · <code>110047 112074 Iteration 4.2</code></li>" +
     "<li><code>112074 שייך לאני</code> · <code>112074 Priority=2; Tags +SAP</code></li>" +
@@ -785,6 +786,7 @@ async function handleInput(text) {
   const req = parseRequest(text);
   if (req.cmd === "help") { addMsg("bot", helpHtml(false)); return; }
   if (req.cmd === "clear") { msgs.innerHTML = ""; addMsg("bot", helpHtml(true)); return; }
+  if (typeof BreakdownUI !== "undefined" && BreakdownUI.match(text)) { BreakdownUI.open({text: BreakdownUI.fromChat(text)}); return; }
   if (ChatSearch.explicit(text)) return ChatSearch.run(ChatSearch.queryFrom(text));
   const cr = ChatCreate.parse(text);
   if (cr) {

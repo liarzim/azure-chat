@@ -47,6 +47,7 @@
     <h2><img class="logo" src="img/azuri-face.svg" alt="" width="30" height="30"><span>אז'ורי</span> <span class="org">· <span id="orgName"></span></span></h2>
     <span class="who" id="who"></span>
     <button class="btn" id="newBtn">+ פריט חדש</button>
+    <button class="btn bdbtn" id="bdBtn" title="פירוק פיצ'ר ל-User Stories ו-Tasks">פירוק פיצ'ר</button>
     <div class="menuwrap">
       <button class="btn ghost" id="setMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="setMenu">הגדרות <span aria-hidden="true">▾</span></button>
       <div class="menu hidden" id="setMenu" role="menu">
@@ -91,6 +92,33 @@
       <button class="btn ghost" type="button" id="setCancel">ביטול</button>
       <span class="sp"></span>
       <button class="btn ghost" type="button" id="setReset">איפוס לברירת המחדל של הצוות</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="bdDlg" role="dialog" aria-modal="true" aria-labelledby="bdTitle">
+  <div class="dialog bd-dialog">
+    <div class="dlg-head">
+      <h3 id="bdTitle">פירוק פיצ'ר</h3>
+      <p>כתבו במילים שלכם מה הפיצ'ר צריך לעשות. אז'ורי יפרק אותו ל-User Stories עם תנאי קבלה, בדיקות ו-Tasks. בשלב הזה שום דבר לא נשמר ב-Azure.</p>
+    </div>
+    <div class="dlg-body">
+      <label for="bdText">מה הפיצ'ר שרוצים לעשות? <span class="req">*</span></label>
+      <textarea id="bdText" class="bd-in" rows="5" placeholder="לדוגמה: מסך שבו החשב רואה את כל המוסדות שקיבלו תמיכה, עם סינון לפי שנה וסכום וייצוא לאקסל"></textarea>
+      <label for="bdValue">מה הערך העסקי ללקוח? <span class="req">*</span></label>
+      <textarea id="bdValue" class="bd-in" rows="2" placeholder="לדוגמה: החשב יודע תוך דקה כמה מוסדות קיבלו תמיכה, בלי לבקש דוח"></textarea>
+      <label for="bdRole">מי המשתמש העיקרי?</label>
+      <input id="bdRole" class="bd-in" placeholder="לדוגמה: חשב, רכזת, מנהל מערכת">
+      <fieldset class="bd-ui">
+        <legend>האם נדרש UI/UX? <span class="req">*</span></legend>
+        <label><input type="radio" name="bdUi" value="1"> כן</label>
+        <label><input type="radio" name="bdUi" value="0"> לא</label>
+      </fieldset>
+      <div class="bd-err hidden" id="bdErr" role="alert"></div>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn" type="button" id="bdGo">פירוק</button>
+      <button class="btn ghost" type="button" id="bdCancel">ביטול</button>
     </div>
   </div>
 </div>
@@ -160,6 +188,8 @@
 <script src="js/pickers.js"></script>
 <script src="js/edit.js"></script>
 <script src="js/search.js"></script>
+<script src="js/breakdown.js"></script>
+<script src="js/breakdown-ui.js"></script>
 <script src="js/core.js"></script>
 </body>
 </html>

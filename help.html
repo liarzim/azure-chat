@@ -184,6 +184,33 @@
     <p class="note">פקודה בצ'אט רק פותחת טופס ממולא. הפריט נוצר רק אחרי לחיצה על <b>יצירת [סוג] ב-Azure</b>.</p>
   </div>
 
+  <div class="block" id="breakdown">
+    <h2>פירוק פיצ'ר</h2>
+    <p>כותבים במילים פשוטות מה הפיצ'ר צריך לעשות, ואז'ורי מפרק אותו ל-User Stories לפי ה-Skill של הצוות (Agile Feature Breakdown). בשלב הזה רק מציגים את הפירוק. <b>שום דבר לא נשמר ב-Azure.</b></p>
+    <ul>
+      <li>לוחצים על <b>פירוק פיצ'ר</b> למעלה, או כותבים בצ'אט <code>פרק: </code> ואחריו תיאור הפיצ'ר.</li>
+      <li>עונים על שתי שאלות חובה: <b>מה הערך העסקי ללקוח</b>, והאם <b>נדרש UI/UX</b>. אפשר גם לכתוב מי המשתמש העיקרי (חשב, רכזת וכו').</li>
+    </ul>
+    <figure><a href="help/img/app-8-breakdown.png" target="_blank"><img src="help/img/app-8-breakdown.png" alt="חלון פירוק פיצ'ר עם תיאור, ערך עסקי, משתמש ושאלת UI/UX" loading="lazy" width="1200" height="720"></a></figure>
+    <p>מקבלים בצ'אט:</p>
+    <ul>
+      <li>כל User Story בפורמט "כ[משתמש], אני רוצה [פעולה] כך ש[ערך]", עם Story Points (לפחות 2), עדיפות 1 עד 4 ותבנית הפירוק.</li>
+      <li>בלחיצה על <b>תנאי קבלה, בדיקות ו-Tasks</b>: תנאי קבלה, 3 בדיקות חיוביות, 3 שליליות, וה-Tasks שייפתחו תחת ה-US.</li>
+      <li>תכנון ספרינטים לפי העדיפות. כשנדרש ממשק למערכת אחרת, ה-US הראשון הוא Spike לבדיקת הממשק.</li>
+      <li>אם נדרש UI/UX: פרומפט עם פירוט המסכים, השדות והכפתורים.</li>
+    </ul>
+    <figure><a href="help/img/app-9-breakdown-result.png" target="_blank"><img src="help/img/app-9-breakdown-result.png" alt="תוצאת פירוק: סיכום, תכנון ספרינטים וכרטיסי User Story" loading="lazy" width="1200" height="720"></a></figure>
+    <table class="cmds">
+      <tr><td><b>העתקה</b></td><td>כל הפירוק כטקסט, להדבקה במייל או במסמך</td></tr>
+      <tr><td><b>CSV</b> / <b>Excel</b></td><td>קובץ עם העמודות של ה-Skill: US Name, Description, Acceptance Criteria, Story Points, Priority, Splitting Pattern, Positive Tests, Negative Tests, Tasks</td></tr>
+      <tr><td><b>שיפור עם AI</b></td><td>מעתיקים הנחיה מוכנה לצ'אט AI שמאושר בארגון, ומדביקים את התשובה בחזרה. הפירוק מתעדכן</td></tr>
+      <tr><td><b>פירוק מחדש</b></td><td>פותח את החלון עם אותן תשובות, כדי לשנות ולנסות שוב</td></tr>
+    </table>
+    <div class="callout">
+      <p><b>איך זה עובד:</b> הפירוק הראשון נעשה בדפדפן לפי כללים קבועים, בלי שירות חיצוני. הוא נקודת התחלה טובה, אבל כדאי לעבור עליו. "שיפור עם AI" שולח לצ'אט רק את תיאור הפיצ'ר והטיוטה, בלי טוקן ובלי נתונים מ-Azure.</p>
+    </div>
+  </div>
+
   <div class="block">
     <h2>הגדרות לפתיחת פריט חדש</h2>
     <p>ב<b>הגדרות ← הגדרות לפתיחת פריט חדש</b> מגדירים אילו שדות חובה לכל סוג, ואת תבנית ה-Description של Feature (כותרות, חובה או לא, תוכן התחלתי). השמירה משפיעה על כל הצוות תוך כדקה, ודורשת הרשאת עריכה ב-GitHub. בדרך כלל רק מנהל הכלי משנה אותן.</p>

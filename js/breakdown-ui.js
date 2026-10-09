@@ -132,7 +132,7 @@ const BreakdownUI = {
     const prompt = BreakdownEngine.prompt(input, b);
     box = document.createElement("div"); box.className = "bd-aibox";
     box.innerHTML = "<h4>שיפור עם AI</h4>" +
-      '<ol class="bd-steps"><li>העתיקו את ההנחיה ופתחו צ\'אט AI שמאושר בארגון.</li><li>הדביקו שם את ההנחיה ושלחו.</li><li>העתיקו את כל התשובה והדביקו אותה כאן.</li></ol>' +
+      '<ol class="bd-steps"><li>העתיקו את ההנחיה ופתחו צ\'אט AI שמאושר בארגון.</li><li>הדביקו שם את ההנחיה ושלחו. ה-AI יחזיר פירוק קריא, ובסופו בלוק קוד "להעתקה חזרה לאז\'ורי".</li><li>העתיקו את בלוק הקוד שבסוף (או את כל התשובה) והדביקו כאן.</li></ol>' +
       '<p class="bd-small">ההנחיה כוללת רק את תיאור הפיצ\'ר והטיוטה. אין בה טוקן או נתונים מ-Azure.</p>';
     const row = document.createElement("div"); row.className = "bd-airow";
     row.append(this.btn("1. העתקת ההנחיה", "sm", () => this.copy(prompt, "ההנחיה הועתקה. הדביקו אותה בצ'אט ה-AI")));
@@ -140,7 +140,7 @@ const BreakdownUI = {
     show.innerHTML = "<summary>הצגת ההנחיה</summary>";
     const pv = document.createElement("textarea"); pv.readOnly = true; pv.rows = 6; pv.value = prompt; pv.className = "bd-in ltrsafe"; pv.setAttribute("aria-label", "ההנחיה ל-AI");
     show.appendChild(pv);
-    const ans = document.createElement("textarea"); ans.rows = 5; ans.className = "bd-in"; ans.placeholder = "2. הדביקו כאן את התשובה מה-AI";
+    const ans = document.createElement("textarea"); ans.rows = 5; ans.className = "bd-in"; ans.placeholder = "הדביקו כאן את בלוק הקוד מסוף התשובה (או את כל התשובה)";
     ans.setAttribute("aria-label", "התשובה מה-AI");
     const err = document.createElement("div"); err.className = "bd-err hidden"; err.setAttribute("role", "alert");
     const go = this.btn("3. עדכון הפירוק", "sm", () => {

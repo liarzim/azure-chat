@@ -19,6 +19,9 @@ out.c = E.rules({text: "שיפור כללי של התהליך הקיים", value
 out.csv = E.csv(a).split("\r\n")[0];
 out.prompt = E.prompt({text: "x", value: "y", role: "z", ui: true}, a);
 out.parsed = E.parse("הנה התשובה:\n```json\n" + JSON.stringify({role: "חשב", stories: [{title: "א", asA: "חשב", iWant: "לראות", soThat: "אדע", pattern: "Workflow", sp: 1, priority: 9, acceptance: "א\nב", positive: ["1","2","3"], negative: ["1","2","3"]}]}) + "\n```", {text: "פיצ'ר", value: "ערך", ui: false});
+const J = {role: "חשב", stories: [{title: "מעורב", asA: "חשב", iWant: "לראות", soThat: "אדע", pattern: "Workflow", sp: 3, priority: 2, acceptance: ["א"], positive: ["1","2","3"], negative: ["1","2","3"]}]};
+out.mixed = E.parse("## פירוק הפיצ'ר: x\n**סיכום:** טקסט עם {סוגריים} באמצע\n### US 1: מעורב\n### להעתקה חזרה לאז'ורי\n```json\n" + JSON.stringify(J, null, 2) + "\n```", {text: "x"}).stories[0].title;
+out.rendered = E.parse("## פירוק\nטקסט קריא\nלהעתקה חזרה לאז'ורי\njson\n" + JSON.stringify(J, null, 2), {text: "x"}).stories[0].title;
 try { E.parse("אין כאן כלום", {text: "x"}); out.bad = "no error"; } catch (e) { out.bad = e.message; }
 try { E.parse('{"stories": []}', {text: "x"}); out.empty = "no error"; } catch (e) { out.empty = e.message; }
 console.log(JSON.stringify(out));
@@ -41,9 +44,11 @@ if o:
     check("engine: fallback split when nothing is detected", [s["title"] for s in o["c"]["stories"]][0].startswith("גרסה בסיסית") and len(o["c"]["stories"]) == 3 and o["c"]["role"] == "רכזת", o["c"]["stories"])
     check("engine: CSV columns from the skill", o["csv"].lstrip("﻿") == '"US Name","Description","Acceptance Criteria","Story Points","Priority","Splitting Pattern","Positive Tests","Negative Tests","Tasks"', o["csv"])
     check("engine: AI prompt has the rules, inputs, draft and JSON shape", "INVEST" in o["prompt"] and "הערך העסקי ללקוח: y" in o["prompt"] and "טיוטה ראשונה" in o["prompt"] and '"stories"' in o["prompt"])
+    check("engine: prompt asks for a readable part first, then one JSON code block", "חלק א: פירוק קריא" in o["prompt"] and "### US 1:" in o["prompt"] and "**תנאי קבלה:**" in o["prompt"] and "להעתקה חזרה לאז'ורי" in o["prompt"] and "```json" in o["prompt"] and o["prompt"].index("חלק א") < o["prompt"].index("חלק ב"))
+    check("engine: parses a readable answer with the code block at the end", o["mixed"] == "מעורב" and o["rendered"] == "מעורב", (o.get("mixed"), o.get("rendered")))
     p0 = o["parsed"]["stories"][0]
     check("engine: AI answer parsed and normalised (code block, SP min 2, priority max 4)", o["parsed"]["engine"] == "ai" and p0["sp"] == 2 and p0["priority"] == 4 and p0["acceptance"] == ["א", "ב"] and p0["tasks"], p0)
-    check("engine: clear errors for bad AI answers", "JSON" in o["bad"] and "User Stories" in o["empty"], (o["bad"], o["empty"]))
+    check("engine: clear errors for bad AI answers", "להעתקה חזרה" in o["bad"] and "User Stories" in o["empty"], (o["bad"], o["empty"]))
 
 # ---------------- screen ----------------
 srv = start(8806)

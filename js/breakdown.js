@@ -238,6 +238,8 @@ const BreakdownEngine = {
   },
 
   /* ---------- "שיפור עם AI": a prompt for any approved AI chat, and its answer ---------- */
+  /* The answer has two parts: a readable breakdown for the person, then the same content as JSON
+     in one code block, which the person copies back into Azuri. */
   prompt(input, draft) {
     const skeleton = {feature: {title: "", value: "", ui: true}, role: "", stories: [{title: "", asA: "", iWant: "", soThat: "", pattern: "", sp: 2, priority: 1, acceptance: [""], positive: ["", "", ""], negative: ["", "", ""], tasks: [{title: ""}]}], uiPrompt: ""};
     return [
@@ -250,7 +252,7 @@ const BreakdownEngine = {
       "5. עדיפות 1 (גבוהה) עד 4 לפי ערך ומאמץ. עדיף שיהיו גם US בעלי ערך נמוך, כדי שאפשר יהיה לתעדף אותם למטה.",
       "6. Tasks נפתחים תחת US (פיתוח, בדיקות QA, ועיצוב UI/UX כשנדרש), לא כ-US נפרד.",
       "7. כל US עומד בכללי INVEST.",
-      input.ui ? "8. נדרש UI/UX: הוסף/י בשדה uiPrompt פירוט מסכים, סדר שדות וכפתורי הפעלה." : "8. לא נדרש UI/UX: השאר/י uiPrompt ריק.",
+      input.ui ? "8. נדרש UI/UX: הוסף/י פירוט מסכים, סדר שדות וכפתורי הפעלה." : "8. לא נדרש UI/UX.",
       "",
       "הפיצ'ר: " + this.clean(input.text),
       "משתמש עיקרי: " + (this.clean(input.role) || "משתמש"),
@@ -259,18 +261,56 @@ const BreakdownEngine = {
       "",
       draft ? "טיוטה ראשונה (שפר/י אותה, אפשר להוסיף, לאחד ולפצל):\n" + JSON.stringify(this.strip(draft)) : "",
       "",
-      "החזר/י JSON בלבד, בלי טקסט נוסף, במבנה הזה:",
-      JSON.stringify(skeleton)
+      "צורת התשובה (חשוב מאוד). כתוב/כתבי בעברית, בשני חלקים, בסדר הזה:",
+      "",
+      "חלק א: פירוק קריא לאדם. בלי JSON ובלי סוגריים מסולסלים. בדיוק במבנה הזה:",
+      "## פירוק הפיצ'ר: [שם הפיצ'ר]",
+      "**ערך ללקוח:** [הערך]",
+      "**סיכום:** [מספר] User Stories · סך הכל [מספר] SP",
+      "**תכנון ספרינטים:** ספרינט 1: US 1, US 2 · ספרינט 2: US 3 ...",
+      "",
+      "### US 1: [כותרת]",
+      "[מספר] SP · עדיפות [1-4] · תבנית: [תבנית הפירוק]",
+      "> כ[משתמש], אני רוצה [פעולה] כך ש[ערך]",
+      "**תנאי קבלה:**",
+      "- [תנאי]",
+      "**בדיקות חיוביות:**",
+      "1. [בדיקה]",
+      "**בדיקות שליליות:**",
+      "1. [בדיקה]",
+      "**Tasks:** [Task] · [Task] · [Task]",
+      "",
+      "(וכך לכל US, עם קו מפריד --- בין US ל-US)",
+      input.ui ? "\n### מסכים ושדות (UI/UX)\n[פירוט המסכים, סדר השדות והכפתורים, כרשימה]" : "",
+      "",
+      "חלק ב: אותו פירוק בדיוק, לחזרה לאז'ורי. כותרת: \"### להעתקה חזרה לאז'ורי\", ומתחתיה בלוק קוד אחד בלבד שמתחיל ב-```json ונגמר ב-```, ובו JSON תקין במבנה הזה (uiPrompt ריק אם לא נדרש UI/UX):",
+      JSON.stringify(skeleton),
+      "אל תוסיף/י שום טקסט אחרי בלוק הקוד."
     ].join("\n");
   },
   strip(b) { return {feature: {title: b.feature.title, value: b.feature.value, ui: b.feature.ui}, role: b.role, stories: b.stories.map(s => ({title: s.title, asA: s.asA, iWant: s.iWant, soThat: s.soThat, pattern: s.pattern, sp: s.sp, priority: s.priority, acceptance: s.acceptance, positive: s.positive, negative: s.negative, tasks: s.tasks})), uiPrompt: b.uiPrompt}; },
   /* Accepts the AI's answer (JSON, possibly wrapped in text or a code block) and normalises it. */
   parse(text, input) {
-    const s = String(text || ""), a = s.indexOf("{"), z = s.lastIndexOf("}");
-    if (a < 0 || z <= a) throw new Error("לא נמצא JSON בתשובה. ודאו שהעתקתם את כל התשובה.");
-    let o;
-    try { o = JSON.parse(s.slice(a, z + 1)); } catch (e) { throw new Error("התשובה לא בפורמט JSON תקין: " + e.message); }
-    return this.normalize(o, input, "ai");
+    const s = String(text || "");
+    const tries = [];
+    // 1. a ```json code block (the last one that holds the breakdown)
+    const blocks = [...s.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)].map(m => m[1]).reverse();
+    blocks.forEach(b => tries.push(b));
+    // 2. from the first "{" that opens the JSON to the last "}"
+    const k = s.search(/\{\s*"(feature|role|stories|userStories)"/);
+    if (k >= 0) tries.push(s.slice(k, s.lastIndexOf("}") + 1));
+    const a = s.indexOf("{"), z = s.lastIndexOf("}");
+    if (a >= 0 && z > a) tries.push(s.slice(a, z + 1));
+    if (!tries.length) throw new Error("לא מצאתי בתשובה את החלק \"להעתקה חזרה לאז'ורי\". העתיקו את כל התשובה, או רק את בלוק הקוד שבסופה.");
+    let lastErr = null;
+    for (const t of tries) {
+      const body = t.trim(), a2 = body.indexOf("{"), z2 = body.lastIndexOf("}");
+      if (a2 < 0 || z2 <= a2) continue;
+      let o;
+      try { o = JSON.parse(body.slice(a2, z2 + 1)); } catch (e) { lastErr = e; continue; }
+      if (o && (o.stories || o.userStories || o.us)) return this.normalize(o, input, "ai");
+    }
+    throw new Error(lastErr ? "החלק להעתקה לא בפורמט תקין (" + lastErr.message + "). העתיקו שוב את בלוק הקוד שבסוף התשובה, מההתחלה עד הסוף." : "בתשובה אין User Stories. העתיקו את בלוק הקוד שבסוף התשובה.");
   },
   normalize(o, input, engine) {
     const arr = o.stories || o.userStories || o.us || [];

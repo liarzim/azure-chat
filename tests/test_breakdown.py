@@ -22,6 +22,12 @@ out.parsed = E.parse("הנה התשובה:\n```json\n" + JSON.stringify({role: "
 const J = {role: "חשב", stories: [{title: "מעורב", asA: "חשב", iWant: "לראות", soThat: "אדע", pattern: "Workflow", sp: 3, priority: 2, acceptance: ["א"], positive: ["1","2","3"], negative: ["1","2","3"]}]};
 out.mixed = E.parse("## פירוק הפיצ'ר: x\n**סיכום:** טקסט עם {סוגריים} באמצע\n### US 1: מעורב\n### להעתקה חזרה לאז'ורי\n```json\n" + JSON.stringify(J, null, 2) + "\n```", {text: "x"}).stories[0].title;
 out.rendered = E.parse("## פירוק\nטקסט קריא\nלהעתקה חזרה לאז'ורי\njson\n" + JSON.stringify(J, null, 2), {text: "x"}).stories[0].title;
+const rt = E.parse(E.csv(a), {text: "x", role: "חשב"});
+out.round = {n: rt.stories.length, t0: rt.stories[0].title, as: rt.stories[0].asA, pos: rt.stories[0].positive.length, ui: !!rt.uiPrompt};
+const AIV = "סיכום\n```csv\nUS Name,Description,Acceptance Criteria,Story Points,Priority,Splitting Pattern,Positive Tests,Negative Tests,Tasks,UI/UX\n\"צפייה בדו\"ח\",\"כחשב, אני רוצה לראות דו\"ח כך שאדע\",\"1. א\n2. ב\",\"3 SP\",\"1\",\"תפעול/פעולות\",\"- 1\n- 2\n- 3\",\"x;y;z\",\"פיתוח: צפייה (6 שעות)\nבדיקות QA: צפייה\",\"מסך\"\n```";
+const vs = E.parse(AIV, {text: "f"}).stories[0];
+const semi = E.parse("US Name;Description;Acceptance Criteria;Story Points;Priority;Splitting Pattern;Positive Tests;Negative Tests;Tasks\nא;כמשתמש, אני רוצה X כדי לחסוך;ק;2;2;Workflow;1|2|3;a;t", {text: "f"}).stories[0];
+out.variant = {title: vs.title, want: vs.iWant, so: vs.soThat, acc: vs.acceptance, neg: vs.negative, sp: vs.sp, hours: vs.tasks[0].hours, semi: semi.soThat};
 try { E.parse("אין כאן כלום", {text: "x"}); out.bad = "no error"; } catch (e) { out.bad = e.message; }
 try { E.parse('{"stories": []}', {text: "x"}); out.empty = "no error"; } catch (e) { out.empty = e.message; }
 console.log(JSON.stringify(out));
@@ -42,13 +48,16 @@ if o:
     bt = [s["title"] for s in o["b"]["stories"]]
     check("engine: CRUD + permissions, no fake 'ספק' role", "הוספת ספקים" in bt and "מחיקת ספקים" in bt and "הרשאות לפי תפקיד" in bt and not any("ספק" in t and "תצוגה" in t for t in bt) and not o["b"]["uiPrompt"], bt)
     check("engine: fallback split when nothing is detected", [s["title"] for s in o["c"]["stories"]][0].startswith("גרסה בסיסית") and len(o["c"]["stories"]) == 3 and o["c"]["role"] == "רכזת", o["c"]["stories"])
-    check("engine: CSV columns from the skill", o["csv"].lstrip("﻿") == '"US Name","Description","Acceptance Criteria","Story Points","Priority","Splitting Pattern","Positive Tests","Negative Tests","Tasks"', o["csv"])
-    check("engine: AI prompt has the rules, inputs, draft and JSON shape", "INVEST" in o["prompt"] and "הערך העסקי ללקוח: y" in o["prompt"] and "טיוטה ראשונה" in o["prompt"] and '"stories"' in o["prompt"])
-    check("engine: prompt asks for a readable part first, then one JSON code block", "חלק א: פירוק קריא" in o["prompt"] and "### US 1:" in o["prompt"] and "**תנאי קבלה:**" in o["prompt"] and "להעתקה חזרה לאז'ורי" in o["prompt"] and "```json" in o["prompt"] and o["prompt"].index("חלק א") < o["prompt"].index("חלק ב"))
+    check("engine: CSV columns from the skill", o["csv"].lstrip("﻿") == '"US Name","Description","Acceptance Criteria","Story Points","Priority","Splitting Pattern","Positive Tests","Negative Tests","Tasks","UI/UX"', o["csv"])
+    check("engine: AI prompt has the rules, inputs and the draft as CSV", "INVEST" in o["prompt"] and "הערך העסקי ללקוח: y" in o["prompt"] and "טיוטה ראשונה" in o["prompt"] and '"US Name","Description"' in o["prompt"])
+    check("engine: prompt asks for one CSV file in the fixed format", "azuri-breakdown.csv" in o["prompt"] and "US Name,Description,Acceptance Criteria,Story Points,Priority,Splitting Pattern,Positive Tests,Negative Tests,Tasks,UI/UX" in o["prompt"] and "```csv" in o["prompt"] and "JSON" not in o["prompt"])
+    check("engine: CSV round trip (export -> import) keeps the stories", o["round"]["n"] == len(a["stories"]) and o["round"]["t0"] == a["stories"][0]["title"] and o["round"]["as"] == "חשב" and o["round"]["pos"] == 3 and o["round"]["ui"], o["round"])
+    v = o["variant"]
+    check("engine: AI CSV variants (code block, numbering, ; separators, stray quote, hours)", v["title"] == 'צפייה בדו"ח' and v["want"] == 'לראות דו"ח' and v["so"] == "אדע" and v["acc"] == ["א", "ב"] and v["neg"] == ["x", "y", "z"] and v["sp"] == 3 and v["hours"] == 6 and v["semi"] == "לחסוך", v)
     check("engine: parses a readable answer with the code block at the end", o["mixed"] == "מעורב" and o["rendered"] == "מעורב", (o.get("mixed"), o.get("rendered")))
     p0 = o["parsed"]["stories"][0]
     check("engine: AI answer parsed and normalised (code block, SP min 2, priority max 4)", o["parsed"]["engine"] == "ai" and p0["sp"] == 2 and p0["priority"] == 4 and p0["acceptance"] == ["א", "ב"] and p0["tasks"], p0)
-    check("engine: clear errors for bad AI answers", "להעתקה חזרה" in o["bad"] and "User Stories" in o["empty"], (o["bad"], o["empty"]))
+    check("engine: clear errors for bad AI answers", "US Name" in o["bad"] and "User Stories" in o["empty"], (o["bad"], o["empty"]))
 
 # ---------------- screen ----------------
 srv = start(8806)
@@ -107,7 +116,7 @@ with sync_playwright() as p:
     # Excel
     pg.evaluate("window.showSaveFilePicker = undefined")
     with pg.expect_download() as d: card.locator(".bd-acts button", has_text="Excel").click()
-    dl = d.value; raw = open(dl.path(), "rb").read()
+    dl = d.value; xlsx_path = dl.path(); raw = open(xlsx_path, "rb").read()
     check("Excel download is a real xlsx", dl.suggested_filename.endswith(".xlsx") and raw[:2] == b"PK", dl.suggested_filename)
     # AI improve: copy prompt, paste a bad answer, then a good one
     card.locator(".bd-acts button", has_text="שיפור עם AI").click()
@@ -123,6 +132,21 @@ with sync_playwright() as p:
     box.locator("button", has_text="עדכון הפירוק").click(); pg.wait_for_timeout(300)
     last = pg.locator(".bd").last
     check("AI answer becomes a new breakdown", pg.locator(".bd").count() == 2 and "צפייה מה-AI" in last.inner_text() and "שופר עם AI" in last.inner_text(), last.inner_text()[:200])
+    # upload a CSV file from the AI, and the Excel file Azuri exported (round trip)
+    last.locator(".bd-acts button", has_text="שיפור עם AI").click()
+    box = last.locator(".bd-aibox"); box.wait_for()
+    csv_ai = "US Name,Description,Acceptance Criteria,Story Points,Priority,Splitting Pattern,Positive Tests,Negative Tests,Tasks,UI/UX\n\"מקובץ CSV\",\"כחשב, אני רוצה לראות כך שאדע\",\"א\nב\",\"3\",\"1\",\"תפעול/פעולות\",\"1\n2\n3\",\"1\n2\n3\",\"פיתוח: x (4 שעות)\",\"\"\n"
+    box.locator("input[type=file]").set_input_files(files=[{"name": "azuri-breakdown.csv", "mimeType": "text/csv", "buffer": ("\ufeff" + csv_ai).encode("utf-8")}])
+    pg.wait_for_timeout(500)
+    check("AI CSV file upload becomes a new breakdown", "מקובץ CSV" in pg.locator(".bd").last.inner_text() and pg.locator(".bd").count() == 3, pg.locator(".bd").last.inner_text()[:200])
+    last = pg.locator(".bd").last
+    last.locator(".bd-acts button", has_text="שיפור עם AI").click()
+    box = last.locator(".bd-aibox"); box.wait_for()
+    box.locator("input[type=file]").set_input_files(xlsx_path)
+    pg.wait_for_timeout(800)
+    lt = pg.locator(".bd").last.inner_text()
+    check("Excel exported by Azuri can be uploaded back (round trip)", pg.locator(".bd").count() == 4 and "סינון לפי שנה" in lt and "ייצוא לאקסל" in lt, lt[:300])
+    last = pg.locator(".bd").last
     # re-run keeps the answers
     last.locator(".bd-acts button", has_text="פירוק מחדש").click()
     check("re-run opens the dialog with the same answers", pg.input_value("#bdValue").startswith("החשב יודע") and pg.is_checked('input[name="bdUi"][value="1"]') and pg.input_value("#bdRole") == "חשב")
@@ -131,6 +155,11 @@ with sync_playwright() as p:
     # chat command
     pg.fill("#input", "פרק: ניהול ספקים עם הוספה ומחיקה"); pg.keyboard.press("Enter"); pg.locator("#bdDlg:not(.hidden)").wait_for()
     check("chat command opens the dialog with the text", pg.input_value("#bdText") == "ניהול ספקים עם הוספה ומחיקה" and pg.input_value("#bdValue") == "" and pg.evaluate("document.activeElement.id") == "bdValue")
+    pg.locator("#bdImportFile").set_input_files(files=[{"name": "f.csv", "mimeType": "text/csv", "buffer": csv_ai.encode("utf-8")}])
+    pg.wait_for_timeout(500)
+    check("dialog: import from a file", pg.locator("#bdDlg.hidden").count() == 1 and "מקובץ CSV" in pg.locator(".bd").last.inner_text() and "ייבוא פירוק מקובץ" in pg.locator(".msg.user").last.inner_text())
+    pg.click("#bdBtn"); pg.locator("#bdImportFile").set_input_files(files=[{"name": "x.csv", "mimeType": "text/csv", "buffer": "a,b\n1,2".encode("utf-8")}]); pg.wait_for_timeout(400)
+    check("dialog: wrong file explained", pg.is_visible("#bdErr") and "US Name" in pg.inner_text("#bdErr"), pg.inner_text("#bdErr"))
     pg.click("#bdCancel")
     pg.fill("#input", "עזרה"); pg.keyboard.press("Enter"); pg.wait_for_timeout(300)
     check("help mentions the breakdown", "פירוק פיצ'ר" in pg.locator(".msg.bot").last.inner_text())

@@ -238,59 +238,133 @@ const BreakdownEngine = {
   },
 
   /* ---------- "שיפור עם AI": a prompt for any approved AI chat, and its answer ---------- */
-  /* The answer has two parts: a readable breakdown for the person, then the same content as JSON
-     in one code block, which the person copies back into Azuri. */
+  /* The answer is one CSV file in a fixed format (the skill's columns), the same file Azuri exports.
+     Any AI tool can write it; Azuri reads it back from an upload or a paste. */
+  CSV_HEAD: ["US Name", "Description", "Acceptance Criteria", "Story Points", "Priority", "Splitting Pattern", "Positive Tests", "Negative Tests", "Tasks", "UI/UX"],
   prompt(input, draft) {
-    const skeleton = {feature: {title: "", value: "", ui: true}, role: "", stories: [{title: "", asA: "", iWant: "", soThat: "", pattern: "", sp: 2, priority: 1, acceptance: [""], positive: ["", "", ""], negative: ["", "", ""], tasks: [{title: ""}]}], uiPrompt: ""};
     return [
       "את/ה סוכן פירוק פיצ'רים לפי עקרונות אג'יל ושיטת העבודה באז'ור של סיגמה.",
       "פרק/י את הפיצ'ר שלמטה ליחידות עבודה קטנות (User Stories), לפי הכללים:",
-      "1. כל US בפורמט: \"כ-[סוג משתמש], אני רוצה [פעולה] כך ש-[ערך]\".",
+      "1. כל US בפורמט: \"כ[סוג משתמש], אני רוצה [פעולה] כך ש[ערך]\".",
       "2. לכל US: תבנית פירוק אחת מתוך: " + Object.values(BD_PATTERNS).join(", ") + ". אם נדרש ממשק למערכת אחרת, השתמש/י ב-Spike Story.",
       "3. Story Points מחמיר לכל US, מינימום 2. עדיף US קטנים ושווים (4 של 2 SP עדיפים על 2 של 4 SP).",
       "4. Acceptance Criteria מפורטים, 3 תסריטי בדיקה חיוביים ו-3 שליליים לכל US.",
       "5. עדיפות 1 (גבוהה) עד 4 לפי ערך ומאמץ. עדיף שיהיו גם US בעלי ערך נמוך, כדי שאפשר יהיה לתעדף אותם למטה.",
       "6. Tasks נפתחים תחת US (פיתוח, בדיקות QA, ועיצוב UI/UX כשנדרש), לא כ-US נפרד.",
       "7. כל US עומד בכללי INVEST.",
-      input.ui ? "8. נדרש UI/UX: הוסף/י פירוט מסכים, סדר שדות וכפתורי הפעלה." : "8. לא נדרש UI/UX.",
       "",
       "הפיצ'ר: " + this.clean(input.text),
       "משתמש עיקרי: " + (this.clean(input.role) || "משתמש"),
       "הערך העסקי ללקוח: " + (this.clean(input.value) || "[לא צוין]"),
       "האם נדרש UI/UX: " + (input.ui ? "כן" : "לא"),
       "",
-      draft ? "טיוטה ראשונה (שפר/י אותה, אפשר להוסיף, לאחד ולפצל):\n" + JSON.stringify(this.strip(draft)) : "",
+      draft ? "טיוטה ראשונה באותו פורמט (שפר/י אותה, אפשר להוסיף, לאחד ולפצל):\n" + this.csv(draft).replace(/^\uFEFF/, "") + "\n" : "",
+      "צורת התשובה (חובה, כדי שהמערכת תקלוט אותה):",
+      "א. סיכום קצר בעברית, עד 5 שורות.",
+      "ב. קובץ CSV להורדה בשם azuri-breakdown.csv. אם אי אפשר ליצור קובץ, כתוב/כתבי את כל תוכן ה-CSV בבלוק קוד אחד שמתחיל ב-```csv.",
       "",
-      "צורת התשובה (חשוב מאוד). כתוב/כתבי בעברית, בשני חלקים, בסדר הזה:",
-      "",
-      "חלק א: פירוק קריא לאדם. בלי JSON ובלי סוגריים מסולסלים. בדיוק במבנה הזה:",
-      "## פירוק הפיצ'ר: [שם הפיצ'ר]",
-      "**ערך ללקוח:** [הערך]",
-      "**סיכום:** [מספר] User Stories · סך הכל [מספר] SP",
-      "**תכנון ספרינטים:** ספרינט 1: US 1, US 2 · ספרינט 2: US 3 ...",
-      "",
-      "### US 1: [כותרת]",
-      "[מספר] SP · עדיפות [1-4] · תבנית: [תבנית הפירוק]",
-      "> כ[משתמש], אני רוצה [פעולה] כך ש[ערך]",
-      "**תנאי קבלה:**",
-      "- [תנאי]",
-      "**בדיקות חיוביות:**",
-      "1. [בדיקה]",
-      "**בדיקות שליליות:**",
-      "1. [בדיקה]",
-      "**Tasks:** [Task] · [Task] · [Task]",
-      "",
-      "(וכך לכל US, עם קו מפריד --- בין US ל-US)",
-      input.ui ? "\n### מסכים ושדות (UI/UX)\n[פירוט המסכים, סדר השדות והכפתורים, כרשימה]" : "",
-      "",
-      "חלק ב: אותו פירוק בדיוק, לחזרה לאז'ורי. כותרת: \"### להעתקה חזרה לאז'ורי\", ומתחתיה בלוק קוד אחד בלבד שמתחיל ב-```json ונגמר ב-```, ובו JSON תקין במבנה הזה (uiPrompt ריק אם לא נדרש UI/UX):",
-      JSON.stringify(skeleton),
-      "אל תוסיף/י שום טקסט אחרי בלוק הקוד."
+      "כללי ה-CSV:",
+      "- השורה הראשונה בדיוק כך: " + this.CSV_HEAD.join(","),
+      "- שורה אחת לכל User Story, בלי שורות ריקות ובלי עמודות נוספות. מפריד: פסיק. כל תא בתוך מירכאות כפולות.",
+      "- Description: המשפט המלא \"כ[משתמש], אני רוצה [פעולה] כך ש[ערך]\".",
+      "- Story Points: מספר בלבד, 2 ומעלה. Priority: מספר בלבד, 1 עד 4.",
+      "- Splitting Pattern: בדיוק אחת מהתבניות שלמעלה.",
+      "- Acceptance Criteria, Positive Tests, Negative Tests, Tasks: כל פריט בשורה נפרדת בתוך התא, בלי מספור. בדיוק 3 בדיקות חיוביות ו-3 שליליות.",
+      "- Tasks: \"פיתוח: ...\", \"בדיקות QA: ...\"" + (input.ui ? ", \"עיצוב UI/UX: ...\"" : "") + ".",
+      input.ui ? "- UI/UX: המסכים, סדר השדות והכפתורים של ה-US הזה." : "- UI/UX: ריק.",
+      "- מירכאות כפולות בתוך טקסט (למשל דו\"ח) כותבים פעמיים: דו\"\"ח."
     ].join("\n");
   },
   strip(b) { return {feature: {title: b.feature.title, value: b.feature.value, ui: b.feature.ui}, role: b.role, stories: b.stories.map(s => ({title: s.title, asA: s.asA, iWant: s.iWant, soThat: s.soThat, pattern: s.pattern, sp: s.sp, priority: s.priority, acceptance: s.acceptance, positive: s.positive, negative: s.negative, tasks: s.tasks})), uiPrompt: b.uiPrompt}; },
   /* Accepts the AI's answer (JSON, possibly wrapped in text or a code block) and normalises it. */
+  /* Any answer: a CSV (the requested format), or JSON (older prompt, agents). */
   parse(text, input) {
+    const s = String(text || "").replace(/^\uFEFF/, "");
+    if (this.findCsvHeader(s) >= 0) return this.fromCsv(s, input);
+    return this.parseJson(s, input);
+  },
+
+  /* ---------- CSV / table import ---------- */
+  COLS: {
+    title: /^(us\s*name|name|title|user\s*story|שם|כותרת|שם\s*(ה-?)?us|סיפור)/i,
+    desc: /^(description|תיאור|תאור|ניסוח)/i,
+    acceptance: /^(acceptance|תנאי\s*קבלה|קריטריונים)/i,
+    sp: /^(story\s*points?|sp\b|נקודות)/i,
+    priority: /^(priority|עדיפות)/i,
+    pattern: /^(splitting|pattern|תבנית)/i,
+    positive: /^(positive|בדיקות\s*חיוביות|חיוביות)/i,
+    negative: /^(negative|בדיקות\s*שליליות|שליליות)/i,
+    tasks: /^(tasks?|משימות)/i,
+    ui: /^(ui|ux|מסכים|עיצוב)/i
+  },
+  colKey(h) { h = this.clean(String(h || "").replace(/^\uFEFF/, "").replace(/^["']|["']$/g, "")); return Object.keys(this.COLS).find(k => this.COLS[k].test(h)) || null; },
+  findCsvHeader(s) {
+    const lines = String(s).split(/\r?\n/);
+    return lines.findIndex(l => /(us\s*name|שם\s*(ה-?)?us)/i.test(l) && /(acceptance|תנאי\s*קבלה)/i.test(l));
+  },
+  /* RFC 4180, forgiving: a stray quote inside a quoted cell (דו"ח) is kept as text. */
+  splitCsv(text, delim) {
+    const rows = []; let row = [], cell = "", q = false, i = 0;
+    const n = text.length;
+    while (i < n) {
+      const c = text[i];
+      if (q) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { cell += '"'; i += 2; continue; }
+          let j = i + 1; while (text[j] === " ") j++;
+          if (j >= n || text[j] === delim || text[j] === "\n" || text[j] === "\r") { q = false; i = j; continue; }
+          cell += '"'; i++; continue;
+        }
+        cell += c; i++; continue;
+      }
+      if (c === '"' && !cell.trim()) { q = true; cell = ""; i++; continue; }
+      if (c === delim) { row.push(cell); cell = ""; i++; continue; }
+      if (c === "\r") { i++; continue; }
+      if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; i++; continue; }
+      cell += c; i++;
+    }
+    if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  },
+  fromCsv(text, input) {
+    let s = String(text).replace(/^\uFEFF/, "");
+    const lines = s.split(/\r?\n/), h = this.findCsvHeader(s);
+    s = lines.slice(h).join("\n");
+    s = s.replace(/\n```[\s\S]*$/, "");                     // end of a ```csv block
+    const head = lines[h];
+    const delim = [",", ";", "\t"].map(d => [d, head.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+    return this.fromRows(this.splitCsv(s, delim), input);
+  },
+  /* rows[0] is the header. Used for CSV text and for Excel sheets. */
+  fromRows(rows, input) {
+    rows = (rows || []).filter(r => r && r.some(c => this.clean(c)));
+    const hi = rows.findIndex(r => r.filter(c => this.colKey(c)).length >= 3);
+    if (hi < 0) throw new Error("לא מצאתי את שורת הכותרות (US Name, Description, Acceptance Criteria...). ודאו שזה הקובץ שה-AI יצר.");
+    const idx = {}; rows[hi].forEach((c, i) => { const k = this.colKey(c); if (k && idx[k] === undefined) idx[k] = i; });
+    if (idx.title === undefined && idx.desc === undefined) throw new Error("בקובץ חסרות העמודות US Name ו-Description.");
+    const cell = (r, k) => idx[k] === undefined ? "" : String(r[idx[k]] == null ? "" : r[idx[k]]);
+    const list = v => String(v || "").split(/\r?\n|\s*\|\s*|;\s*(?=\S)/).map(x => this.clean(x.replace(/^\s*(?:\d+[.)]|[-•*–])\s*/, ""))).filter(Boolean);
+    const role = this.clean(input && input.role) || "משתמש";
+    const ui = [];
+    const stories = rows.slice(hi + 1).map(r => {
+      const d = this.clean(cell(r, "desc"));
+      const m = /^כ-?\s*([^,]{1,40}),\s*אני\s+רוצה\s+(.+?)(?:,?\s+(?:כך\s+ש-?|כדי\s+ש-?|כדי\s+)(.+))?$/.exec(d);
+      const u = this.clean(cell(r, "ui")); if (u) ui.push(u);
+      const tasks = list(cell(r, "tasks")).map(t => {
+        const hm = /\(?\s*(\d+(?:\.\d+)?)\s*(?:ש(?:עות|')?|h|hours?)\s*\)?\s*$/i.exec(t);
+        return hm ? {title: this.clean(t.slice(0, hm.index)).replace(/[-–:,]\s*$/, ""), hours: Number(hm[1])} : {title: t};
+      });
+      return {title: this.clean(cell(r, "title")), asA: m ? this.clean(m[1]) : role, iWant: m ? this.clean(m[2]) : d, soThat: m && m[3] ? this.clean(m[3]).replace(/[.]$/, "") : "",
+        pattern: this.clean(cell(r, "pattern")), sp: parseFloat(cell(r, "sp")) || 2, priority: parseFloat(cell(r, "priority")) || 2,
+        acceptance: list(cell(r, "acceptance")), positive: list(cell(r, "positive")), negative: list(cell(r, "negative")), tasks: tasks.length ? tasks : null, _ui: u};
+    }).filter(x => x.title || x.iWant);
+    if (!stories.length) throw new Error("בקובץ אין שורות של User Stories.");
+    const b = {feature: {title: this.firstSentence((input && input.text) || stories[0].title, 70), value: this.clean(input && input.value), ui: ui.length > 0 || !!(input && input.ui)},
+      role: stories[0].asA || role, uiPrompt: stories.filter(s => s._ui).map(s => "- " + (s.title || "US") + ": " + s._ui).join("\n"), stories};
+    return this.finish(b, "ai");
+  },
+
+  parseJson(text, input) {
     const s = String(text || "");
     const tries = [];
     // 1. a ```json code block (the last one that holds the breakdown)
@@ -301,7 +375,7 @@ const BreakdownEngine = {
     if (k >= 0) tries.push(s.slice(k, s.lastIndexOf("}") + 1));
     const a = s.indexOf("{"), z = s.lastIndexOf("}");
     if (a >= 0 && z > a) tries.push(s.slice(a, z + 1));
-    if (!tries.length) throw new Error("לא מצאתי בתשובה את החלק \"להעתקה חזרה לאז'ורי\". העתיקו את כל התשובה, או רק את בלוק הקוד שבסופה.");
+    if (!tries.length) throw new Error("לא מצאתי בתשובה פירוק במבנה של אז'ורי (שורת כותרות שמתחילה ב-US Name). העלו את קובץ ה-CSV שה-AI יצר, או הדביקו את כל התוכן שלו.");
     let lastErr = null;
     for (const t of tries) {
       const body = t.trim(), a2 = body.indexOf("{"), z2 = body.lastIndexOf("}");
@@ -336,8 +410,8 @@ const BreakdownEngine = {
   sentence(s) { return "כ" + s.asA.replace(/^כ-?/, "") + ", אני רוצה " + s.iWant + (s.soThat ? " כך ש" + s.soThat.replace(/^ש/, "") : ""); },
   csv(b) {
     const q = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
-    const head = ["US Name", "Description", "Acceptance Criteria", "Story Points", "Priority", "Splitting Pattern", "Positive Tests", "Negative Tests", "Tasks"];
-    const rows = b.stories.map(s => [s.title, this.sentence(s), s.acceptance.join("\n"), s.sp, s.priority, s.pattern, s.positive.join("\n"), s.negative.join("\n"), s.tasks.map(t => t.title).join("\n")]);
+    const head = this.CSV_HEAD;
+    const rows = b.stories.map((s, i) => [s.title, this.sentence(s), s.acceptance.join("\n"), s.sp, s.priority, s.pattern, s.positive.join("\n"), s.negative.join("\n"), s.tasks.map(t => t.title).join("\n"), s._ui || (i === 0 && !b.stories.some(x => x._ui) ? b.uiPrompt || "" : "")]);
     return "﻿" + [head].concat(rows).map(r => r.map(q).join(",")).join("\r\n");
   },
   text(b) {

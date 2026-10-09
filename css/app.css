@@ -418,3 +418,7 @@ header h2 .org{color:var(--muted);font-weight:500;font-size:14px}
 .bc-fail{color:var(--bad);font-size:13px;margin:6px 0}
 .bc-done-acts{margin-top:8px}
 @media (max-width:600px){ .bc-task{flex-wrap:wrap} .bc-task .bc-title{flex-basis:calc(100% - 30px)} .bc-est{margin-inline-start:26px} .bc-th{display:none} .bc-est::placeholder{color:var(--muted)} }
+.bd-file{display:none}
+.bd-drop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:2px dashed #c4b5fd;border-radius:10px;padding:10px 12px}
+.bd-drop.over{background:#ede9fe;border-color:#7c3aed}
+.bd-or{font-size:12px;color:var(--muted)}

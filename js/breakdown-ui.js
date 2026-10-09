@@ -132,29 +132,102 @@ const BreakdownUI = {
     const prompt = BreakdownEngine.prompt(input, b);
     box = document.createElement("div"); box.className = "bd-aibox";
     box.innerHTML = "<h4>שיפור עם AI</h4>" +
-      '<ol class="bd-steps"><li>העתיקו את ההנחיה ופתחו צ\'אט AI שמאושר בארגון.</li><li>הדביקו שם את ההנחיה ושלחו. ה-AI יחזיר פירוק קריא, ובסופו בלוק קוד "להעתקה חזרה לאז\'ורי".</li><li>העתיקו את בלוק הקוד שבסוף (או את כל התשובה) והדביקו כאן.</li></ol>' +
+      '<ol class="bd-steps"><li>העתיקו את ההנחיה, פתחו צ\'אט AI שמאושר בארגון, הדביקו ושלחו.</li>' +
+      '<li>ה-AI יחזיר קובץ <b>azuri-breakdown.csv</b> במבנה קבוע (אותו מבנה כמו הורדת CSV מאז\'ורי). אם הוא לא יכול ליצור קובץ, הוא יכתוב את התוכן בבלוק קוד.</li>' +
+      '<li>העלו כאן את הקובץ (CSV או Excel), או הדביקו את התוכן.</li></ol>' +
       '<p class="bd-small">ההנחיה כוללת רק את תיאור הפיצ\'ר והטיוטה. אין בה טוקן או נתונים מ-Azure.</p>';
     const row = document.createElement("div"); row.className = "bd-airow";
     row.append(this.btn("1. העתקת ההנחיה", "sm", () => this.copy(prompt, "ההנחיה הועתקה. הדביקו אותה בצ'אט ה-AI")));
     const show = document.createElement("details"); show.className = "bd-pshow";
     show.innerHTML = "<summary>הצגת ההנחיה</summary>";
-    const pv = document.createElement("textarea"); pv.readOnly = true; pv.rows = 6; pv.value = prompt; pv.className = "bd-in ltrsafe"; pv.setAttribute("aria-label", "ההנחיה ל-AI");
+    const pv = document.createElement("textarea"); pv.readOnly = true; pv.rows = 6; pv.value = prompt; pv.className = "bd-in"; pv.setAttribute("aria-label", "ההנחיה ל-AI");
     show.appendChild(pv);
-    const ans = document.createElement("textarea"); ans.rows = 5; ans.className = "bd-in"; ans.placeholder = "הדביקו כאן את בלוק הקוד מסוף התשובה (או את כל התשובה)";
-    ans.setAttribute("aria-label", "התשובה מה-AI");
     const err = document.createElement("div"); err.className = "bd-err hidden"; err.setAttribute("role", "alert");
-    const go = this.btn("3. עדכון הפירוק", "sm", () => {
-      try {
-        const nb = BreakdownEngine.parse(ans.value, input);
-        addMsg("user", escHtml("שיפור הפירוק עם AI"));
-        box.remove();
-        this.render(nb, input);
-        toast("הפירוק עודכן לפי תשובת ה-AI");
-      } catch (e) { err.textContent = e.message || String(e); err.classList.remove("hidden"); ans.focus(); }
+    const apply = nb => { addMsg("user", escHtml("שיפור הפירוק עם AI")); box.remove(); this.render(nb, input); toast("הפירוק עודכן לפי תשובת ה-AI"); };
+    const fail = e => { err.textContent = e.message || String(e); err.classList.remove("hidden"); };
+    const drop = this.fileDrop(input, apply, fail, "2. העלאת הקובץ מה-AI");
+    const or = document.createElement("div"); or.className = "bd-or"; or.textContent = "או הדבקה";
+    const ans = document.createElement("textarea"); ans.rows = 4; ans.className = "bd-in"; ans.placeholder = "הדביקו כאן את תוכן ה-CSV (או את כל התשובה)";
+    ans.setAttribute("aria-label", "התשובה מה-AI");
+    const go = this.btn("עדכון הפירוק מהטקסט", "ghost sm", () => {
+      try { apply(BreakdownEngine.parse(ans.value, input)); } catch (e) { fail(e); ans.focus(); }
     });
-    box.append(row, show, ans, err, go);
+    box.append(row, show, drop, or, ans, go, err);
     card.querySelector(".bd-acts").after(box);
     box.scrollIntoView({block: "nearest"});
+  },
+
+  /* A button + drop area that reads a breakdown file: CSV, Excel (.xlsx), JSON or text. */
+  fileDrop(input, ok, fail, label) {
+    const wrap = document.createElement("div"); wrap.className = "bd-drop";
+    const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".csv,.xlsx,.json,.txt,.md,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    inp.className = "bd-file"; inp.setAttribute("aria-label", label);
+    const bt = this.btn(label, "sm", () => inp.click());
+    const hint = document.createElement("span"); hint.className = "bd-small"; hint.textContent = "או גררו לכאן קובץ CSV / Excel";
+    const read = async f => {
+      if (!f) return;
+      try { ok(await this.readFile(f, input)); }
+      catch (e) { fail(e); }
+      inp.value = "";
+    };
+    inp.onchange = () => read(inp.files[0]);
+    wrap.addEventListener("dragover", e => { e.preventDefault(); wrap.classList.add("over"); });
+    wrap.addEventListener("dragleave", () => wrap.classList.remove("over"));
+    wrap.addEventListener("drop", e => { e.preventDefault(); wrap.classList.remove("over"); read(e.dataTransfer.files[0]); });
+    wrap.append(bt, hint, inp);
+    return wrap;
+  },
+  async readFile(f, input) {
+    if (f.size > 5 * 1024 * 1024) throw new Error("הקובץ גדול מדי (עד 5MB).");
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    if (bytes[0] === 0x50 && bytes[1] === 0x4B) return BreakdownEngine.fromRows(await this.xlsxRows(bytes), input);
+    if (/\.(xls|docx?|pdf)$/i.test(f.name)) throw new Error("אפשר להעלות CSV או Excel (.xlsx). את הקובץ הזה פתחו ושמרו כ-CSV או כ-xlsx.");
+    let text = new TextDecoder("utf-8").decode(bytes);
+    if (text.includes("\uFFFD")) { try { text = new TextDecoder("windows-1255").decode(bytes); } catch (e) {} }   // Hebrew CSV saved by older Excel
+    return BreakdownEngine.parse(text, input);
+  },
+  /* Minimal .xlsx reader: the first sheet as rows of text. */
+  async xlsxRows(bytes) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let eocd = -1;
+    for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 66000); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    if (eocd < 0) throw new Error("קובץ ה-Excel פגום.");
+    const count = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true);
+    const files = {}, dec = new TextDecoder();
+    for (let k = 0; k < count; k++) {
+      if (dv.getUint32(p, true) !== 0x02014b50) break;
+      const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+      files[dec.decode(bytes.subarray(p + 46, p + 46 + nlen))] = {method, csize, off};
+      p += 46 + nlen + xlen + clen;
+    }
+    const get = async name => {
+      const e = files[name]; if (!e) return null;
+      const start = e.off + 30 + dv.getUint16(e.off + 26, true) + dv.getUint16(e.off + 28, true);
+      const data = bytes.subarray(start, start + e.csize);
+      if (e.method === 0) return dec.decode(data);
+      if (e.method !== 8 || typeof DecompressionStream === "undefined") throw new Error("הדפדפן לא יכול לפתוח את קובץ ה-Excel. שמרו אותו כ-CSV ונסו שוב.");
+      const out = await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer();
+      return dec.decode(out);
+    };
+    const xml = s => new DOMParser().parseFromString(s, "application/xml");
+    const ss = await get("xl/sharedStrings.xml");
+    const shared = ss ? [...xml(ss).getElementsByTagName("si")].map(si => [...si.getElementsByTagName("t")].map(t => t.textContent).join("")) : [];
+    const sheetName = Object.keys(files).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort((a, b) => parseInt(a.match(/\d+/)) - parseInt(b.match(/\d+/)))[0];
+    if (!sheetName) throw new Error("בקובץ ה-Excel אין גיליון.");
+    const doc = xml(await get(sheetName));
+    const col = r => { let n = 0; for (const ch of r.replace(/\d+/g, "")) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+    return [...doc.getElementsByTagName("row")].map(rw => {
+      const out = [];
+      [...rw.getElementsByTagName("c")].forEach((c, i) => {
+        const t = c.getAttribute("t"), r = c.getAttribute("r"), v = c.getElementsByTagName("v")[0];
+        let val = "";
+        if (t === "s") val = shared[Number(v && v.textContent)] || "";
+        else if (t === "inlineStr") val = [...c.getElementsByTagName("t")].map(x => x.textContent).join("");
+        else val = v ? v.textContent : "";
+        out[r ? col(r) : i] = val;
+      });
+      return Array.from(out, x => x == null ? "" : x);
+    });
   },
 
   async runAgent(b, input, btn) {
@@ -196,8 +269,22 @@ const BreakdownUI = {
   },
   downloadExcel(b, btn) { return downloadXlsx(this.table(b), btn, this.fileName("xlsx")); },
 
+  /* "יש לכם כבר קובץ פירוק?" in the dialog: the text and value are used if filled, not required. */
+  importFromDialog(f) {
+    const uiEl = document.querySelector('input[name="bdUi"]:checked');
+    const input = {text: $("bdText").value.trim(), value: $("bdValue").value.trim(), role: $("bdRole").value.trim(), ui: uiEl ? uiEl.value === "1" : false};
+    return this.readFile(f, input).then(b => {
+      if (!input.text) input.text = b.feature.title;
+      this.close();
+      addMsg("user", escHtml("ייבוא פירוק מקובץ: " + f.name));
+      this.render(b, input);
+    }, e => this.err(e.message || String(e)));
+  },
+
   init() {
     $("bdBtn").onclick = () => this.open({keep: false});
+    $("bdImport").onclick = () => $("bdImportFile").click();
+    $("bdImportFile").onchange = () => { const f = $("bdImportFile").files[0]; $("bdImportFile").value = ""; if (f) this.importFromDialog(f); };
     $("bdGo").onclick = () => this.submit();
     $("bdCancel").onclick = () => this.close();
     $("bdDlg").addEventListener("click", e => { if (e.target.id === "bdDlg") this.close(); });

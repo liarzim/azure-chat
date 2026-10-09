@@ -28,6 +28,11 @@ const AIV = "סיכום\n```csv\nUS Name,Description,Acceptance Criteria,Story P
 const vs = E.parse(AIV, {text: "f"}).stories[0];
 const semi = E.parse("US Name;Description;Acceptance Criteria;Story Points;Priority;Splitting Pattern;Positive Tests;Negative Tests;Tasks\nא;כמשתמש, אני רוצה X כדי לחסוך;ק;2;2;Workflow;1|2|3;a;t", {text: "f"}).stories[0];
 out.variant = {title: vs.title, want: vs.iWant, so: vs.soThat, acc: vs.acceptance, neg: vs.negative, sp: vs.sp, hours: vs.tasks[0].hours, semi: semi.soThat};
+out.smart = E.parse("{\n\u201Cfeature\u201D: {\u201Ctitle\u201D: \u201Cx\u201D},\n\u201Cstories\u201D: [{\u201Ctitle\u201D: \u201Cחכם\u201D, \u201CiWant\u201D: \u201Cלראות\u201D, \u201Csp\u201D: 3,},],\n}", {text: "t"}).stories[0].title;
+const md = E.parse("סיכום\n| **US Name** | Description | Acceptance Criteria | Story Points | Priority | Splitting Pattern | Positive Tests | Negative Tests | Tasks |\n|---|---|---|---|---|---|---|---|---|\n| טבלה | כחשב, אני רוצה לראות כך שאדע | א<br>ב | 2 | 1 | תפעול/פעולות | 1<br>2<br>3 | 1<br>2<br>3 | פיתוח: x<br>בדיקות QA: x |", {text: "t"}).stories[0];
+out.md = {title: md.title, acc: md.acceptance, tasks: md.tasks.length};
+out.heb = E.parse("שם US,תיאור,תנאי קבלה,נקודות,עדיפות,תבנית,בדיקות חיוביות,בדיקות שליליות,משימות\n\u201Cעברית\u201D,\u201Cכחשב, אני רוצה לראות כך שאדע\u201D,\u201Cא\u201D,2,1,Workflow,1,2,3", {text: "t"}).stories[0].title;
+out.fix = E.fixPrompt();
 try { E.parse("אין כאן כלום", {text: "x"}); out.bad = "no error"; } catch (e) { out.bad = e.message; }
 try { E.parse('{"stories": []}', {text: "x"}); out.empty = "no error"; } catch (e) { out.empty = e.message; }
 console.log(JSON.stringify(out));
@@ -50,13 +55,15 @@ if o:
     check("engine: fallback split when nothing is detected", [s["title"] for s in o["c"]["stories"]][0].startswith("גרסה בסיסית") and len(o["c"]["stories"]) == 3 and o["c"]["role"] == "רכזת", o["c"]["stories"])
     check("engine: CSV columns from the skill", o["csv"].lstrip("﻿") == '"US Name","Description","Acceptance Criteria","Story Points","Priority","Splitting Pattern","Positive Tests","Negative Tests","Tasks","UI/UX"', o["csv"])
     check("engine: AI prompt has the rules, inputs and the draft as CSV", "INVEST" in o["prompt"] and "הערך העסקי ללקוח: y" in o["prompt"] and "טיוטה ראשונה" in o["prompt"] and '"US Name","Description"' in o["prompt"])
-    check("engine: prompt asks for one CSV file in the fixed format", "azuri-breakdown.csv" in o["prompt"] and "US Name,Description,Acceptance Criteria,Story Points,Priority,Splitting Pattern,Positive Tests,Negative Tests,Tasks,UI/UX" in o["prompt"] and "```csv" in o["prompt"] and "JSON" not in o["prompt"])
+    check("engine: prompt asks for one CSV file in the fixed format", "azuri-breakdown.csv" in o["prompt"] and "US Name,Description,Acceptance Criteria,Story Points,Priority,Splitting Pattern,Positive Tests,Negative Tests,Tasks,UI/UX" in o["prompt"] and "```csv" in o["prompt"] and "לא JSON" in o["prompt"] and "מירכאות כפולות רגילות" in o["prompt"])
     check("engine: CSV round trip (export -> import) keeps the stories", o["round"]["n"] == len(a["stories"]) and o["round"]["t0"] == a["stories"][0]["title"] and o["round"]["as"] == "חשב" and o["round"]["pos"] == 3 and o["round"]["ui"], o["round"])
     v = o["variant"]
     check("engine: AI CSV variants (code block, numbering, ; separators, stray quote, hours)", v["title"] == 'צפייה בדו"ח' and v["want"] == 'לראות דו"ח' and v["so"] == "אדע" and v["acc"] == ["א", "ב"] and v["neg"] == ["x", "y", "z"] and v["sp"] == 3 and v["hours"] == 6 and v["semi"] == "לחסוך", v)
     check("engine: parses a readable answer with the code block at the end", o["mixed"] == "מעורב" and o["rendered"] == "מעורב", (o.get("mixed"), o.get("rendered")))
     p0 = o["parsed"]["stories"][0]
     check("engine: AI answer parsed and normalised (code block, SP min 2, priority max 4)", o["parsed"]["engine"] == "ai" and p0["sp"] == 2 and p0["priority"] == 4 and p0["acceptance"] == ["א", "ב"] and p0["tasks"], p0)
+    check("engine: tolerant of what chats do (typographic quotes, trailing commas, Markdown table, Hebrew headers)", o["smart"] == "חכם" and o["md"] == {"title": "טבלה", "acc": ["א", "ב"], "tasks": 2} and o["heb"] == "עברית", (o["smart"], o["md"], o["heb"]))
+    check("engine: fix request repeats the exact header", "US Name,Description,Acceptance Criteria" in o["fix"] and "CSV" in o["fix"])
     check("engine: clear errors for bad AI answers", "US Name" in o["bad"] and "User Stories" in o["empty"], (o["bad"], o["empty"]))
 
 # ---------------- screen ----------------
@@ -127,6 +134,8 @@ with sync_playwright() as p:
     box.locator("textarea[aria-label='התשובה מה-AI']").fill("סליחה, לא הבנתי")
     box.locator("button", has_text="עדכון הפירוק").click()
     check("bad AI answer explained, nothing replaced", box.locator(".bd-err").is_visible() and pg.locator(".bd").count() == 1, box.inner_text()[-200:])
+    box.locator(".bd-fix").click(); pg.wait_for_timeout(300)
+    check("bad answer offers a fix request for the AI", "US Name,Description" in pg.evaluate("navigator.clipboard.readText()"))
     ai = {"role": "חשב", "stories": [{"title": "צפייה מה-AI", "asA": "חשב", "iWant": "לצפות במוסדות", "soThat": "אדע", "pattern": "תפעול/פעולות", "sp": 2, "priority": 1, "acceptance": ["א", "ב", "ג"], "positive": ["1", "2", "3"], "negative": ["1", "2", "3"], "tasks": [{"title": "פיתוח: צפייה"}]}], "uiPrompt": "מסך אחד"}
     box.locator("textarea[aria-label='התשובה מה-AI']").fill("```json\n" + json.dumps(ai, ensure_ascii=False) + "\n```")
     box.locator("button", has_text="עדכון הפירוק").click(); pg.wait_for_timeout(300)

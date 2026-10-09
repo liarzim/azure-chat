@@ -144,7 +144,11 @@ const BreakdownUI = {
     show.appendChild(pv);
     const err = document.createElement("div"); err.className = "bd-err hidden"; err.setAttribute("role", "alert");
     const apply = nb => { addMsg("user", escHtml("שיפור הפירוק עם AI")); box.remove(); this.render(nb, input); toast("הפירוק עודכן לפי תשובת ה-AI"); };
-    const fail = e => { err.textContent = e.message || String(e); err.classList.remove("hidden"); };
+    const fail = e => {
+      err.textContent = e.message || String(e); err.classList.remove("hidden");
+      const fx = this.btn("העתקת בקשת תיקון ל-AI", "sm", () => this.copy(BreakdownEngine.fixPrompt(), "בקשת התיקון הועתקה. הדביקו אותה באותו צ'אט AI"));
+      fx.classList.add("bd-fix"); err.appendChild(document.createElement("br")); err.appendChild(fx);
+    };
     const drop = this.fileDrop(input, apply, fail, "2. העלאת הקובץ מה-AI");
     const or = document.createElement("div"); or.className = "bd-or"; or.textContent = "או הדבקה";
     const ans = document.createElement("textarea"); ans.rows = 4; ans.className = "bd-in"; ans.placeholder = "הדביקו כאן את תוכן ה-CSV (או את כל התשובה)";

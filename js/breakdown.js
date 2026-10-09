@@ -272,16 +272,37 @@ const BreakdownEngine = {
       "- Acceptance Criteria, Positive Tests, Negative Tests, Tasks: כל פריט בשורה נפרדת בתוך התא, בלי מספור. בדיוק 3 בדיקות חיוביות ו-3 שליליות.",
       "- Tasks: \"פיתוח: ...\", \"בדיקות QA: ...\"" + (input.ui ? ", \"עיצוב UI/UX: ...\"" : "") + ".",
       input.ui ? "- UI/UX: המסכים, סדר השדות והכפתורים של ה-US הזה." : "- UI/UX: ריק.",
-      "- מירכאות כפולות בתוך טקסט (למשל דו\"ח) כותבים פעמיים: דו\"\"ח."
+      "- מירכאות כפולות רגילות בלבד (\"), לא מירכאות מעוצבות. מירכאות בתוך טקסט (למשל דו\"ח) כותבים פעמיים: דו\"\"ח.",
+      "- לא JSON, לא טבלת Markdown ולא טקסט בתוך ה-CSV.",
+      "לפני השליחה: בדוק/בדקי שהשורה הראשונה זהה בדיוק לשורת הכותרות שלמעלה, ושלכל שורה יש 10 תאים."
     ].join("\n");
   },
   strip(b) { return {feature: {title: b.feature.title, value: b.feature.value, ui: b.feature.ui}, role: b.role, stories: b.stories.map(s => ({title: s.title, asA: s.asA, iWant: s.iWant, soThat: s.soThat, pattern: s.pattern, sp: s.sp, priority: s.priority, acceptance: s.acceptance, positive: s.positive, negative: s.negative, tasks: s.tasks})), uiPrompt: b.uiPrompt}; },
   /* Accepts the AI's answer (JSON, possibly wrapped in text or a code block) and normalises it. */
   /* Any answer: a CSV (the requested format), or JSON (older prompt, agents). */
   parse(text, input) {
-    const s = String(text || "").replace(/^\uFEFF/, "");
-    if (this.findCsvHeader(s) >= 0) return this.fromCsv(s, input);
-    return this.parseJson(s, input);
+    const s = this.tidy(text);
+    if (!s.trim()) throw new Error("לא הודבק כלום.");
+    const json = /[{\[]\s*"(feature|role|stories|userStories)"/.test(s);
+    if (this.findCsvHeader(s) >= 0) { try { return this.fromCsv(s, input); } catch (e) { if (!json) throw e; } }
+    if (json) return this.parseJson(s, input);
+    throw new Error("לא מצאתי בתשובה פירוק במבנה של אז'ורי: חסרה שורת הכותרות " + this.CSV_HEAD.slice(0, 3).join(", ") + "... אפשר להעתיק \"בקשת תיקון\" ולשלוח אותה לאותו AI.");
+  },
+  /* Chat tools turn quotes into typographic ones and add invisible marks when text is copied from the screen. */
+  tidy(text) {
+    return String(text || "").replace(/^\uFEFF/, "").replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+      .replace(/[\u201C\u201D\u201E\u201F\u2033\u05F4\uFF02]/g, '"').replace(/[\u2018\u2019\u201A\u201B]/g, "'").replace(/\u00A0/g, " ");
+  },
+  /* A short message for the same AI chat when its answer did not fit the format. */
+  fixPrompt() {
+    return [
+      "התשובה לא במבנה שהמערכת קולטת. החזר/י את אותו פירוק בדיוק, רק כ-CSV, בלי שום טקסט אחר:",
+      "- קובץ azuri-breakdown.csv להורדה, או בלוק קוד אחד שמתחיל ב-```csv.",
+      "- השורה הראשונה בדיוק כך: " + this.CSV_HEAD.join(","),
+      "- שורה אחת לכל User Story. מפריד: פסיק. כל תא בתוך מירכאות כפולות רגילות (\"), לא מירכאות מעוצבות.",
+      "- Story Points ו-Priority: מספר בלבד. בתאים עם כמה פריטים: כל פריט בשורה נפרדת בתוך התא.",
+      "- לא JSON, לא טבלה, לא Markdown."
+    ].join("\n");
   },
 
   /* ---------- CSV / table import ---------- */
@@ -297,10 +318,15 @@ const BreakdownEngine = {
     tasks: /^(tasks?|משימות)/i,
     ui: /^(ui|ux|מסכים|עיצוב)/i
   },
-  colKey(h) { h = this.clean(String(h || "").replace(/^\uFEFF/, "").replace(/^["']|["']$/g, "")); return Object.keys(this.COLS).find(k => this.COLS[k].test(h)) || null; },
+  colKey(h) {
+    h = this.clean(String(h || "").replace(/^\uFEFF/, "").replace(/^["']|["']$/g, ""));
+    if (!h || h.length > 40 || /[{}\[\]]|":/.test(h)) return null;          // a header is a short name, not JSON
+    return Object.keys(this.COLS).find(k => this.COLS[k].test(h)) || null;
+  },
+  /* The header line: at least 3 known column names, split by comma, semicolon, tab or | (Markdown table). */
   findCsvHeader(s) {
     const lines = String(s).split(/\r?\n/);
-    return lines.findIndex(l => /(us\s*name|שם\s*(ה-?)?us)/i.test(l) && /(acceptance|תנאי\s*קבלה)/i.test(l));
+    return lines.findIndex(l => [",", ";", "\t", "|"].some(d => l.split(d).filter(c => this.colKey(c.replace(/[*`]/g, ""))).length >= 3));
   },
   /* RFC 4180, forgiving: a stray quote inside a quoted cell (דו"ח) is kept as text. */
   splitCsv(text, delim) {
@@ -327,8 +353,13 @@ const BreakdownEngine = {
     return rows;
   },
   fromCsv(text, input) {
-    let s = String(text).replace(/^\uFEFF/, "");
+    let s = this.tidy(text);
     const lines = s.split(/\r?\n/), h = this.findCsvHeader(s);
+    if (/^\s*\|/.test(lines[h])) {                     // a Markdown table: | US Name | Description | ...
+      const rows = lines.slice(h).filter(l => /^\s*\|/.test(l) && !/^\s*\|?\s*:?-{3,}/.test(l))
+        .map(l => l.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim().replace(/^\*\*|\*\*$/g, "").replace(/<br\s*\/?>/gi, "\n")));
+      return this.fromRows(rows, input);
+    }
     s = lines.slice(h).join("\n");
     s = s.replace(/\n```[\s\S]*$/, "");                     // end of a ```csv block
     const head = lines[h];
@@ -340,7 +371,7 @@ const BreakdownEngine = {
     rows = (rows || []).filter(r => r && r.some(c => this.clean(c)));
     const hi = rows.findIndex(r => r.filter(c => this.colKey(c)).length >= 3);
     if (hi < 0) throw new Error("לא מצאתי את שורת הכותרות (US Name, Description, Acceptance Criteria...). ודאו שזה הקובץ שה-AI יצר.");
-    const idx = {}; rows[hi].forEach((c, i) => { const k = this.colKey(c); if (k && idx[k] === undefined) idx[k] = i; });
+    const idx = {}; rows[hi].forEach((c, i) => { const k = this.colKey(String(c).replace(/[*`]/g, "")); if (k && idx[k] === undefined) idx[k] = i; });
     if (idx.title === undefined && idx.desc === undefined) throw new Error("בקובץ חסרות העמודות US Name ו-Description.");
     const cell = (r, k) => idx[k] === undefined ? "" : String(r[idx[k]] == null ? "" : r[idx[k]]);
     const list = v => String(v || "").split(/\r?\n|\s*\|\s*|;\s*(?=\S)/).map(x => this.clean(x.replace(/^\s*(?:\d+[.)]|[-•*–])\s*/, ""))).filter(Boolean);
@@ -381,7 +412,12 @@ const BreakdownEngine = {
       const body = t.trim(), a2 = body.indexOf("{"), z2 = body.lastIndexOf("}");
       if (a2 < 0 || z2 <= a2) continue;
       let o;
-      try { o = JSON.parse(body.slice(a2, z2 + 1)); } catch (e) { lastErr = e; continue; }
+      const raw = body.slice(a2, z2 + 1);
+      try { o = JSON.parse(raw); }
+      catch (e) {
+        try { o = JSON.parse(raw.replace(/,\s*([}\]])/g, "$1").replace(/^\s*\/\/.*$/gm, "")); }   // trailing commas, comment lines
+        catch (e2) { lastErr = e; continue; }
+      }
       if (o && (o.stories || o.userStories || o.us)) return this.normalize(o, input, "ai");
     }
     throw new Error(lastErr ? "החלק להעתקה לא בפורמט תקין (" + lastErr.message + "). העתיקו שוב את בלוק הקוד שבסוף התשובה, מההתחלה עד הסוף." : "בתשובה אין User Stories. העתיקו את בלוק הקוד שבסוף התשובה.");

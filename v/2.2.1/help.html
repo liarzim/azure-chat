@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מדריך אז'ורי</title>
+<link rel="icon" href="img/azuri-face.svg" type="image/svg+xml">
+<link rel="stylesheet" href="help/help.css">
+</head>
+<body>
+<header class="top">
+  <div class="inner">
+    <div>
+      <h1><img src="img/azuri-face.svg" alt="" width="32" height="32" style="vertical-align:-6px;border-radius:8px"> מדריך אז'ורי</h1>
+      <p class="sub">איך יוצרים טוקן, ואיך עובדים עם הכלי</p>
+    </div>
+    <a class="btn" href="./">פתיחת הכלי</a>
+  </div>
+  <nav class="tabs inner" role="tablist">
+    <a href="#token" role="tab" id="tab-token">1. יצירת טוקן</a>
+    <a href="#usage" role="tab" id="tab-usage">2. שימוש בכלי</a>
+    <a href="#problems" role="tab" id="tab-problems">3. תקלות נפוצות</a>
+  </nav>
+</header>
+
+<main class="inner">
+
+<!-- ======================= TOKEN ======================= -->
+<section id="p-token" class="pane" role="tabpanel" aria-labelledby="tab-token">
+  <div class="lead">
+    <p><b>מה זה טוקן?</b> סיסמה אישית (Personal Access Token, או PAT) שמאפשרת לכלי לדבר עם Azure DevOps בשמכם. הכלי רואה ומעדכן רק מה שמותר לכם לראות ולעדכן ב-Azure.</p>
+    <p>יוצרים טוקן פעם אחת, והוא תקף עד תאריך התפוגה שבוחרים. כשהוא פג, יוצרים חדש באותה דרך.</p>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <h3>פותחים את רשימת הטוקנים</h3>
+      <p>היכנסו ל-Azure DevOps. למעלה משמאל לוחצים על אייקון <b>User settings</b> <span class="n">1</span>, ואז על <b>Personal access tokens</b> <span class="n">2</span>.</p>
+      <p><a class="btn ghost" href="https://dev.azure.com/GOI-Finance/_usersSettings/tokens" target="_blank" rel="noopener">או ישר מכאן: רשימת הטוקנים שלי ↗</a></p>
+      <figure><a href="help/img/token-1-menu.png" target="_blank"><img src="help/img/token-1-menu.png" alt="תפריט User settings ב-Azure DevOps, עם Personal access tokens מסומן" loading="lazy" width="800" height="500"></a></figure>
+    </li>
+    <li>
+      <h3>טוקן חדש</h3>
+      <p>לוחצים על <b>+ New Token</b> <span class="n">3</span>.</p>
+      <figure><a href="help/img/token-2-new.png" target="_blank"><img src="help/img/token-2-new.png" alt="מסך Personal Access Tokens עם הכפתור New Token מסומן" loading="lazy" width="800" height="500"></a></figure>
+    </li>
+    <li>
+      <h3>שם, ארגון והרשאה לפריטים</h3>
+      <ul>
+        <li><span class="n">4</span> <b>Name:</b> שם שתזהו, למשל <code>Azuri</code>.</li>
+        <li><span class="n">5</span> <b>Organization:</b> <code>GOI-Finance</code>. לא "All accessible organizations".</li>
+        <li><span class="n">7</span> <b>Scopes:</b> משאירים <b>Custom defined</b>, ותחת <b>Work Items</b> מסמנים <b>Read &amp; write</b>.</li>
+      </ul>
+      <figure><a href="help/img/token-3-form.png" target="_blank"><img src="help/img/token-3-form.png" alt="טופס יצירת טוקן: שם, ארגון GOI-Finance והרשאת Work Items Read and write מסומנים" loading="lazy" width="800" height="500"></a></figure>
+      <p class="note">רוצים רק לשלוף נתונים בלי לעדכן? מספיק <b>Read</b>. כדי לעדכן וליצור פריטים צריך <b>Read &amp; write</b>.</p>
+    </li>
+    <li>
+      <h3>תוקף</h3>
+      <p><span class="n">6</span> ב-<b>Expiration</b> בוחרים 90 יום, או <b>Custom defined</b> ובוחרים תאריך רחוק יותר (עד שנה). ככל שהתוקף ארוך יותר, פחות פעמים תצטרכו ליצור טוקן חדש.</p>
+      <figure><a href="help/img/token-4-expiry.png" target="_blank"><img src="help/img/token-4-expiry.png" alt="רשימת אפשרויות התוקף: 30, 60, 90 יום או Custom defined" loading="lazy" width="800" height="500"></a></figure>
+    </li>
+    <li>
+      <h3>הרשאה לרשימת האנשים (מומלץ) ויצירה</h3>
+      <p>לוחצים על <b>Show all scopes</b> בתחתית הרשימה, גוללים ל-<b>Project and Team</b> ומסמנים <b>Read</b> <span class="n">8</span>. בזכותה השדה Assigned To מציג את כל אנשי הצוותים. בלעדיה תוצג רק רשימה חלקית.</p>
+      <p>בסוף לוחצים <b>Create</b> <span class="n">9</span>.</p>
+      <figure><a href="help/img/token-5-scopes.png" target="_blank"><img src="help/img/token-5-scopes.png" alt="Project and Team עם Read מסומן, והכפתור Create" loading="lazy" width="800" height="500"></a></figure>
+    </li>
+    <li>
+      <h3>מעתיקים את הטוקן מיד</h3>
+      <div class="callout warn">
+        <p><b>הטוקן מוצג פעם אחת בלבד.</b> אחרי Create מופיע חלון "Success!" עם הטוקן. לוחצים על כפתור ההעתקה שלידו. אם סגרתם בלי להעתיק, יוצרים טוקן חדש.</p>
+      </div>
+    </li>
+    <li>
+      <h3>מתחברים לכלי</h3>
+      <p>פותחים את <a href="./">אז'ורי</a>, מדביקים את הטוקן בשדה <b>Personal Access Token</b> ולוחצים <b>כניסה עם טוקן</b>.</p>
+      <ul>
+        <li><b>בלי</b> סימון "לזכור את הטוקן": הטוקן נמחק כשסוגרים את הלשונית. מתאים למחשב משותף.</li>
+        <li><b>עם</b> סימון: נשמר במחשב הזה, ולא צריך להדביק בכל פעם. מתאים למחשב האישי שלכם.</li>
+      </ul>
+      <figure><a href="help/img/app-1-login.png" target="_blank"><img class="narrow" src="help/img/app-1-login.png" alt="מסך הכניסה של אז'ורי" loading="lazy"></a></figure>
+    </li>
+  </ol>
+
+  <div class="callout">
+    <h3>שמירה על הטוקן</h3>
+    <ul>
+      <li>הטוקן שווה לסיסמה שלכם ל-Azure. לא שולחים אותו במייל, בצ'אט או בוואטסאפ, ולא מדביקים אותו באתרים אחרים.</li>
+      <li>הכלי שולח את הטוקן רק ל-<code>dev.azure.com</code>. הוא לא נשמר בשום שרת.</li>
+      <li>חשבתם שהטוקן נחשף? ברשימת הטוקנים מסמנים אותו ולוחצים <b>Revoke</b>, ויוצרים חדש.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ======================= USAGE ======================= -->
+<section id="p-usage" class="pane" role="tabpanel" aria-labelledby="tab-usage">
+
+  <div class="block">
+    <h2>שליפת פריטים לטבלה</h2>
+    <p>כותבים בשורת הצ'אט מספר אחד או כמה מספרים, ומקבלים טבלה מסודרת עם השדות, ה-Description והתמונות.</p>
+    <table class="cmds">
+      <tr><td><code>110047</code></td><td>פריט אחד</td></tr>
+      <tr><td><code>110047 112074 112075</code></td><td>כמה פריטים, כל סוג (באג, US, פיצ'ר...)</td></tr>
+      <tr><td><code>110047 רק Title ו-State</code></td><td>רק העמודות שביקשתם</td></tr>
+      <tr><td><code>110047 הוסף Tags</code></td><td>עמודה נוספת על הרגיל</td></tr>
+      <tr><td><code>110047 בלי Description</code></td><td>בלי עמודה מסוימת</td></tr>
+    </table>
+    <figure><a href="help/img/app-2-table.png" target="_blank"><img src="help/img/app-2-table.png" alt="טבלת תוצאות עם שני פריטים, תמונות וכפתורי העתקה והורדה ל-Excel" loading="lazy" width="1200" height="720"></a></figure>
+    <ul>
+      <li><b>הורדה ל-Excel</b> ו<b>העתקת טבלה</b> (כולל תמונות) נמצאים מעל כל טבלה. אחרי העתקה אפשר להדביק ב-Word, Outlook או Excel.</li>
+      <li><b>הגדרות ← הגדרת עמודות בדוח</b> (למעלה): בחירת העמודות שמוצגות כברירת מחדל.</li>
+      <li>לחיצה על תמונה מגדילה אותה.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>חיפוש לפי מילים</h2>
+    <p>לא זוכרים מספר? כותבים מילים מהכותרת או מהתיאור, ומקבלים רשימה של פריטים מתאימים.</p>
+    <ul>
+      <li>מסמנים פריט אחד, כמה, או <b>בחירת הכל</b>, ולוחצים <b>הצג בטבלה</b>. לפריט בודד יש גם כפתור <b>הצג</b> בשורה שלו.</li>
+      <li>כברירת מחדל מוצגים פריטים פתוחים בלבד. הכפתור <b>כולל סגורים</b> מחפש שוב גם בסגורים.</li>
+      <li>בכותרת מחפשים גם חלק ממילה. בתיאור מחפשים מילים שלמות.</li>
+      <li>אם בטקסט יש מספרים (למשל גרסה), מתחילים ב-<code>חפש:</code>, אחרת הכלי יחשוב שאלה מספרי פריטים.</li>
+    </ul>
+    <table class="cmds">
+      <tr><td><code>ייצוא לאקסל</code></td><td>חיפוש פריטים פתוחים</td></tr>
+      <tr><td><code>חפש: גרסה 2026</code></td><td>חיפוש כשיש מספרים בטקסט</td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2>עדכון פריט מהטבלה</h2>
+    <p>לוחצים על תא בטבלה או על ✎ ליד המספר. נפתח חלון עריכה בצד:</p>
+    <ul>
+      <li>משנים את הערך, או מוסיפים עוד שדות מ-<b>+ הוספת שדה</b>.</li>
+      <li>אפשר להוסיף <b>תגובה לדיון</b>, והיא תיכנס ל-Discussion של הפריט.</li>
+      <li>בתחתית מוצג מה ישתנה (לפני ← אחרי). רק לחיצה על <b>שמירה ב-Azure</b> שומרת.</li>
+    </ul>
+    <figure><a href="help/img/app-3-edit.png" target="_blank"><img src="help/img/app-3-edit.png" alt="חלון עריכה עם שינוי State, שדה Iteration ותגובה לדיון" loading="lazy" width="1200" height="720"></a></figure>
+    <div class="callout">
+      <p><b>בדיקות לפני שמירה:</b> שדות חובה (של Azure ושל הצוות) ותבנית ה-Description של Feature נבדקים בכל שמירה. אם מישהו אחר עדכן את הפריט בינתיים, השמירה נעצרת ולא דורסת את השינוי שלו.</p>
+    </div>
+  </div>
+
+  <div class="block">
+    <h2>בחירת אנשים, Area ו-Iteration</h2>
+    <ul>
+      <li><b>Assigned To:</b> רשימה עם חיפוש. מקלידים חלק מהשם ובוחרים. "אני" תמיד ראשון.</li>
+      <li><b>Area ו-Iteration:</b> עץ נפתח עם חיפוש. ב-Iteration מוצגים תאריכי הספרינט ותג <b>נוכחי</b>.</li>
+    </ul>
+    <figure><a href="help/img/app-5-tree.png" target="_blank"><img src="help/img/app-5-tree.png" alt="עץ Iteration פתוח עם תאריכים ותג נוכחי" loading="lazy" width="1200" height="720"></a></figure>
+  </div>
+
+  <div class="block">
+    <h2>עדכון מהיר בצ'אט</h2>
+    <p>אפשר לעדכן גם בכתיבה. הכלי מציג קודם תצוגה מקדימה, ושומר רק אחרי אישור.</p>
+    <table class="cmds">
+      <tr><td><code>112074 State Resolved</code></td><td>שינוי סטטוס</td></tr>
+      <tr><td><code>110047 112074 Iteration 4.2</code></td><td>אותו שינוי לכמה פריטים</td></tr>
+      <tr><td><code>112074 שייך לאני</code></td><td>שיוך אליכם</td></tr>
+      <tr><td><code>112074 Priority=2; Tags +SAP</code></td><td>כמה שדות, הוספת תגית</td></tr>
+      <tr><td><code>112074 תגובה: טקסט</code></td><td>תגובה לדיון</td></tr>
+    </table>
+    <figure><a href="help/img/app-6-chatedit.png" target="_blank"><img src="help/img/app-6-chatedit.png" alt="תצוגה מקדימה של עדכון מהצ'אט לפני שמירה" loading="lazy" width="1200" height="720"></a></figure>
+  </div>
+
+  <div class="block">
+    <h2>יצירת פריט חדש</h2>
+    <p>שלוש דרכים: הכפתור <b>+ פריט חדש</b> למעלה, <b>+ תת-פריט</b> בחלון העריכה של פריט קיים, או פקודה בצ'אט.</p>
+    <ul>
+      <li>בוחרים סוג: Epic, Feature, User Story, Task או Bug.</li>
+      <li><b>מתחילים מפריט האב (חובה).</b> מקלידים את המספר, ושם האב מוצג מיד. לא זוכרים מספר? מקלידים מילים מהכותרת או מהתיאור ובוחרים מהרשימה (מוצגים רק פריטים פתוחים מהסוגים שיכולים להיות אב). ה-Area וה-Iteration נלקחים ממנו. אם עוד לא בחרתם סוג, הכלי מציע את הסוג הרגיל מתחת לאב (מתחת ל-Epic: Feature, מתחת ל-Feature: User Story).</li>
+      <li>הכפתור בתחתית אומר בדיוק מה ייווצר, למשל <b>יצירת Bug ב-Azure</b>. בדקו אותו לפני הלחיצה.</li>
+      <li>Feature חדש נפתח עם תבנית ה-Description של הצוות. כותרות החובה בתבנית חייבות תוכן.</li>
+    </ul>
+    <figure><a href="help/img/app-4-new.png" target="_blank"><img src="help/img/app-4-new.png" alt="טופס פריט חדש מסוג User Story עם פריט אב" loading="lazy" width="1200" height="720"></a></figure>
+    <p><b>Epic:</b> הטופס שואל "האם יש Epic אב?". <b>כן</b>: חובה להזין את מספר ה-Epic האב. <b>לא</b>: נוצר בלי אב.</p>
+    <figure><a href="help/img/app-7-epic.png" target="_blank"><img src="help/img/app-7-epic.png" alt="טופס Epic חדש עם השאלה האם יש Epic אב" loading="lazy" width="1200" height="720"></a></figure>
+    <table class="cmds">
+      <tr><td><code>חדש Task תחת 110047: כותרת</code></td><td>Task תחת פריט קיים</td></tr>
+      <tr><td><code>צור באג תחת 110047: כותרת</code></td><td>באג</td></tr>
+      <tr><td><code>חדש Feature תחת 900001: כותרת; Leading Squad Meteor</code></td><td>עם שדות נוספים</td></tr>
+    </table>
+    <p class="note">פקודה בצ'אט רק פותחת טופס ממולא. הפריט נוצר רק אחרי לחיצה על <b>יצירת [סוג] ב-Azure</b>.</p>
+  </div>
+
+  <div class="block">
+    <h2>הגדרות לפתיחת פריט חדש</h2>
+    <p>ב<b>הגדרות ← הגדרות לפתיחת פריט חדש</b> מגדירים אילו שדות חובה לכל סוג, ואת תבנית ה-Description של Feature (כותרות, חובה או לא, תוכן התחלתי). השמירה משפיעה על כל הצוות תוך כדקה, ודורשת הרשאת עריכה ב-GitHub. בדרך כלל רק מנהל הכלי משנה אותן.</p>
+  </div>
+
+  <div class="block">
+    <h2>מצב הדגמה</h2>
+    <p>במסך הכניסה, <b>כניסה למצב הדגמה</b> פותחת את הכלי עם נתונים מומצאים, בלי טוקן. טוב לתרגול: שום דבר לא נשמר ב-Azure.</p>
+  </div>
+</section>
+
+<!-- ======================= PROBLEMS ======================= -->
+<section id="p-problems" class="pane" role="tabpanel" aria-labelledby="tab-problems">
+  <div class="faq">
+    <details open>
+      <summary>"Azure DevOps דחה את הטוקן" [קוד N2]</summary>
+      <p>הטוקן פג תוקף, בוטל, או לא נוצר לארגון GOI-Finance. צרו טוקן חדש לפי <a href="#token">השלבים</a> והתחברו איתו.</p>
+    </details>
+    <details>
+      <summary>"Azure DevOps דחה את השמירה" [קוד W1]</summary>
+      <p>שליפה עובדת אבל שמירה או יצירה לא: לטוקן יש רק הרשאת <b>Read</b>. צרו טוקן חדש עם <b>Work Items: Read &amp; write</b> (שלב 3 ב<a href="#token">יצירת טוקן</a>), התנתקו והתחברו איתו.</p>
+    </details>
+    <details>
+      <summary>"הטוקן לא תקין, פג תוקפו, או שאין לו הרשאה"</summary>
+      <p>בדקו ברשימת הטוקנים שהטוקן מסומן Active, שהארגון הוא GOI-Finance, ושיש לו Work Items. לעדכון וליצירה צריך Read &amp; write.</p>
+    </details>
+    <details>
+      <summary>"הטוקן מכיל תווים שאינם באנגלית"</summary>
+      <p>כנראה המקלדת הייתה בעברית, או שנכנס תו נוסף בהעתקה. העתיקו שוב את הטוקן והדביקו (Ctrl+V), בלי להקליד.</p>
+    </details>
+    <details>
+      <summary>"הדפדפן לא מצליח להגיע ל-dev.azure.com" [קוד N0]</summary>
+      <p>אין חיבור ל-Azure מהמחשב. בדקו חיבור רשת או VPN, ונסו לפתוח את dev.azure.com בלשונית רגילה.</p>
+    </details>
+    <details>
+      <summary>"הדפדפן חוסם בקשות מהאתר הזה ל-Azure" [קוד N1]</summary>
+      <p>תוסף בדפדפן או פרוקסי ארגוני חוסם. נסו בחלון InPrivate / Incognito או בדפדפן אחר. אם זה לא עוזר, פנו לתמיכה.</p>
+    </details>
+    <details>
+      <summary>ב-Assigned To מופיעים רק חלק מהאנשים</summary>
+      <p>לטוקן אין הרשאת <b>Project and Team: Read</b>, ולכן מוצגים רק מי שעבדו בפרויקט ב-90 הימים האחרונים. צרו טוקן חדש עם ההרשאה (שלב 5).</p>
+    </details>
+    <details>
+      <summary>"אין לכם הרשאה לפריטים האלה"</summary>
+      <p>ההרשאות ב-Azure עצמו לא מאפשרות לכם לראות או לעדכן את הפריט. הכלי לא עוקף הרשאות. פנו למנהל הפרויקט ב-Azure.</p>
+    </details>
+    <details>
+      <summary>"מישהו אחר עדכן את הפריט"</summary>
+      <p>מישהו שמר שינוי בזמן שעבדתם. פתחו שוב את הפריט (הערכים יתעדכנו) ובצעו את השינוי מחדש.</p>
+    </details>
+    <details>
+      <summary>שמירה לא מתאפשרת: "יש למלא שדות חובה"</summary>
+      <p>בתחתית חלון העריכה מפורט מה חסר: שדות חובה, כותרות חובה בתבנית, פריט אב, או התשובה לשאלה על Epic אב.</p>
+    </details>
+  </div>
+  <p class="note">לא מצאתם? צלמו את המסך עם הודעת השגיאה (כולל מספר הגרסה בתחתית מסך הכניסה) ושלחו למנהל הכלי.</p>
+</section>
+
+</main>
+<footer class="inner foot">אז'ורי · GOI-Finance / Portfolio Merkava</footer>
+<script src="help/help.js"></script>
+</body>
+</html>

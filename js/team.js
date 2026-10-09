@@ -33,6 +33,13 @@ const TEAM_DEFAULT = {
     ],
     "Bug": []
   },
+  /* AI chats offered by "שיפור עם AI" (the prompt is copied, the chat opens in a new tab). */
+  aiTools: [
+    {id: "m365", label: "Copilot (ארגוני)", url: "https://m365.cloud.microsoft/chat"},
+    {id: "chatgpt", label: "ChatGPT", url: "https://chatgpt.com/"},
+    {id: "claude", label: "Claude", url: "https://claude.ai/new"},
+    {id: "gemini", label: "Gemini", url: "https://gemini.google.com/app"}
+  ],
   templates: {
     "Feature": {
       "field": "System.Description",

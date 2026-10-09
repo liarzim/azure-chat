@@ -132,12 +132,22 @@ const BreakdownUI = {
     const prompt = BreakdownEngine.prompt(input, b);
     box = document.createElement("div"); box.className = "bd-aibox";
     box.innerHTML = "<h4>שיפור עם AI</h4>" +
-      '<ol class="bd-steps"><li>העתיקו את ההנחיה, פתחו צ\'אט AI שמאושר בארגון, הדביקו ושלחו.</li>' +
+      '<ol class="bd-steps"><li>בחרו כלי AI ולחצו "העתקה ופתיחה". ההנחיה מועתקת והכלי נפתח בלשונית חדשה. שם: <b>Ctrl+V</b> ושליחה.</li>' +
       '<li>ה-AI יחזיר קובץ <b>azuri-breakdown.csv</b> במבנה קבוע (אותו מבנה כמו הורדת CSV מאז\'ורי). אם הוא לא יכול ליצור קובץ, הוא יכתוב את התוכן בבלוק קוד.</li>' +
       '<li>העלו כאן את הקובץ (CSV או Excel), או הדביקו את התוכן.</li></ol>' +
       '<p class="bd-small">ההנחיה כוללת רק את תיאור הפיצ\'ר והטיוטה. אין בה טוקן או נתונים מ-Azure.</p>';
     const row = document.createElement("div"); row.className = "bd-airow";
-    row.append(this.btn("1. העתקת ההנחיה", "sm", () => this.copy(prompt, "ההנחיה הועתקה. הדביקו אותה בצ'אט ה-AI")));
+    const tools = this.aiTools();
+    if (tools.length) {
+      const sel = document.createElement("select"); sel.className = "bd-tool"; sel.setAttribute("aria-label", "כלי AI");
+      tools.forEach(t => sel.add(new Option(t.label, t.id)));
+      const saved = this.pref("bd_ai_tool"); if (saved && tools.some(t => t.id === saved)) sel.value = saved;
+      const go = this.btn("", "sm bd-open", () => this.openTool(tools.find(t => t.id === sel.value), prompt));
+      const label = () => { go.textContent = "1. העתקה ופתיחה ב-" + (tools.find(t => t.id === sel.value) || tools[0]).label; };
+      sel.onchange = () => { this.pref("bd_ai_tool", sel.value); label(); };
+      label();
+      row.append(sel, go, this.btn("העתקה בלבד", "ghost sm", () => this.copy(prompt, "ההנחיה הועתקה. הדביקו אותה בצ'אט ה-AI")));
+    } else row.append(this.btn("1. העתקת ההנחיה", "sm", () => this.copy(prompt, "ההנחיה הועתקה. הדביקו אותה בצ'אט ה-AI")));
     const show = document.createElement("details"); show.className = "bd-pshow";
     show.innerHTML = "<summary>הצגת ההנחיה</summary>";
     const pv = document.createElement("textarea"); pv.readOnly = true; pv.rows = 6; pv.value = prompt; pv.className = "bd-in"; pv.setAttribute("aria-label", "ההנחיה ל-AI");
@@ -232,6 +242,23 @@ const BreakdownUI = {
       });
       return Array.from(out, x => x == null ? "" : x);
     });
+  },
+
+  /* AI chats from the team settings; only https links. */
+  aiTools() {
+    const list = typeof TeamConfig !== "undefined" && TeamConfig.data && Array.isArray(TeamConfig.data.aiTools) ? TeamConfig.data.aiTools : [];
+    return list.filter(t => t && t.id && t.label && /^https:\/\/[^\s]+$/i.test(t.url || ""));
+  },
+  pref(k, v) {
+    try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; }
+    return null;
+  },
+  /* Copy first (needs this page focused), then open the chat in a new tab. A browser does not let one site
+     paste into another site's tab, so the person presses Ctrl+V there. */
+  async openTool(tool, prompt) {
+    if (!tool) return;
+    await this.copy(prompt, "ההנחיה הועתקה. בלשונית של " + tool.label + ": Ctrl+V ושליחה");
+    window.open(tool.url, "_blank", "noopener");
   },
 
   async runAgent(b, input, btn) {

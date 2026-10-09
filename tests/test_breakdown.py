@@ -128,7 +128,15 @@ with sync_playwright() as p:
     # AI improve: copy prompt, paste a bad answer, then a good one
     card.locator(".bd-acts button", has_text="שיפור עם AI").click()
     box = card.locator(".bd-aibox"); box.wait_for()
-    box.locator("button", has_text="העתקת ההנחיה").click(); pg.wait_for_timeout(300)
+    tools = box.locator("select.bd-tool option").all_inner_texts()
+    check("AI tools list: Copilot, ChatGPT, Claude, Gemini", tools == ["Copilot (ארגוני)", "ChatGPT", "Claude", "Gemini"], tools)
+    pg.evaluate("window.__opened = []; window.open = (u, t, f) => { window.__opened.push([u, t, f]); return null; }; 0")   # a trailing function would be called by evaluate
+    box.locator("select.bd-tool").select_option("gemini")
+    box.locator("button.bd-open").click(); pg.wait_for_timeout(300)
+    opened = pg.evaluate("window.__opened")
+    check("copy and open: Gemini opens in a new tab after the prompt is copied", opened == [["https://gemini.google.com/app", "_blank", "noopener"]] and "INVEST" in pg.evaluate("navigator.clipboard.readText()") and "Gemini" in box.locator("button.bd-open").inner_text(), opened)
+    check("chosen AI tool is remembered", pg.evaluate("localStorage.getItem('bd_ai_tool')") == "gemini")
+    box.locator("button", has_text="העתקה בלבד").click(); pg.wait_for_timeout(300)
     clip = pg.evaluate("navigator.clipboard.readText()")
     check("AI prompt copied, without any token", "INVEST" in clip and "סינון לפי שנה" in clip and "PAT" not in clip and "Authorization" not in clip, clip[:200])
     box.locator("textarea[aria-label='התשובה מה-AI']").fill("סליחה, לא הבנתי")

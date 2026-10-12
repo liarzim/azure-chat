@@ -41,8 +41,8 @@ const BreakdownUI = {
   },
   close() { $("bdDlg").classList.add("hidden"); $("input").focus(); },
   services() {
-    const list = typeof TeamConfig !== "undefined" && TeamConfig.data && Array.isArray(TeamConfig.data.sharedServices) ? TeamConfig.data.sharedServices : ["UI/UX", "Customer Success"];
-    return list.map(x => String(x).trim()).filter(Boolean);
+    const list = typeof TeamConfig !== "undefined" && TeamConfig.data && Array.isArray(TeamConfig.data.sharedServices) ? TeamConfig.data.sharedServices : [{name: "UI/UX"}, {name: "Customer Success"}];
+    return list.filter(x => x && (typeof x === "string" || x.active !== false)).map(x => String(typeof x === "string" ? x : x.name).trim()).filter(Boolean);
   },
   fillServices(checked) {
     const box = $("bdSvcBoxes"); box.innerHTML = "";

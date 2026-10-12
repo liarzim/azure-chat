@@ -217,6 +217,18 @@ with sync_playwright() as p:
     check("edit: cannot save an empty breakdown", ed.locator(".bd-err").is_visible() and "לפחות" in ed.locator(".bd-err").inner_text())
     ed.locator("button", has_text="ביטול").click(); pg.wait_for_timeout(200)
     check("edit: cancel keeps the last saved breakdown", pg.locator(".bd").last.locator(".bd-us").count() == n0)
+    # settings: Shared Services as an editable table
+    pg.click("#setMenuBtn"); pg.click("#teamBtn"); pg.locator("#teamTabs [data-tab=shared]").click(); pg.wait_for_timeout(300)
+    rows = pg.locator(".svctable tbody tr")
+    check("settings: Shared Services table with the defaults", rows.count() == 2 and rows.nth(0).locator("input").first.input_value() == "UI/UX" and rows.nth(1).locator("input").first.input_value() == "Customer Success")
+    pg.locator(".svctable").locator("xpath=..").locator("button", has_text="+ שירות").click()
+    new = pg.locator(".svctable tbody tr").last
+    new.locator("input[aria-label='שם השירות']").fill("DBA"); new.locator("select").select_option("2")
+    new.locator("textarea").fill("הקמת טבלאות\nהרשאות")
+    pg.locator(".svctable tbody tr").nth(1).locator("input[type=checkbox]").uncheck()
+    d = pg.evaluate("TeamUI.prepared().sharedServices")
+    check("settings: rows edited into the team settings", [x["name"] for x in d] == ["UI/UX", "Customer Success", "DBA"] and d[2]["priority"] == 2 and d[2]["tasks"] == ["הקמת טבלאות", "הרשאות"] and d[1]["active"] is False, d)
+    pg.evaluate("TeamUI.close(true); 0")
     pg.fill("#input", "עזרה"); pg.keyboard.press("Enter"); pg.wait_for_timeout(300)
     check("help mentions the breakdown", "פירוק פיצ'ר" in pg.locator(".msg.bot").last.inner_text())
     # phone

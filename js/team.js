@@ -34,7 +34,10 @@ const TEAM_DEFAULT = {
     "Bug": []
   },
   /* Shared Services offered in the breakdown dialog. Each one picked becomes its own User Story. */
-  sharedServices: ["UI/UX", "Customer Success"],
+  sharedServices: [
+    {name: "UI/UX", priority: 1, squad: "", tasks: ["אפיון UX", "עיצוב מסכים"], active: true},
+    {name: "Customer Success", priority: 4, squad: "", tasks: ["הכנת חומרי הדרכה", "הדרכה וליווי הטמעה"], active: true}
+  ],
   /* AI chats offered by "שיפור עם AI" (the prompt is copied, the chat opens in a new tab). */
   aiTools: [
     {id: "m365", label: "Copilot (ארגוני)", url: "https://m365.cloud.microsoft/chat"},
@@ -96,6 +99,20 @@ const TEAM_DEFAULT = {
   updatedBy: null
 };
 
+/* Shared Services table: [{name, priority 1-4, squad, tasks[], active}]. Plain names (older files) are accepted. */
+function normalizeSharedServices(list) {
+  if (!Array.isArray(list)) list = TEAM_DEFAULT.sharedServices;
+  const seen = new Set();
+  return list.map(x => typeof x === "string" ? {name: x} : (x || {})).map(x => {
+    const name = String(x.name || "").trim();
+    const def = TEAM_DEFAULT.sharedServices.find(d => d.name === name) || {};
+    const pr = Math.round(Number(x.priority != null ? x.priority : def.priority));
+    return {name, priority: pr >= 1 && pr <= 4 ? pr : 3, squad: String(x.squad != null ? x.squad : (def.squad || "")).trim(),
+      tasks: (Array.isArray(x.tasks) ? x.tasks : (def.tasks || [])).map(t => String(t).trim()).filter(Boolean),
+      active: x.active !== false};
+  }).filter(x => x.name && !seen.has(x.name) && seen.add(x.name));
+}
+
 const TeamConfig = {
   data: JSON.parse(JSON.stringify(TEAM_DEFAULT)),
   source: "default",          // "site" | "default"
@@ -118,6 +135,7 @@ const TeamConfig = {
     out.types = Array.isArray(out.types) && out.types.length ? out.types : TEAM_DEFAULT.types.slice();
     out.requiredFields = out.requiredFields || {};
     out.types.forEach(t => { if (!Array.isArray(out.requiredFields[t])) out.requiredFields[t] = []; });
+    out.sharedServices = normalizeSharedServices(out.sharedServices);
     out.templates = out.templates || {};
     Object.values(out.templates).forEach(tp => {
       tp.field = tp.field || "System.Description";

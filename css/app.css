@@ -462,3 +462,6 @@ header h2 .org{color:var(--muted);font-weight:500;font-size:14px}
 .bd-svc{border:1px solid #c4b5fd;border-radius:8px;padding:8px 12px;margin:4px 0 6px;display:block}
 .bd-svc legend{font-size:13px;color:var(--muted);padding:0 4px}
 .bd-svc label{display:inline-flex;align-items:center;gap:6px;margin:4px 0 4px 18px;font-size:14px;color:var(--ink);cursor:pointer}
+.svctable input,.svctable select,.svctable textarea{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font:inherit;color:inherit}
+.svctable textarea{resize:vertical;min-width:200px}
+.svctable td:nth-child(2){width:80px}.svctable td:nth-child(5),.svctable td:nth-child(6){width:50px;text-align:center}

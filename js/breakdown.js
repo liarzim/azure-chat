@@ -102,11 +102,22 @@ const BreakdownEngine = {
       pos: ["משתמש שעבר הדרכה מבצע את התהליך לבד", "חומרי העזר זמינים מהמערכת", "פניות בתקופת ההטמעה מקבלות מענה"],
       neg: ["משתמש שלא עבר הדרכה מקבל הפניה לחומרים", "שאלה שלא מכוסה בחומרים נוספת להם", "תקלה בהטמעה מנותבת לגורם המטפל"]}
   },
+  /* The team's settings row for a service (priority, tasks), when the settings are loaded (browser). */
+  sharedCfg(name) {
+    const list = typeof TeamConfig !== "undefined" && TeamConfig.data && Array.isArray(TeamConfig.data.sharedServices) ? TeamConfig.data.sharedServices : [];
+    return list.find(x => x && x.name === name) || null;
+  },
   sharedStory(name, subject, role, benefit) {
-    const K = this.SHARED[name] || {pr: 3, tasks: o => ["אפיון " + name + ": " + o, "ביצוע " + name + ": " + o], title: o => name + ": שירותי " + name + " " + BreakdownEngine.attach("ל", o), want: o => "לקבל את שירותי " + name + " הנדרשים לפיצ'ר",
+    const cfg = this.sharedCfg(name);
+    const K0 = this.SHARED[name] || {pr: 3, tasks: o => ["אפיון " + name + ": " + o, "ביצוע " + name + ": " + o], title: o => name + ": שירותי " + name + " " + BreakdownEngine.attach("ל", o), want: o => "לקבל את שירותי " + name + " הנדרשים לפיצ'ר",
       ac: ["היקף העבודה של " + name + " מוגדר ומאושר", "התוצרים נמסרו לצוות הפיתוח", "אין חסמים פתוחים מול " + name],
       pos: ["התוצר של " + name + " נמסר בזמן", "התוצר עונה על הדרישות", "הצוות מאשר את הקבלה"],
       neg: ["עיכוב מסומן כסיכון", "תוצר חסר מוחזר להשלמה", "דרישה שלא הוגדרה מתועדת"]};
+    const K = Object.assign({}, K0);
+    if (cfg) {
+      if (cfg.priority) K.pr = cfg.priority;
+      if (cfg.tasks && cfg.tasks.length) K.tasks = o => cfg.tasks.map(t => t + ": " + o);
+    }
     return {kind: "shared", shared: name, title: K.title(subject), asA: role, iWant: K.want(subject), soThat: benefit, pattern: BD_PATTERNS.value, sp: 2, priority: K.pr,
       acceptance: K.ac.slice(), positive: K.pos.slice(), negative: K.neg.slice(), extra: name, tasks: K.tasks(subject).map(t => ({title: t}))};
   },

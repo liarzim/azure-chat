@@ -32,7 +32,7 @@ const TeamUI = {
   render() {
     document.querySelectorAll("#teamTabs [data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === this.tab));
     const types = $("teamTypes"); types.innerHTML = "";
-    $("teamTypesRow").classList.toggle("hidden", this.tab === "github");
+    $("teamTypesRow").classList.toggle("hidden", this.tab === "github" || this.tab === "shared");
     this.draft.types.forEach(t => {
       const b = document.createElement("button"); b.type = "button"; b.className = "seg" + (t === this.type ? " on" : "");
       const n = this.tab === "fields" ? (this.draft.requiredFields[t] || []).length : ((this.draft.templates[t] || {}).headings || []).length;
@@ -44,7 +44,54 @@ const TeamUI = {
     const body = $("teamBody"); body.innerHTML = "";
     if (this.tab === "fields") this.renderFields(body);
     else if (this.tab === "template") this.renderTemplate(body);
+    else if (this.tab === "shared") this.renderShared(body);
     else this.renderGithub(body);
+  },
+
+  /* ---------- Shared Services table (breakdown: each one picked = its own User Story) ---------- */
+  renderShared(body) {
+    const list = this.draft.sharedServices = normalizeSharedServices(this.draft.sharedServices);
+    const intro = document.createElement("p"); intro.className = "muted";
+    intro.textContent = "השירותים שמופיעים בשאלה \"האם נדרשים Shared Services?\" בפירוק פיצ'ר. לכל שירות שנבחר נפתח User Story ייעודי, אף פעם לא Task. Tasks: שורה לכל Task (ריק = אפיון וביצוע). Leading Squad: אם מולא, ה-US של השירות יקבל אותו במקום ה-Squad של הפיצ'ר.";
+    const bar = document.createElement("div"); bar.className = "tbar";
+    const add = document.createElement("button"); add.type = "button"; add.className = "btn ghost"; add.textContent = "+ שירות";
+    const reset = document.createElement("button"); reset.type = "button"; reset.className = "btn ghost"; reset.textContent = "איפוס לברירת המחדל";
+    const sp = document.createElement("span"); sp.className = "sp";
+    bar.append(add, sp, reset);
+    const dl = document.createElement("datalist"); dl.id = "svcSquads";
+    Meta.typeMeta("User Story").then(m => { const f = m.byRef.get("Custom.LeadingSquad"); (f && f.allowed || []).forEach(v => dl.appendChild(new Option(v, v))); }).catch(() => {});
+    const tbl = document.createElement("table"); tbl.className = "ttable svctable";
+    tbl.innerHTML = "<thead><tr><th>שירות</th><th>עדיפות</th><th>Leading Squad</th><th>Tasks (שורה לכל Task)</th><th>פעיל</th><th></th></tr></thead>";
+    const tb = document.createElement("tbody"); tbl.appendChild(tb);
+    const draw = () => {
+      tb.innerHTML = "";
+      list.forEach((x, i) => {
+        const tr = document.createElement("tr");
+        const name = document.createElement("input"); name.value = x.name; name.setAttribute("aria-label", "שם השירות"); name.placeholder = "למשל DBA";
+        name.oninput = () => { x.name = name.value.trim(); this.markDirty(); };
+        const pr = document.createElement("select"); pr.setAttribute("aria-label", "עדיפות של " + (x.name || "השירות"));
+        [1, 2, 3, 4].forEach(n => pr.add(new Option(String(n), String(n)))); pr.value = String(x.priority);
+        pr.onchange = () => { x.priority = Number(pr.value); this.markDirty(); };
+        const sq = document.createElement("input"); sq.value = x.squad; sq.setAttribute("list", "svcSquads"); sq.placeholder = "כמו בפיצ'ר"; sq.setAttribute("aria-label", "Leading Squad של " + (x.name || "השירות"));
+        sq.oninput = () => { x.squad = sq.value.trim(); this.markDirty(); };
+        const tk = document.createElement("textarea"); tk.rows = Math.max(2, x.tasks.length); tk.value = x.tasks.join("\n"); tk.setAttribute("aria-label", "Tasks של " + (x.name || "השירות"));
+        tk.placeholder = "אפיון\nביצוע";
+        tk.oninput = () => { x.tasks = tk.value.split("\n").map(t => t.trim()).filter(Boolean); this.markDirty(); };
+        const ac = document.createElement("input"); ac.type = "checkbox"; ac.checked = x.active; ac.setAttribute("aria-label", "פעיל: " + (x.name || "השירות"));
+        ac.onchange = () => { x.active = ac.checked; this.markDirty(); };
+        const del = document.createElement("button"); del.type = "button"; del.className = "btn ghost sm"; del.textContent = "✕"; del.title = "מחיקה"; del.setAttribute("aria-label", "מחיקת " + (x.name || "השירות"));
+        del.onclick = () => { list.splice(i, 1); this.markDirty(); draw(); };
+        [name, pr, sq, tk, ac, del].forEach(el => { const td = document.createElement("td"); td.appendChild(el); tr.appendChild(td); });
+        tb.appendChild(tr);
+      });
+      if (!list.length) tb.innerHTML = '<tr><td colspan="6" class="muted">אין שירותים. השאלה על Shared Services לא תוצג בפירוק.</td></tr>';
+    };
+    add.onclick = () => { list.push({name: "", priority: 3, squad: "", tasks: [], active: true}); this.markDirty(); draw(); const i = tb.querySelectorAll("tr"); const last = i[i.length - 1]; if (last) last.querySelector("input").focus(); };
+    reset.onclick = () => this.confirmBar("להחזיר את רשימת ה-Shared Services לברירת המחדל?", "איפוס", () => {
+      this.draft.sharedServices = normalizeSharedServices(TEAM_DEFAULT.sharedServices); this.markDirty(); this.render();
+    });
+    body.append(intro, bar, dl, tbl);
+    draw();
   },
 
   /* ---------- Required fields ---------- */
@@ -225,6 +272,7 @@ const TeamUI = {
       tp.headings = (tp.headings || []).filter(h => String(h.text || "").trim()).map(h => ({text: h.text.trim(), required: !!h.required, content: sanitizeTemplateHtml(h.content || ""), aliases: (h.aliases || []).filter(Boolean)}));
       if (!tp.headings.length) delete d.templates[t];
     });
+    d.sharedServices = normalizeSharedServices(d.sharedServices);
     d.updatedAt = new Date().toISOString();
     d.updatedBy = Auth.userName || "";
     return d;

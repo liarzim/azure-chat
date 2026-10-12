@@ -521,6 +521,8 @@ const BreakdownCreate = {
       if (!r.inc.checked) continue;
       const ch = {};
       this.shared("User Story", s.usEd, ch);
+      const svc = r.story.shared ? BreakdownEngine.sharedCfg(r.story.shared) : null;
+      if (svc && svc.squad) this.put(ch, "User Story", "Custom.LeadingSquad", svc.squad);   // the service's own squad (team settings)
       this.put(ch, "User Story", BD_REF.title, r.title.value.trim());
       this.put(ch, "User Story", BD_REF.area, area);
       this.put(ch, "User Story", BD_REF.iter, r.iter ? r.iter.get() : s.defaults.iter);

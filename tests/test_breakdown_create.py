@@ -12,7 +12,10 @@ srv = start(8809)
 FIX = json.load(open(os.path.join(ROOT, "tests", "fixtures", "team-config.json"), encoding="utf-8"))
 REQ = {"Epic": [], "Feature": ["System.AreaPath", "System.IterationPath", "Custom.StoryPointsValues", "Custom.LeadingSquad", "Custom.Customer"],
        "User Story": ["Custom.Customer", "Custom.StoryPointsValues", "Custom.LeadingSquad"], "Task": ["Microsoft.VSTS.Scheduling.OriginalEstimate"], "Bug": []}
-CFG = {**FIX, "requiredFields": REQ}
+CFG = {**FIX, "requiredFields": REQ, "sharedServices": [
+    {"name": "UI/UX", "priority": 1, "squad": "Finance", "tasks": ["אפיון UX", "עיצוב מסכים"], "active": True},
+    {"name": "Customer Success", "priority": 4, "squad": "", "tasks": [], "active": False},
+    {"name": "DBA", "priority": 3, "squad": "", "tasks": ["הקמת טבלאות"], "active": True}]}
 TEXT = "מסך שבו החשב רואה את כל המוסדות שקיבלו תמיכה, עם סינון לפי שנה וסכום, וייצוא לאקסל. הנתונים מגיעים ממערכת מרכבה"
 
 def breakdown(pg, tasks=True):
@@ -39,6 +42,7 @@ with sync_playwright() as p:
     pg.goto("http://127.0.0.1:8809/"); pg.click("#demoBtn"); pg.wait_for_timeout(400)
     breakdown(pg)
     n_us = pg.locator(".bc-us").count(); n_tasks = pg.locator(".bc-task").count()
+    check("Shared Services list comes from the settings table (active only)", pg.evaluate("[...document.querySelectorAll('input[name=bdSvc]')].map(x => x.value)") == ["UI/UX", "DBA"], pg.evaluate("[...document.querySelectorAll('input[name=bdSvc]')].map(x => x.value)"))
     check("panel lists every US with its tasks", n_us >= 5 and n_tasks >= 2 * n_us, (n_us, n_tasks))
     chk = pg.inner_text("#bcCheck")
     check("asks about the parent Epic first", "האם יש Epic אב" in chk, chk)
@@ -130,6 +134,8 @@ with sync_playwright() as p:
     check("Feature under the Epic, with tag, SP value and required fields", F.get("System.Parent") == 900001 and F.get("System.Tags") == "אז'ורי-פירוק" and F.get("Custom.StoryPointsValues") == "03 = 2-4d" and F.get("Custom.LeadingSquad") == "Meteor" and F.get("Custom.Customer") == "סיגמה", F)
     check("Feature Description: template headings filled", "תאור הדרישה" in F["System.Description"] and "המוסדות שקיבלו תמיכה" in F["System.Description"] and "החשב יודע מהר" in F["System.Description"] and "סינון לפי שנה" in F["System.Description"], F["System.Description"][:300])
     U = uss[0]["fields"]
+    ux = next((u for u in uss if u["fields"]["System.Title"].startswith("UI/UX:")), None)
+    check("UI/UX US gets the service's own Leading Squad from the settings", ux and ux["fields"].get("Custom.LeadingSquad") == "Finance", ux and ux["fields"].get("Custom.LeadingSquad"))
     check("US under the Feature, area from Feature, shared fields, sprint", all(u["fields"].get("System.Parent") == feat[0]["id"] for u in uss) and U.get("Custom.LeadingSquad") == "CRM" and U.get("Custom.Customer") == "סיגמה" and U["System.IterationPath"].endswith("4.1") and U.get("System.Tags") == "אז'ורי-פירוק", U)
     d = next(u for u in uss if "בגרסה ערוכה" not in u["fields"]["System.Description"])["fields"]["System.Description"]
     check("US Description: template headings, sentence, criteria and 3+3 tests", "תאור הדרישה" in d and "כחשב, אני רוצה" in d and "בדיקות חיוביות" in d and "בדיקות שליליות" in d and d.count("<li>") >= 9, d[:400])

@@ -25,11 +25,63 @@
       "Custom.StoryPointsValues",
       "Custom.LeadingSquad"
     ],
-    "Task": [
-      "Microsoft.VSTS.Scheduling.OriginalEstimate"
-    ],
+    "Task": [],
     "Bug": []
   },
+  "sharedServices": [
+    {
+      "name": "UI/UX",
+      "priority": 1,
+      "squad": "",
+      "tasks": [
+        "אפיון UX",
+        "עיצוב מסכים"
+      ],
+      "active": true
+    },
+    {
+      "name": "Customer Success",
+      "priority": 4,
+      "squad": "",
+      "tasks": [
+        "הכנת חומרי הדרכה",
+        "הדרכה וליווי הטמעה"
+      ],
+      "active": true
+    },
+    {
+      "name": "ממשקים",
+      "priority": 3,
+      "squad": "",
+      "tasks": [
+        "פיתוח ממשק",
+        "בדיקות ממשק"
+      ],
+      "active": true
+    }
+  ],
+  "aiTools": [
+    {
+      "id": "m365",
+      "label": "Copilot (ארגוני)",
+      "url": "https://m365.cloud.microsoft/chat"
+    },
+    {
+      "id": "chatgpt",
+      "label": "ChatGPT",
+      "url": "https://chatgpt.com/"
+    },
+    {
+      "id": "claude",
+      "label": "Claude",
+      "url": "https://claude.ai/new"
+    },
+    {
+      "id": "gemini",
+      "label": "Gemini",
+      "url": "https://gemini.google.com/app"
+    }
+  ],
   "templates": {
     "Feature": {
       "field": "System.Description",
@@ -80,6 +132,6 @@
       ]
     }
   },
-  "updatedAt": "2026-10-08T13:54:32.000Z",
+  "updatedAt": "2026-10-12T13:59:19.595Z",
   "updatedBy": "מיכאל ליארזי"
 }

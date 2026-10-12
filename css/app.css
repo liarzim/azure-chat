@@ -465,3 +465,12 @@ header h2 .org{color:var(--muted);font-weight:500;font-size:14px}
 .svctable input,.svctable select,.svctable textarea{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font:inherit;color:inherit}
 .svctable textarea{resize:vertical;min-width:200px}
 .svctable td:nth-child(2){width:80px}.svctable td:nth-child(5),.svctable td:nth-child(6){width:50px;text-align:center}
+/* voice typing */
+.btn.mic{display:inline-flex;align-items:center;justify-content:center;padding:0;width:44px;height:44px;flex:none}
+.btn.mic svg{width:20px;height:20px}
+.btn.mic.rec{background:#d92d20;color:#fff;border-color:#d92d20;animation:micpulse 1.2s ease-in-out infinite}
+@keyframes micpulse{0%,100%{box-shadow:0 0 0 0 rgba(217,45,32,.45)}50%{box-shadow:0 0 0 6px rgba(217,45,32,0)}}
+@media (prefers-reduced-motion:reduce){.btn.mic.rec{animation:none}}
+.micwrap{display:flex;gap:6px;align-items:flex-start}
+.micwrap > textarea{flex:1}
+.micwrap .btn.mic{width:38px;height:38px}

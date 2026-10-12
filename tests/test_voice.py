@@ -53,7 +53,39 @@ with sync_playwright() as p:
     check("no mic permission explained", "הרשאה למיקרופון" in pg.inner_text("#toast"), pg.inner_text("#toast"))
     pg.click("#bdCancel")
     check("closing the dialog stops recording", pg.evaluate(f"window.__recs[{n2}].aborted") or pg.evaluate(f"window.__recs[{n2}].stopped"))
+    # every other place you can write: one floating mic next to the focused field
+    pg.click("#input")
+    check("chat box has its own button, no floating one", pg.locator(".mic-float:visible").count() == 0)
+    pg.click("#newBtn"); pg.wait_for_timeout(300)
+    pg.evaluate("() => { const b = [...document.querySelectorAll('#epTypes button')].find(x => x.textContent.trim() === 'Task'); b && b.click(); }")
+    pg.wait_for_timeout(1500)
+    title = pg.locator("#epFields .eprow input").first
+    title.click()
+    fm = pg.locator(".mic-float")
+    check("floating mic appears next to a focused form field", fm.is_visible())
+    fm.click(); k = pg.evaluate("window.__recs.length") - 1
+    pg.evaluate(f"window.__recs[{k}].say('כותרת מוכתבת', true)")
+    check("dictation goes into the focused form field", title.input_value() == "כותרת מוכתבת ", title.input_value())
+    fm.click(); pg.wait_for_timeout(100)
+    rich = pg.locator("#epFields [contenteditable=true]").first
+    if rich.count():
+        rich.click(); pg.keyboard.press("End")
+        fm.click(); k = pg.evaluate("window.__recs.length") - 1
+        pg.evaluate(f"window.__recs[{k}].say('טקסט ארוך', false)")
+        check("rich text: interim words shown in a bubble", pg.locator(".mic-bubble:visible").inner_text() == "טקסט ארוך")
+        pg.evaluate(f"window.__recs[{k}].say('טקסט ארוך בתיאור', true)")
+        check("rich text: final words inserted at the cursor", "טקסט ארוך בתיאור" in rich.inner_text(), rich.inner_text()[:100])
+        fm.click()
+    else:
+        check("rich text field present", False)
+    pg.locator("#epComment").click() if pg.locator("#epComment").is_visible() else None
+    pg.click("#epClose"); pg.wait_for_timeout(200)
+    check("floating mic hidden when nothing is focused", pg.locator(".mic-float:visible").count() == 0)
     check("no js errors", not errs, errs)
+    # sign-in screen: no mic on the token field
+    ctx3 = b.new_context(); ctx3.add_init_script(FAKE)
+    pg3 = ctx3.new_page(); pg3.goto("http://127.0.0.1:8822/"); pg3.click("#pat"); pg3.wait_for_timeout(200)
+    check("no mic on the token field", pg3.locator(".mic-float:visible").count() == 0)
     # a browser without speech recognition: no buttons
     ctx2 = b.new_context(); ctx2.add_init_script("delete window.webkitSpeechRecognition; delete window.SpeechRecognition;")
     pg2 = ctx2.new_page(); pg2.goto("http://127.0.0.1:8822/"); pg2.click("#demoBtn"); pg2.wait_for_timeout(300)

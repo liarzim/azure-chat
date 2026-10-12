@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.10.2",
+  VERSION: "2.10.3",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -715,7 +715,7 @@ function helpHtml(first) {
     "<li><code>110047 112074 רק Title ו-State</code> רק השדות האלה</li>" +
     "<li><code>110047 תוסיף Tags ו-Story Points</code> ברירת מחדל ועוד שדות</li>" +
     "<li><code>110047 בלי Priority ו-WSJF Priority</code> להוריד שדות</li>" +
-    "<li>🎤 ליד תיבת הצ'אט: הקלדה בדיבור בעברית</li><li><code>עזרה</code> להציג את ההסבר הזה שוב · <code>נקה</code> לנקות את השיחה</li></ul>" +
+    "<li>🎤 הקלדה בדיבור בעברית: ליד תיבת הצ'אט, ובכל שדה אחר שעומדים עליו</li><li><code>עזרה</code> להציג את ההסבר הזה שוב · <code>נקה</code> לנקות את השיחה</li></ul>" +
     "<b>חיפוש:</b> כתבו מילים במקום מספר, ותקבלו רשימה לבחירה (אחד, כמה או הכל). בכותרת מחפשים גם חלק ממילה, בתיאור מילים שלמות. עם מספרים בטקסט: <code>חפש: גרסה 2026</code>.<ul>" +
     "<li><code>ייצוא לאקסל</code> · <code>מסך חיפוש</code></li></ul>" +
     "<b>פירוק פיצ'ר:</b> כפתור \"פירוק פיצ'ר\" למעלה, או <code>פרק: מסך שבו החשב רואה את המוסדות שקיבלו תמיכה</code>. מקבלים User Stories עם SP, עדיפות, תנאי קבלה, בדיקות ו-Tasks. אפשר להעתיק, להוריד CSV או Excel, לשפר עם AI, וליצור הכל ב-Azure אחרי אישור.<br>" +

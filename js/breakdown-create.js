@@ -12,12 +12,12 @@
 
 const BD_TAG = "אז'ורי-פירוק";
 const BD_REF = {title: "System.Title", area: "System.AreaPath", iter: "System.IterationPath", desc: "System.Description", tags: "System.Tags",
-  spv: "Custom.StoryPointsValues", est: "Microsoft.VSTS.Scheduling.OriginalEstimate", who: "System.AssignedTo"};
+  spv: "Custom.StoryPointsValues", est: "Microsoft.VSTS.Scheduling.OriginalEstimate", rem: "Microsoft.VSTS.Scheduling.RemainingWork", who: "System.AssignedTo"};
 /* Fields the screen fills itself (per item or automatically), so they are not asked again as "shared". */
 const BD_HANDLED = {
   "Feature": [BD_REF.title, BD_REF.area, BD_REF.iter, BD_REF.desc, BD_REF.tags, BD_REF.spv, BD_REF.who],
   "User Story": [BD_REF.title, BD_REF.area, BD_REF.iter, BD_REF.desc, BD_REF.tags, BD_REF.spv],
-  "Task": [BD_REF.title, BD_REF.area, BD_REF.iter, BD_REF.tags, BD_REF.est]
+  "Task": [BD_REF.title, BD_REF.area, BD_REF.iter, BD_REF.tags, BD_REF.est, BD_REF.rem]
 };
 
 /* ---------- Description from a template ---------- */
@@ -271,7 +271,7 @@ const BreakdownCreate = {
     dd.append(ed, pvd);
     rec.details = dd;
     const tl = document.createElement("div"); tl.className = "bc-tasks";
-    const th = document.createElement("div"); th.className = "bc-th"; th.innerHTML = "<span>Tasks</span><span>Original Estimate (שעות)</span>";
+    const th = document.createElement("div"); th.className = "bc-th"; th.innerHTML = "<span>Tasks</span><span>שעות (Original Estimate + Remaining)</span>";
     const addTask = t => {
       const tr = document.createElement("div"); tr.className = "bc-task";
       const tinc = document.createElement("input"); tinc.type = "checkbox"; tinc.checked = true; tinc.setAttribute("aria-label", "ליצור את ה-Task");
@@ -285,10 +285,11 @@ const BreakdownCreate = {
       del.title = "מחיקת ה-Task"; del.setAttribute("aria-label", "מחיקת ה-Task");
       [tinc, tt, est].forEach(x => x.addEventListener(x.type === "checkbox" ? "change" : "input", () => this.refresh()));
       tr.append(tinc, tt, est, del); tl.appendChild(tr);
-      rec.tasks.push(tr_);
+      rec.tasks.push(tr_); th.classList.remove("hidden");
       return tr_;
     };
     (story.tasks || []).forEach(addTask);
+    if (!rec.tasks.length) th.classList.add("hidden");
     const plusTask = this.btnEl("+ Task", "ghost sm bc-add-task", () => { const t = addTask({title: ""}); t.title.focus(); this.refresh(); });
     const delUs = this.btnEl("מחיקת ה-US", "ghost sm bc-del-us", () => { card.remove(); s.stories.splice(s.stories.indexOf(rec), 1); this.refresh(); });
     const acts = document.createElement("div"); acts.className = "bc-us-acts"; acts.append(plusTask, delUs);
@@ -537,7 +538,9 @@ const BreakdownCreate = {
         this.put(tch, "Task", BD_REF.title, t.title.value.trim());
         this.put(tch, "Task", BD_REF.area, area);
         this.put(tch, "Task", BD_REF.iter, ch[BD_REF.iter]);
-        this.put(tch, "Task", BD_REF.est, t.est.value === "" ? null : Number(t.est.value));
+        const hours = t.est.value === "" ? null : Number(t.est.value);
+        this.put(tch, "Task", BD_REF.est, hours);
+        this.put(tch, "Task", BD_REF.rem, hours);            // the same hours as Remaining Work (not required)
         this.put(tch, "Task", BD_REF.tags, BD_TAG);
         tasks.push({t, plan: await Edit.plan(this.newItem("Task"), tch, "")});
       }

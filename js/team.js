@@ -33,6 +33,8 @@ const TEAM_DEFAULT = {
     ],
     "Bug": []
   },
+  /* Shared Services offered in the breakdown dialog. Each one picked becomes its own User Story. */
+  sharedServices: ["UI/UX", "Customer Success"],
   /* AI chats offered by "שיפור עם AI" (the prompt is copied, the chat opens in a new tab). */
   aiTools: [
     {id: "m365", label: "Copilot (ארגוני)", url: "https://m365.cloud.microsoft/chat"},

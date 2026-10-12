@@ -17,6 +17,9 @@ out.a = a;
 out.b = E.rules({text: "ניהול ספקים: הוספה, עדכון ומחיקה של ספקים עם הרשאות לפי תפקיד", value: "פחות טעויות", role: "", ui: false});
 out.c = E.rules({text: "שיפור כללי של התהליך הקיים", value: "חיסכון בזמן", role: "רכזת", ui: false});
 out.csv = E.csv(a).split("\r\n")[0];
+const nt = E.rules({text: "מסך שבו החשב רואה את המוסדות", value: "v", role: "חשב", tasks: false, shared: ["Customer Success", "DBA"]});
+const ns = E.rules({text: "מסך שבו החשב רואה את המוסדות", value: "v", role: "חשב", tasks: true, shared: []});
+out.notasks = {tasks: nt.stories.reduce((n, s) => n + s.tasks.length, 0), cs: nt.stories.some(s => s.title.startsWith("Customer Success:")), dba: nt.stories.some(s => s.title.startsWith("DBA:")), noShared: ns.stories.filter(s => s.kind === "shared").length};
 out.prompt = E.prompt({text: "x", value: "y", role: "z", ui: true}, a);
 out.parsed = E.parse("הנה התשובה:\n```json\n" + JSON.stringify({role: "חשב", stories: [{title: "א", asA: "חשב", iWant: "לראות", soThat: "אדע", pattern: "Workflow", sp: 1, priority: 9, acceptance: "א\nב", positive: ["1","2","3"], negative: ["1","2","3"]}]}) + "\n```", {text: "פיצ'ר", value: "ערך", ui: false});
 const J = {role: "חשב", stories: [{title: "מעורב", asA: "חשב", iWant: "לראות", soThat: "אדע", pattern: "Workflow", sp: 3, priority: 2, acceptance: ["א"], positive: ["1","2","3"], negative: ["1","2","3"]}]};
@@ -47,7 +50,9 @@ if o:
     check("engine: every story has SP >= 2, priority 1-4, 3+3 tests, criteria, tasks",
           all(s["sp"] >= 2 and 1 <= s["priority"] <= 4 and len(s["positive"]) == 3 and len(s["negative"]) == 3 and len(s["acceptance"]) >= 3 and s["tasks"] for s in a["stories"]), a["stories"])
     check("engine: user story sentence format", all(s["asA"] == "חשב" for s in a["stories"]) and a["stories"][1]["soThat"].startswith("החשב יודע"), a["stories"][1])
-    check("engine: UI/UX task and prompt when UI is needed", any(t["title"].startswith("עיצוב UI/UX") for s in a["stories"] for t in s["tasks"]) and "מסכים ושדות" in a["uiPrompt"], a["uiPrompt"])
+    check("engine: UI/UX is its own US (never a Task), prompt when UI is needed", any(s["title"].startswith("UI/UX:") for s in a["stories"]) and not any("UI/UX" in t["title"] for s in a["stories"] for t in s["tasks"]) and "מסכים ושדות" in a["uiPrompt"], [s["title"] for s in a["stories"]])
+    check("engine: Tasks include אפיון, פיתוח, בדיקות QA", all(any(t["title"].startswith(p) for t in a["stories"][1]["tasks"]) for p in ("אפיון", "פיתוח", "בדיקות QA")), a["stories"][1]["tasks"])
+    check("engine: no task level -> no Tasks; Shared Services -> one US each", o["notasks"]["tasks"] == 0 and o["notasks"]["cs"] and o["notasks"]["dba"] and o["notasks"]["noShared"] == 0, o["notasks"])
     check("engine: feature SP starts at 3, total and sprints", a["feature"]["sp"] == 3 and a["totalSp"] == sum(s["sp"] for s in a["stories"]) and sorted(i for sp in a["sprints"] for i in sp) == list(range(len(a["stories"]))))
     check("engine: sorted by priority", [s["priority"] for s in a["stories"]] == sorted(s["priority"] for s in a["stories"]))
     bt = [s["title"] for s in o["b"]["stories"]]
@@ -95,8 +100,16 @@ with sync_playwright() as p:
     check("business value required (skill question 1)", "ערך העסקי" in pg.inner_text("#bdErr") and pg.evaluate("document.activeElement.id") == "bdValue")
     pg.fill("#bdValue", "החשב יודע מהר כמה מוסדות קיבלו תמיכה")
     pg.click("#bdGo")
-    check("UI/UX answer required (skill question 2)", "UI/UX" in pg.inner_text("#bdErr"))
-    pg.fill("#bdRole", "חשב"); pg.check('input[name="bdUi"][value="1"]'); pg.click("#bdGo")
+    check("task-level answer required", "Task" in pg.inner_text("#bdErr"), pg.inner_text("#bdErr"))
+    pg.check('input[name="bdTasks"][value="1"]'); pg.click("#bdGo")
+    check("Shared Services answer required", "Shared Services" in pg.inner_text("#bdErr"), pg.inner_text("#bdErr"))
+    check("services list hidden until 'yes'", pg.locator("#bdSvcList.hidden").count() == 1)
+    pg.check('input[name="bdShared"][value="1"]')
+    check("services list from the team settings", pg.locator('input[name="bdSvc"]').count() == 2 and pg.is_visible("#bdSvcList"), pg.locator('input[name="bdSvc"]').count())
+    pg.click("#bdGo")
+    check("'yes' needs at least one service", "לפחות" in pg.inner_text("#bdErr"), pg.inner_text("#bdErr"))
+    pg.check('input[name="bdSvc"][value="UI/UX"]')
+    pg.fill("#bdRole", "חשב"); pg.click("#bdGo")
     pg.locator(".bd").first.wait_for(timeout=5000)
     card = pg.locator(".bd").last; txt = card.inner_text()
     check("dialog closes and result shows in chat", pg.locator("#bdDlg.hidden").count() == 1 and "פירוק פיצ'ר:" in pg.locator(".msg.user").last.inner_text())
@@ -166,7 +179,7 @@ with sync_playwright() as p:
     last = pg.locator(".bd").last
     # re-run keeps the answers
     last.locator(".bd-acts button", has_text="פירוק מחדש").click()
-    check("re-run opens the dialog with the same answers", pg.input_value("#bdValue").startswith("החשב יודע") and pg.is_checked('input[name="bdUi"][value="1"]') and pg.input_value("#bdRole") == "חשב")
+    check("re-run opens the dialog with the same answers", pg.input_value("#bdValue").startswith("החשב יודע") and pg.is_checked('input[name="bdTasks"][value="1"]') and pg.is_checked('input[name="bdShared"][value="1"]') and pg.is_checked('input[name="bdSvc"][value="UI/UX"]') and pg.input_value("#bdRole") == "חשב")
     pg.keyboard.press("Escape")
     check("Escape closes the dialog", pg.locator("#bdDlg.hidden").count() == 1)
     # chat command
@@ -221,7 +234,7 @@ with sync_playwright() as p:
     pg = ctx2.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.goto("http://127.0.0.1:8806/"); pg.click("#demoBtn"); pg.wait_for_timeout(500)
     pg.fill("#input", "פרק: מסך שבו החשב רואה את המוסדות"); pg.keyboard.press("Enter"); pg.locator("#bdDlg:not(.hidden)").wait_for()
-    pg.fill("#bdValue", "חיסכון בזמן"); pg.check('input[name="bdUi"][value="0"]'); pg.click("#bdGo"); pg.locator(".bd").wait_for()
+    pg.fill("#bdValue", "חיסכון בזמן"); pg.check('input[name="bdTasks"][value="1"]'); pg.check('input[name="bdShared"][value="0"]'); pg.click("#bdGo"); pg.locator(".bd").wait_for()
     btn = pg.locator(".bd-acts button", has_text="פירוק עם הסוכן הארגוני")
     check("agent button appears when the team names an agent", btn.count() == 1)
     btn.click(); pg.wait_for_timeout(800)

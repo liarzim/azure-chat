@@ -110,9 +110,19 @@
       <label for="bdRole">מי המשתמש העיקרי?</label>
       <input id="bdRole" class="bd-in" placeholder="לדוגמה: חשב, רכזת, מנהל מערכת">
       <fieldset class="bd-ui">
-        <legend>האם נדרש UI/UX? <span class="req">*</span></legend>
-        <label><input type="radio" name="bdUi" value="1"> כן</label>
-        <label><input type="radio" name="bdUi" value="0"> לא</label>
+        <legend>לפרק לרמת Task? <span class="req">*</span></legend>
+        <label><input type="radio" name="bdTasks" value="1"> כן</label>
+        <label><input type="radio" name="bdTasks" value="0"> לא</label>
+      </fieldset>
+      <div class="bd-small bd-hint">כן: לכל US ייפתחו Tasks של אפיון, פיתוח ובדיקות QA. השעות שתזינו ייכנסו ל-Original Estimate וגם ל-Remaining Work.</div>
+      <fieldset class="bd-ui">
+        <legend>האם נדרשים Shared Services? <span class="req">*</span></legend>
+        <label><input type="radio" name="bdShared" value="1"> כן</label>
+        <label><input type="radio" name="bdShared" value="0"> לא</label>
+      </fieldset>
+      <fieldset class="bd-svc hidden" id="bdSvcList">
+        <legend>מי נדרש? לכל אחד ייפתח User Story ייעודי</legend>
+        <div id="bdSvcBoxes"></div>
       </fieldset>
       <div class="bd-err hidden" id="bdErr" role="alert"></div>
     </div>

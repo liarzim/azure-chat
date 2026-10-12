@@ -15,10 +15,10 @@ REQ = {"Epic": [], "Feature": ["System.AreaPath", "System.IterationPath", "Custo
 CFG = {**FIX, "requiredFields": REQ}
 TEXT = "מסך שבו החשב רואה את כל המוסדות שקיבלו תמיכה, עם סינון לפי שנה וסכום, וייצוא לאקסל. הנתונים מגיעים ממערכת מרכבה"
 
-def breakdown(pg):
+def breakdown(pg, tasks=True):
     pg.evaluate("BreakdownCreate.today = '2026-10-09'")
     pg.click("#bdBtn"); pg.fill("#bdText", TEXT); pg.fill("#bdValue", "החשב יודע מהר כמה מוסדות קיבלו תמיכה")
-    pg.fill("#bdRole", "חשב"); pg.check('input[name="bdUi"][value="1"]'); pg.click("#bdGo"); pg.locator(".bd").last.wait_for()
+    pg.fill("#bdRole", "חשב"); pg.check('input[name="bdTasks"][value="%s"]' % ('1' if tasks else '0')); pg.check('input[name="bdShared"][value="1"]'); pg.check('input[name="bdSvc"][value="UI/UX"]'); pg.click("#bdGo"); pg.locator(".bd").last.wait_for()
     pg.locator(".bd").last.locator(".bd-acts button", has_text="יצירה ב-Azure").click()
     pg.locator("#bcPanel .bc-us").first.wait_for(timeout=10000); pg.wait_for_timeout(600)
 
@@ -142,6 +142,10 @@ with sync_playwright() as p:
           and all(t["fields"]["System.IterationPath"] == next(u for u in uss if u["id"] == t["fields"]["System.Parent"])["fields"]["System.IterationPath"] for t in tks), tks[:2])
     pg.locator(".bc-done button", has_text="הצגה בטבלה").click(); pg.wait_for_timeout(1500)
     check("created items shown as a table", pg.locator(".msg.bot table").last.locator("tbody tr").count() == total)
+    # no task level: no Tasks, nothing asks for hours
+    breakdown(pg, tasks=False)
+    check("no task level: no Tasks on the screen", pg.locator(".bc-task").count() == 0 and "Original Estimate" not in pg.inner_text("#bcCheck"), pg.inner_text("#bcCheck"))
+    pg.click("#bcClose")
     # split creation: start at the last sprint of PI4_26 -> two Features
     breakdown(pg)
     pg.check('input[name="bcEpicQ"][value="0"]'); pg.wait_for_timeout(300)
@@ -226,6 +230,8 @@ with sync_playwright() as p:
     check("api: US linked to the new Feature", all(any(o["path"] == "/relations/-" and o["value"]["url"].endswith("/700001") for o in x["ops"]) for x in us_posts), us_posts[:1])
     t_posts = [x for x in posts if x["type"] == "Task"]
     check("api: Tasks carry Original Estimate", t_posts and all(any(o["path"] == "/fields/Microsoft.VSTS.Scheduling.OriginalEstimate" for o in x["ops"]) for x in t_posts))
+    check("api: the same hours go to Remaining Work", all({o["path"]: o.get("value") for o in x["ops"]}.get("/fields/Microsoft.VSTS.Scheduling.RemainingWork") == {o["path"]: o.get("value") for o in x["ops"]}.get("/fields/Microsoft.VSTS.Scheduling.OriginalEstimate") for x in t_posts))
+    check("api: UI/UX created as its own US, not a Task", any(any(o["path"] == "/fields/System.Title" and str(o["value"]).startswith("UI/UX:") for o in x["ops"]) for x in us_posts) and not any(any(o["path"] == "/fields/System.Title" and "UI/UX" in str(o["value"]) for o in x["ops"]) for x in t_posts))
     done = pg.locator(".bc-done").inner_text()
     check("api: failed US reported, its tasks skipped, the rest created", "לא נוצרו" in done and second in done and "Leading Squad" in done and done.count("לא נוצר כי ה-US נכשל") == n_tasks_2nd, done[-500:])
     check("api: links to Azure in the summary", pg.locator(".bc-done a[href*='/_workitems/edit/700001']").count() == 1)

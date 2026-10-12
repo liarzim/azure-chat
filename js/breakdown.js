@@ -85,6 +85,32 @@ const BreakdownEngine = {
     return found.slice(0, 3);
   },
 
+  /* The dialog's answers: break into Tasks or not, and which Shared Services need their own US. */
+  opts(input) {
+    input = input || {};
+    const shared = Array.isArray(input.shared) ? input.shared.filter(Boolean) : (input.ui ? ["UI/UX"] : []);
+    return {tasks: input.tasks !== false, shared, ui: shared.some(x => /ui|ux/i.test(x))};
+  },
+  /* Shared Services are always a User Story of their own, never Tasks. */
+  SHARED: {
+    "UI/UX": {pr: 1, tasks: o => ["אפיון UX: " + o, "עיצוב מסכים: " + o], title: o => "UI/UX: אפיון ועיצוב מסכים " + BreakdownEngine.attach("ל", o), want: o => "שהמסכים " + BreakdownEngine.attach("ל", o) + " יאופיינו ויעוצבו לפני הפיתוח",
+      ac: ["תרשים זרימה ומסכים מאושרים על ידי בעל המוצר", "כל השדות, הכפתורים והודעות השגיאה מוגדרים", "העיצוב תומך בעברית ומימין לשמאל ועומד בנגישות"],
+      pos: ["המסכים מכסים את כל ה-User Stories של הפיצ'ר", "המפתחים מאשרים שהעיצוב ניתן למימוש", "בדיקת שמישות עם משתמש מייצג עוברת"],
+      neg: ["מסך חסר מתגלה בסקירה ומוסף", "שדה בלי הגדרת שגיאה מסומן לתיקון", "עיצוב שלא עומד בנגישות נדחה"]},
+    "Customer Success": {pr: 4, tasks: o => ["הכנת חומרי הדרכה: " + o, "הדרכה וליווי הטמעה: " + o], title: o => "Customer Success: הטמעה והדרכה " + BreakdownEngine.attach("ל", o), want: o => "שהמשתמשים יקבלו הדרכה, חומרי עזר וליווי בהטמעה",
+      ac: ["חומרי הדרכה ועזר מוכנים ומאושרים", "הדרכה למשתמשים התקיימה לפני העלייה לאוויר", "יש ערוץ לשאלות ותקלות בתקופת ההטמעה"],
+      pos: ["משתמש שעבר הדרכה מבצע את התהליך לבד", "חומרי העזר זמינים מהמערכת", "פניות בתקופת ההטמעה מקבלות מענה"],
+      neg: ["משתמש שלא עבר הדרכה מקבל הפניה לחומרים", "שאלה שלא מכוסה בחומרים נוספת להם", "תקלה בהטמעה מנותבת לגורם המטפל"]}
+  },
+  sharedStory(name, subject, role, benefit) {
+    const K = this.SHARED[name] || {pr: 3, tasks: o => ["אפיון " + name + ": " + o, "ביצוע " + name + ": " + o], title: o => name + ": שירותי " + name + " " + BreakdownEngine.attach("ל", o), want: o => "לקבל את שירותי " + name + " הנדרשים לפיצ'ר",
+      ac: ["היקף העבודה של " + name + " מוגדר ומאושר", "התוצרים נמסרו לצוות הפיתוח", "אין חסמים פתוחים מול " + name],
+      pos: ["התוצר של " + name + " נמסר בזמן", "התוצר עונה על הדרישות", "הצוות מאשר את הקבלה"],
+      neg: ["עיכוב מסומן כסיכון", "תוצר חסר מוחזר להשלמה", "דרישה שלא הוגדרה מתועדת"]};
+    return {kind: "shared", shared: name, title: K.title(subject), asA: role, iWant: K.want(subject), soThat: benefit, pattern: BD_PATTERNS.value, sp: 2, priority: K.pr,
+      acceptance: K.ac.slice(), positive: K.pos.slice(), negative: K.neg.slice(), extra: name, tasks: K.tasks(subject).map(t => ({title: t}))};
+  },
+
   /* ---------- texts per kind of story (acceptance criteria and 3+3 tests) ---------- */
   KINDS: {
     spike: {title: o => "Spike: בדיקת ממשק מול " + o, want: o => "לבדוק את הממשק מול " + o + " לפני הפיתוח", pattern: "spike", sp: 2, pr: 1,
@@ -190,19 +216,23 @@ const BreakdownEngine = {
     if (has("nfr")) push("nfr");
     if (!out.length) { push("mvp"); push("extend"); push("edge"); }
     else if (out.length === 1) push("edge");
-    return this.finish({feature: {title, value: this.clean(input.value), ui: !!input.ui}, role, stories: out}, "rules");
+    const op = this.opts(input);
+    op.shared.forEach(name => out.push(this.sharedStory(name, subject, role, benefit)));
+    return this.finish({feature: {title, value: this.clean(input.value), ui: op.ui, tasks: op.tasks, shared: op.shared}, role, stories: out}, "rules");
   },
 
   /* Titles, task list, sprint plan, UI prompt and the feature's Story Points. */
   finish(b, engine) {
-    const ui = b.feature.ui;
+    const ui = b.feature.ui, taskLevel = b.feature.tasks !== false;
     b.stories.forEach((s, i) => {
       s.sp = Math.max(2, Math.round(Number(s.sp) || 2));
       s.priority = Math.min(4, Math.max(1, Math.round(Number(s.priority) || 2)));
       if (!s.title) s.title = this.storyTitle(s);
       ["acceptance", "positive", "negative"].forEach(k => { s[k] = (Array.isArray(s[k]) ? s[k] : String(s[k] || "").split(/\n|;\s*/)).map(x => this.clean(x)).filter(Boolean); });
-      if (!Array.isArray(s.tasks) || !s.tasks.length) s.tasks = this.defaultTasks(s, ui);
-      s.tasks = s.tasks.map(t => typeof t === "string" ? {title: t} : {title: this.clean(t.title), hours: t.hours});
+      if (!taskLevel) s.tasks = [];
+      else if (!Array.isArray(s.tasks) || !s.tasks.length) s.tasks = this.defaultTasks(s, ui);
+      s.tasks = s.tasks.map(t => typeof t === "string" ? {title: t} : {title: this.clean(t.title), hours: t.hours})
+        .filter(t => t.title && !/^(עיצוב\s*)?UI\/?UX\b|^Customer Success\b/i.test(t.title));   // these are their own US, never Tasks
     });
     b.stories.sort((a, c) => a.priority - c.priority);
     const bySp = {}; b.stories.forEach((s, i) => { (bySp[s.priority] = bySp[s.priority] || []).push(i); });
@@ -217,11 +247,10 @@ const BreakdownEngine = {
     const w = String(s.iWant || "").replace(/^ל/, "");
     return (w.charAt(0) === "ש" ? "דרישות ביצועים ואבטחה" : w).replace(/^(\S+)/, v => ({"צפות": "צפייה", "הוסיף": "הוספת", "עדכן": "עדכון", "מחוק": "מחיקת", "סנן": "סינון", "חפש": "חיפוש", "ייצא": "ייצוא", "קבל": "קבלת", "בדוק": "בדיקת", "קבוע": "קביעת"})[v] || v).slice(0, 80);
   },
-  defaultTasks(s, ui) {
+  defaultTasks(s) {
     if (s.pattern === BD_PATTERNS.spike) return [{title: "בדיקת היתכנות: " + s.title}];
-    const t = [{title: "פיתוח: " + s.title}, {title: "בדיקות QA: " + s.title}];
-    if (ui && !/ביצועים|ממשק|קבלת נתונים/.test(s.title)) t.splice(0, 0, {title: "עיצוב UI/UX: " + s.title});
-    return t;
+    if (s.kind === "shared" || s.shared) return [{title: "אפיון: " + s.title}, {title: "ביצוע: " + s.title}];
+    return [{title: "אפיון: " + s.title}, {title: "פיתוח: " + s.title}, {title: "בדיקות QA: " + s.title}];
   },
   uiPrompt(b) {
     const lines = ["עצב/י מסכים לפיצ'ר: " + b.feature.title, "משתמש עיקרי: " + b.role, b.feature.value ? "ערך ללקוח: " + b.feature.value : "", "", "מסכים ושדות:"];
@@ -250,13 +279,16 @@ const BreakdownEngine = {
       "3. Story Points מחמיר לכל US, מינימום 2. עדיף US קטנים ושווים (4 של 2 SP עדיפים על 2 של 4 SP).",
       "4. Acceptance Criteria מפורטים, 3 תסריטי בדיקה חיוביים ו-3 שליליים לכל US.",
       "5. עדיפות 1 (גבוהה) עד 4 לפי ערך ומאמץ. עדיף שיהיו גם US בעלי ערך נמוך, כדי שאפשר יהיה לתעדף אותם למטה.",
-      "6. Tasks נפתחים תחת US (פיתוח, בדיקות QA, ועיצוב UI/UX כשנדרש), לא כ-US נפרד.",
+      this.opts(input).tasks ? "6. לפרק לרמת Task: לכל US שלושה Tasks תחתיו: אפיון, פיתוח, בדיקות QA." : "6. לא לפרק לרמת Task: עמודת Tasks נשארת ריקה.",
+      "6א. UI/UX, Customer Success וכל Shared Service אחר הם תמיד User Story נפרד, אף פעם לא Task.",
+      this.opts(input).shared.length ? "6ב. Shared Services נדרשים: " + this.opts(input).shared.join(", ") + ". פתח/י User Story ייעודי לכל אחד מהם." : "6ב. לא נדרשים Shared Services.",
       "7. כל US עומד בכללי INVEST.",
       "",
       "הפיצ'ר: " + this.clean(input.text),
       "משתמש עיקרי: " + (this.clean(input.role) || "משתמש"),
       "הערך העסקי ללקוח: " + (this.clean(input.value) || "[לא צוין]"),
-      "האם נדרש UI/UX: " + (input.ui ? "כן" : "לא"),
+      "פירוק לרמת Task: " + (this.opts(input).tasks ? "כן" : "לא"),
+      "Shared Services: " + (this.opts(input).shared.join(", ") || "לא נדרשים"),
       "",
       draft ? "טיוטה ראשונה באותו פורמט (שפר/י אותה, אפשר להוסיף, לאחד ולפצל):\n" + this.csv(draft).replace(/^\uFEFF/, "") + "\n" : "",
       "צורת התשובה (חובה, כדי שהמערכת תקלוט אותה):",
@@ -270,14 +302,14 @@ const BreakdownEngine = {
       "- Story Points: מספר בלבד, 2 ומעלה. Priority: מספר בלבד, 1 עד 4.",
       "- Splitting Pattern: בדיוק אחת מהתבניות שלמעלה.",
       "- Acceptance Criteria, Positive Tests, Negative Tests, Tasks: כל פריט בשורה נפרדת בתוך התא, בלי מספור. בדיוק 3 בדיקות חיוביות ו-3 שליליות.",
-      "- Tasks: \"פיתוח: ...\", \"בדיקות QA: ...\"" + (input.ui ? ", \"עיצוב UI/UX: ...\"" : "") + ".",
-      input.ui ? "- UI/UX: המסכים, סדר השדות והכפתורים של ה-US הזה." : "- UI/UX: ריק.",
+      this.opts(input).tasks ? "- Tasks: \"אפיון: ...\", \"פיתוח: ...\", \"בדיקות QA: ...\" (ב-US של Shared Service: \"אפיון: ...\", \"ביצוע: ...\")." : "- Tasks: ריק.",
+      this.opts(input).ui ? "- UI/UX: המסכים, סדר השדות והכפתורים של ה-US הזה." : "- UI/UX: ריק.",
       "- מירכאות כפולות רגילות בלבד (\"), לא מירכאות מעוצבות. מירכאות בתוך טקסט (למשל דו\"ח) כותבים פעמיים: דו\"\"ח.",
       "- לא JSON, לא טבלת Markdown ולא טקסט בתוך ה-CSV.",
       "לפני השליחה: בדוק/בדקי שהשורה הראשונה זהה בדיוק לשורת הכותרות שלמעלה, ושלכל שורה יש 10 תאים."
     ].join("\n");
   },
-  strip(b) { return {feature: {title: b.feature.title, value: b.feature.value, ui: b.feature.ui}, role: b.role, stories: b.stories.map(s => ({title: s.title, asA: s.asA, iWant: s.iWant, soThat: s.soThat, pattern: s.pattern, sp: s.sp, priority: s.priority, acceptance: s.acceptance, positive: s.positive, negative: s.negative, tasks: s.tasks})), uiPrompt: b.uiPrompt}; },
+  strip(b) { return {feature: {title: b.feature.title, value: b.feature.value, ui: b.feature.ui, tasks: b.feature.tasks !== false, shared: b.feature.shared || []}, role: b.role, stories: b.stories.map(s => ({title: s.title, asA: s.asA, iWant: s.iWant, soThat: s.soThat, pattern: s.pattern, sp: s.sp, priority: s.priority, acceptance: s.acceptance, positive: s.positive, negative: s.negative, tasks: s.tasks})), uiPrompt: b.uiPrompt}; },
   /* Accepts the AI's answer (JSON, possibly wrapped in text or a code block) and normalises it. */
   /* Any answer: a CSV (the requested format), or JSON (older prompt, agents). */
   parse(text, input) {
@@ -390,7 +422,8 @@ const BreakdownEngine = {
         acceptance: list(cell(r, "acceptance")), positive: list(cell(r, "positive")), negative: list(cell(r, "negative")), tasks: tasks.length ? tasks : null, _ui: u};
     }).filter(x => x.title || x.iWant);
     if (!stories.length) throw new Error("בקובץ אין שורות של User Stories.");
-    const b = {feature: {title: this.firstSentence((input && input.text) || stories[0].title, 70), value: this.clean(input && input.value), ui: ui.length > 0 || !!(input && input.ui)},
+    const op = this.opts(input);
+    const b = {feature: {title: this.firstSentence((input && input.text) || stories[0].title, 70), value: this.clean(input && input.value), ui: ui.length > 0 || op.ui, tasks: op.tasks, shared: op.shared},
       role: stories[0].asA || role, uiPrompt: stories.filter(s => s._ui).map(s => "- " + (s.title || "US") + ": " + s._ui).join("\n"), stories};
     return this.finish(b, "ai");
   },
@@ -426,7 +459,8 @@ const BreakdownEngine = {
     const arr = o.stories || o.userStories || o.us || [];
     if (!Array.isArray(arr) || !arr.length) throw new Error("בתשובה אין User Stories.");
     const f = o.feature || {};
-    const b = {feature: {title: this.clean(f.title) || this.firstSentence(input.text, 70), value: this.clean(f.value || input.value), ui: f.ui !== undefined ? !!f.ui : !!input.ui},
+    const op = this.opts(input);
+    const b = {feature: {title: this.clean(f.title) || this.firstSentence(input.text, 70), value: this.clean(f.value || input.value), ui: f.ui !== undefined ? !!f.ui : op.ui, tasks: op.tasks, shared: op.shared},
       role: this.clean(o.role || input.role) || "משתמש", uiPrompt: String(o.uiPrompt || "").trim(),
       stories: arr.slice(0, 40).map(x => ({title: this.clean(x.title || x.name || x["US Name"]), asA: this.clean(x.asA || x.role || o.role || input.role) || "משתמש", iWant: this.clean(x.iWant || x.want || x.description || x.Description), soThat: this.clean(x.soThat || x.goal || ""),
         pattern: this.clean(x.pattern || x.splittingPattern || x["Splitting Pattern"]), sp: x.sp || x.storyPoints || x["Story Points"], priority: x.priority || x.Priority,
@@ -437,7 +471,7 @@ const BreakdownEngine = {
   /* ---------- an existing agent (team settings: breakdownAgent {url, label}) ---------- */
   async agent(cfg, input, draft) {
     const r = await fetch(cfg.url, {method: "POST", credentials: "omit", headers: {"Content-Type": "application/json", Accept: "application/json"},
-      body: JSON.stringify({text: input.text, role: input.role, value: input.value, ui: !!input.ui, draft: draft ? this.strip(draft) : null})});
+      body: JSON.stringify({text: input.text, role: input.role, value: input.value, ui: this.opts(input).ui, tasks: this.opts(input).tasks, sharedServices: this.opts(input).shared, draft: draft ? this.strip(draft) : null})});
     if (!r.ok) throw new Error("הסוכן החזיר שגיאה " + r.status);
     return this.normalize(await r.json(), input, "agent");
   },

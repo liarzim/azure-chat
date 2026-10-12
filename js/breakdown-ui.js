@@ -29,30 +29,59 @@ const BreakdownUI = {
     $("bdText").value = pre.text != null && pre.text !== "" ? pre.text : (pre.keep ? last.text || "" : "");
     $("bdValue").value = pre.value != null ? pre.value : (pre.keep ? last.value || "" : "");
     $("bdRole").value = pre.role != null ? pre.role : (pre.keep ? last.role || "" : "");
-    const ui = pre.ui != null ? pre.ui : (pre.keep ? last.ui : null);
-    document.querySelectorAll('input[name="bdUi"]').forEach(r => { r.checked = ui != null && r.value === (ui ? "1" : "0"); });
+    const src = pre.tasks != null || pre.shared != null || pre.ui != null ? pre : (pre.keep ? last : {});
+    const op = src.tasks == null && src.shared == null && src.ui == null ? null : BreakdownEngine.opts(src);
+    const setR = (name, v) => document.querySelectorAll('input[name="' + name + '"]').forEach(r => { r.checked = v != null && r.value === (v ? "1" : "0"); });
+    setR("bdTasks", op ? op.tasks : null);
+    setR("bdShared", op ? op.shared.length > 0 : null);
+    this.fillServices(op ? op.shared : []);
     this.err("");
     $("bdDlg").classList.remove("hidden");
     ($("bdText").value ? $("bdValue") : $("bdText")).focus();
   },
   close() { $("bdDlg").classList.add("hidden"); $("input").focus(); },
+  services() {
+    const list = typeof TeamConfig !== "undefined" && TeamConfig.data && Array.isArray(TeamConfig.data.sharedServices) ? TeamConfig.data.sharedServices : ["UI/UX", "Customer Success"];
+    return list.map(x => String(x).trim()).filter(Boolean);
+  },
+  fillServices(checked) {
+    const box = $("bdSvcBoxes"); box.innerHTML = "";
+    const names = this.services();
+    (checked || []).forEach(c => { if (!names.includes(c)) names.push(c); });
+    names.forEach(n => {
+      const lab = document.createElement("label"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.name = "bdSvc"; cb.value = n;
+      cb.checked = (checked || []).includes(n);
+      lab.append(cb, " " + n); box.appendChild(lab);
+    });
+    const on = document.querySelector('input[name="bdShared"]:checked');
+    $("bdSvcList").classList.toggle("hidden", !(on && on.value === "1"));
+  },
   err(msg, focusId) {
     const e = $("bdErr"); e.textContent = msg; e.classList.toggle("hidden", !msg);
     if (focusId) $(focusId).focus();
   },
   submit() {
     const text = $("bdText").value.trim(), value = $("bdValue").value.trim(), role = $("bdRole").value.trim();
-    const uiEl = document.querySelector('input[name="bdUi"]:checked');
     if (text.length < 8) return this.err("כתבו בכמה מילים מה הפיצ'ר צריך לעשות.", "bdText");
     if (value.length < 3) return this.err("מה הערך העסקי ללקוח? זו שאלה מחייבת, כי ממנה נגזרים התעדוף וה-\"כך ש...\" בכל User Story.", "bdValue");
-    if (!uiEl) return this.err("סמנו אם נדרש UI/UX (כן/לא).", null);
-    const input = {text, value, role, ui: uiEl.value === "1"};
+    const q = this.answers();
+    if (q.tasks == null) return this.err("סמנו אם לפרק לרמת Task (כן/לא).", null);
+    if (q.sharedAns == null) return this.err("סמנו אם נדרשים Shared Services (כן/לא).", null);
+    if (q.sharedAns && !q.shared.length) return this.err("סמנו לפחות Shared Service אחד, או ענו \"לא\".", null);
+    const input = {text, value, role, tasks: q.tasks, shared: q.shared, ui: BreakdownEngine.opts(q).ui};
     this.close();
     addMsg("user", escHtml("פירוק פיצ'ר: " + BreakdownEngine.firstSentence(text, 90)));
     let b;
     try { b = BreakdownEngine.rules(input); }
     catch (e) { addMsg("bot error", "הפירוק נכשל: " + escHtml(e.message || String(e))); return; }
     this.render(b, input);
+  },
+
+  answers() {
+    const t = document.querySelector('input[name="bdTasks"]:checked'), sh = document.querySelector('input[name="bdShared"]:checked');
+    const sharedAns = sh ? sh.value === "1" : null;
+    return {tasks: t ? t.value === "1" : null, sharedAns,
+      shared: sharedAns ? [...document.querySelectorAll('input[name="bdSvc"]:checked')].map(c => c.value) : []};
   },
 
   /* ---------- the result ---------- */
@@ -68,6 +97,8 @@ const BreakdownUI = {
       '<div class="bd-stats"><span class="bd-pill">' + n + " User Stories</span>" +
       '<span class="bd-pill">סך הכל ' + b.totalSp + " SP</span>" +
       '<span class="bd-pill" title="לפי ה-Skill, הערכת הפיצ\'ר מתחילה תמיד מ-3">פיצ\'ר: ' + b.feature.sp + " SP</span>" +
+      (b.feature.tasks === false ? '<span class="bd-pill">בלי Tasks</span>' : "") +
+      ((b.feature.shared || []).length ? '<span class="bd-pill" title="Shared Services: US ייעודי לכל אחד">Shared: ' + escHtml(b.feature.shared.join(", ")) + "</span>" : "") +
       '<span class="bd-pill bd-eng">' + escHtml(this.ENGINE_LABEL[b.engine] || b.engine) + "</span></div>" +
       (b.feature.value ? '<div class="bd-value"><span>ערך ללקוח:</span> ' + escHtml(b.feature.value) + "</div>" : "");
     const pen = this.btn("✎ עריכת הפירוק", "ghost sm bd-pen", () => this.edit(el, b, input));
@@ -202,7 +233,7 @@ const BreakdownUI = {
       });
       if (!stories.length) bad.push("צריך לפחות User Story אחד");
       if (bad.length) { err.textContent = bad.join(" · "); err.classList.remove("hidden"); return; }
-      const nb = BreakdownEngine.finish({feature: {title: BreakdownEngine.clean(fTitle.inp.value) || b.feature.title, value: BreakdownEngine.clean(fValue.inp.value), ui: b.feature.ui},
+      const nb = BreakdownEngine.finish({feature: {title: BreakdownEngine.clean(fTitle.inp.value) || b.feature.title, value: BreakdownEngine.clean(fValue.inp.value), ui: b.feature.ui, tasks: b.feature.tasks !== false, shared: b.feature.shared || []},
         role: stories[0].asA, uiPrompt: fUi ? fUi.inp.value.trim() : "", stories}, "manual");
       if (b.feature.ui && !nb.uiPrompt) nb.uiPrompt = "";
       self.render(nb, Object.assign({}, input, {value: nb.feature.value}), el);
@@ -398,8 +429,9 @@ const BreakdownUI = {
 
   /* "יש לכם כבר קובץ פירוק?" in the dialog: the text and value are used if filled, not required. */
   importFromDialog(f) {
-    const uiEl = document.querySelector('input[name="bdUi"]:checked');
-    const input = {text: $("bdText").value.trim(), value: $("bdValue").value.trim(), role: $("bdRole").value.trim(), ui: uiEl ? uiEl.value === "1" : false};
+    const q = this.answers();
+    const input = {text: $("bdText").value.trim(), value: $("bdValue").value.trim(), role: $("bdRole").value.trim(), tasks: q.tasks !== false, shared: q.shared};
+    input.ui = BreakdownEngine.opts(input).ui;
     return this.readFile(f, input).then(b => {
       if (!input.text) input.text = b.feature.title;
       this.close();
@@ -411,6 +443,10 @@ const BreakdownUI = {
   init() {
     $("bdBtn").onclick = () => this.open({keep: false});
     $("bdImport").onclick = () => $("bdImportFile").click();
+    document.querySelectorAll('input[name="bdShared"]').forEach(r => r.addEventListener("change", () => {
+      $("bdSvcList").classList.toggle("hidden", r.value !== "1" || !r.checked);
+      if (r.value === "1" && r.checked) { const f = document.querySelector('input[name="bdSvc"]'); if (f) f.focus(); }
+    }));
     $("bdImportFile").onchange = () => { const f = $("bdImportFile").files[0]; $("bdImportFile").value = ""; if (f) this.importFromDialog(f); };
     $("bdGo").onclick = () => this.submit();
     $("bdCancel").onclick = () => this.close();

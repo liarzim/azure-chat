@@ -29,6 +29,23 @@ with sync_playwright() as p:
     pg.locator("button:has-text('העתקת טבלה')").first.click(); pg.locator("#toast:has-text('הועתקה')").wait_for(timeout=15000)
     html = pg.evaluate("async()=>{const it=(await navigator.clipboard.read())[0];return await (await it.getType('text/html')).text();}")
     check("copy includes images", "data:image/jpeg" in html)
+    # send by email: mailto with an auto subject, two blank lines, then the table
+    from urllib.parse import urlparse, parse_qs
+    pg.evaluate("window.openMailto = u => { window.__mail = u; }; 0")
+    pg.locator(".msg.bot button:has-text('שליחה במייל')").first.click(); pg.wait_for_timeout(1500)
+    url = pg.evaluate("window.__mail") or ""
+    q = parse_qs(urlparse(url).query)
+    subj, body = q.get("subject", [""])[0], q.get("body", [""])[0]
+    check("mail: opens a new message", url.startswith("mailto:?"), url[:120])
+    check("mail: subject from the table", subj.startswith("אז'ורי: 2 פריטים (") and "110047" in subj and "112074" in subj, subj)
+    check("mail: two blank lines, then the header row", body.startswith("\r\n\r\n") and body[4:].startswith("ID | "), repr(body[:60]))
+    check("mail: all found rows in the body within a safe link length", "110047" in body and "112074" in body and "112079" in body and len(url) <= 1900, (len(url), body[:600]))
+    check("mail: long columns dropped and named", "Description" not in body.split("\r\n")[2] and "עמודות הטקסט הארוך" in body, body[-200:])
+    check("mail: toast explains the formatted paste", "נפתח מייל" in pg.inner_text("#toast"), pg.inner_text("#toast"))
+    one = pg.evaluate("mailSubject({cols:[{label:'ID',ref:'id'},{label:'Work Item Type',ref:'System.WorkItemType'},{label:'Title',ref:'System.Title'}],rows:[{id:5,cells:['5','Bug','שגיאה במסך']}],missing:[]})")
+    check("mail: one item subject has type, id and title", one == "אז'ורי: Bug 5 - שגיאה במסך", one)
+    big = pg.evaluate("(() => { const rows = []; for (let i = 0; i < 60; i++) rows.push({id:i, cells:[String(i), 'כותרת ארוכה מאוד לבדיקה של אורך הקישור ' + i]}); return mailtoFor({cols:[{label:'ID',ref:'id'},{label:'Title',ref:'System.Title'}], rows, missing:[]}); })()")
+    check("mail: long table is cut to a safe length and says so", len(big["url"]) <= 1900 and big["cut"] > 0 and "%D7" in big["url"], big["cut"])
     check("no js errors", not errs, errs)
     b.close()
 srv.shutdown()

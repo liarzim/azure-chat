@@ -9,7 +9,7 @@
 |---|---|
 | `index.html` | המסך |
 | `css/app.css` | עיצוב |
-| `js/core.js` | שליפה, טבלה, תמונות, Excel, העתקה (מבוסס על Azure Chat 1.3) |
+| `js/core.js` | שליפה, טבלה, תמונות, Excel, העתקה, שליחה במייל (מבוסס על Azure Chat 1.3) |
 | `js/meta.js` | שדות, ערכים מותרים ומבנה הטופס מ-Azure DevOps |
 | `js/team.js` | הגדרות הצוות, התבנית, בדיקת התבנית, שמירה ל-GitHub |
 | `js/team-settings.js` | מסך "הגדרות צוות" |

@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.10.3",
+  VERSION: "2.10.4",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -386,7 +386,7 @@ function tableToTsv(t) {
   return [t.cols.map(c => c.label).join("\t"), ...t.rows.map(r => r.cells.map(clean).join("\t"))].join("\n");
 }
 
-async function copyTable(t, btn) {
+async function copyTable(t, btn, quiet) {
   const hasImgs = t.rows.some(r => r.images && r.images.length);
   // Start building right away; the clipboard accepts the HTML as a promise, so the click still counts.
   const htmlP = (async () => tableToClipboardHtml(t, hasImgs ? await collectClipImages(t) : null))();
@@ -409,12 +409,71 @@ async function copyTable(t, btn) {
       const ok = document.execCommand("copy"); sel.removeAllRanges(); div.remove();
       if (!ok) throw e;
     }
-    toast(hasImgs ? "הטבלה הועתקה עם התמונות. אפשר להדביק ב-Outlook, Teams, Word או Excel" : "הטבלה הועתקה. אפשר להדביק ב-Excel, Outlook או Teams");
+    if (!quiet) toast(hasImgs ? "הטבלה הועתקה עם התמונות. אפשר להדביק ב-Outlook, Teams, Word או Excel" : "הטבלה הועתקה. אפשר להדביק ב-Excel, Outlook או Teams");
+    return true;
   } catch (e) {
-    toast("ההעתקה נכשלה: " + (e.message || e));
+    if (!quiet) toast("ההעתקה נכשלה: " + (e.message || e));
+    return false;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = label; }
   }
+}
+
+/* ---------- send the table by email (the user's default mail app) ---------- */
+const MAIL_MAX = 1900;                    // a mailto link longer than ~2000 characters may not open in Outlook / Windows
+function mailSubject(t) {
+  const col = ref => t.cols.findIndex(c => c.ref === ref);
+  const iId = col("id"), iTitle = col("System.Title"), iType = col("System.WorkItemType");
+  const rows = t.rows.filter(r => !r.missing);
+  const all = rows.length ? rows : t.rows;
+  const idOf = r => iId >= 0 ? r.cells[iId] : r.id;
+  if (all.length === 1) {
+    const r = all[0], type = iType >= 0 ? r.cells[iType] : "", title = iTitle >= 0 ? r.cells[iTitle] : "";
+    return ("אז'ורי: " + (type && type !== "—" ? type + " " : "") + idOf(r) + (title && title !== "—" ? " - " + title : "")).slice(0, 150);
+  }
+  let s = "אז'ורי: " + all.length + " פריטים";
+  if (iType >= 0) {
+    const n = {};
+    all.forEach(r => { const k = r.cells[iType]; if (k && k !== "—" && k !== "לא נמצא") n[k] = (n[k] || 0) + 1; });
+    const parts = Object.entries(n).map(([k, v]) => v + " " + k);
+    if (parts.length) s += " (" + parts.join(", ") + ")";
+  }
+  const ids = all.map(idOf).filter(Boolean);
+  s += " - " + ids.slice(0, 5).join(", ") + (ids.length > 5 ? " ועוד " + (ids.length - 5) : "");
+  return s.slice(0, 150);
+}
+function tableToMailText(t, rows, cols) {
+  const clean = v => { const x = String(v).split("\n").join(" • ").replace(/\s+/g, " ").trim(); return x.length > 80 ? x.slice(0, 79) + "…" : x; };   // long text stays in the full copy
+  return [cols.map(i => t.cols[i].label).join(" | "), ...rows.map(r => cols.map(i => clean(r.cells[i])).join(" | "))].join("\r\n");
+}
+function mailtoFor(t) {
+  const subject = mailSubject(t);
+  const all = t.cols.map((c, i) => i);
+  // long text columns (Description, attachments) take most of the room; drop them first when the table does not fit
+  const short = all.filter(i => t.cols[i].kind !== "attach" && !t.rows.some(r => String(r.cells[i]).length > 80 || String(r.cells[i]).includes("\n")));
+  const make = (rows, cols, more) => {
+    const dropped = all.length - cols.length;
+    const note = [more ? more + " שורות נוספות לא נכנסו" : "", dropped ? "עמודות הטקסט הארוך לא נכנסו (" + all.filter(i => !cols.includes(i)).map(i => t.cols[i].label).join(", ") + ")" : ""].filter(Boolean).join(". ");
+    return "mailto:?subject=" + encodeURIComponent(subject) + "&body=" +
+      encodeURIComponent("\r\n\r\n" + tableToMailText(t, rows, cols) + (note ? "\r\n\r\n(" + note + ". הטבלה המלאה הועתקה, הדביקו אותה כאן עם Ctrl+V)" : ""));
+  };
+  let cols = all, n = t.rows.length, url = make(t.rows, cols, 0);
+  if (url.length > MAIL_MAX && short.length && short.length < all.length) { cols = short; url = make(t.rows, cols, 0); }
+  while (url.length > MAIL_MAX && n > 1) { n--; url = make(t.rows.slice(0, n), cols, t.rows.length - n); }
+  if (url.length > MAIL_MAX) url = url.slice(0, MAIL_MAX).replace(/%[0-9A-F]?$/i, "");   // one huge row: cut it
+  return {url, subject, cut: t.rows.length - n, dropped: all.length - cols.length};
+}
+function openMailto(url) {
+  const a = document.createElement("a"); a.href = url; a.style.display = "none";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+async function mailTable(t, btn) {
+  const m = mailtoFor(t);
+  const copied = copyTable(t, null, true);      // a formatted copy (with images) for pasting over the plain text
+  openMailto(m.url);
+  const ok = await copied;
+  toast((m.cut || m.dropped ? "נפתח מייל עם חלק מהטבלה (מגבלת אורך של קישור מייל). " : "נפתח מייל חדש עם הטבלה. ") +
+    (ok ? "לטבלה מעוצבת: סמנו את הטבלה במייל והדביקו במקומה עם Ctrl+V." : ""));
 }
 
 /* Minimal .xlsx writer (stored zip, no dependencies) */
@@ -728,7 +787,7 @@ function helpHtml(first) {
     "<li><code>חדש Feature: דוח חודשי; Leading Squad Meteor</code></li></ul>" +
     '<div class="notes">העמודות שלך כרגע: ' + getDefaultFields().join(", ") + (hasPersonalFields() ? " (הגדרה אישית)" : "") +
     "<br>שדות נוספים שאפשר לבקש: " + FIELDS.filter(f => !getDefaultFields().some(d => sameField(d, f.name))).map(f => f.name).join(", ") +
-    ", וגם כל שדה מותאם של הפרויקט לפי שמו. בבאג, עמודת Description מציגה את Repro Steps. תמונות מוצגות בתוך הטבלה, ולחיצה עליהן מגדילה. כפתור העתקת טבלה מעתיק גם את התמונות.</div></div>";
+    ", וגם כל שדה מותאם של הפרויקט לפי שמו. בבאג, עמודת Description מציגה את Repro Steps. תמונות מוצגות בתוך הטבלה, ולחיצה עליהן מגדילה. כפתור העתקת טבלה מעתיק גם את התמונות, ושליחה במייל פותחת מייל חדש עם הטבלה.</div></div>";
 }
 
 const NOT_EDITABLE_KINDS = new Set(["id", "attach", "none"]);
@@ -742,7 +801,8 @@ function renderResult(t, req, el, items) {
   const actions = document.createElement("div"); actions.className = "actions";
   const copyB = document.createElement("button"); copyB.className = "btn ghost"; copyB.textContent = "העתקת טבלה"; copyB.onclick = () => copyTable(t, copyB);
   const xlsB = document.createElement("button"); xlsB.className = "btn ghost"; xlsB.textContent = "הורדה ל-Excel"; xlsB.onclick = () => downloadXlsx(t, xlsB);
-  actions.append(copyB, xlsB); meta.appendChild(actions); el.appendChild(meta);
+  const mailB = document.createElement("button"); mailB.className = "btn ghost"; mailB.textContent = "שליחה במייל"; mailB.title = "פתיחת מייל חדש עם הטבלה בתוכנת הדואר שלכם"; mailB.onclick = () => mailTable(t, mailB);
+  actions.append(copyB, xlsB, mailB); meta.appendChild(actions); el.appendChild(meta);
 
   const wrap = document.createElement("div"); wrap.className = "tbl";
   let h = "<table><thead><tr>" + t.cols.map(c => "<th>" + escHtml(c.label) + "</th>").join("") + "</tr></thead><tbody>";

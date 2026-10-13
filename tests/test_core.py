@@ -10,7 +10,7 @@ def check(n, c, i=""):
 PICKER = """window.__saved=null; window.showSaveFilePicker = async (o) => ({name:o.suggestedName, createWritable: async()=>({write: async b=>{ window.__saved = b; document.documentElement.dataset.saved = '1'; }, close: async()=>{} })});"""
 srv = start(8783)
 with sync_playwright() as p:
-    b = p.chromium.launch(); ctx = b.new_context(); ctx.add_init_script(PICKER); ctx.grant_permissions(["clipboard-read", "clipboard-write"])
+    b = p.chromium.launch(); ctx = b.new_context(accept_downloads=True); ctx.add_init_script(PICKER); ctx.grant_permissions(["clipboard-read", "clipboard-write"])
     pg = ctx.new_page(); errs = []
     pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.goto("http://127.0.0.1:8783/"); pg.click("#demoBtn")
@@ -29,23 +29,40 @@ with sync_playwright() as p:
     pg.locator("button:has-text('העתקת טבלה')").first.click(); pg.locator("#toast:has-text('הועתקה')").wait_for(timeout=15000)
     html = pg.evaluate("async()=>{const it=(await navigator.clipboard.read())[0];return await (await it.getType('text/html')).text();}")
     check("copy includes images", "data:image/jpeg" in html)
-    # send by email: mailto with an auto subject, two blank lines, then the table
+    # send by email: a menu of mail apps
     from urllib.parse import urlparse, parse_qs
+    import email
+    from email import policy
     pg.evaluate("window.openMailto = u => { window.__mail = u; }; 0")
-    pg.locator(".msg.bot button:has-text('שליחה במייל')").first.click(); pg.wait_for_timeout(1500)
+    mb = pg.locator(".msg.bot button:has-text('שליחה במייל')").first
+    mb.click()
+    menu = pg.locator(".mailmenu:visible")
+    check("mail: menu with Outlook, Gmail, other", menu.count() == 1 and menu.locator("button").count() == 3, menu.count())
+    with pg.expect_download() as dl:
+        menu.locator("button[data-client=outlook]").click()
+    eml = open(dl.value.path(), "rb").read()
+    msg = email.message_from_bytes(eml, policy=policy.default)
+    check("outlook: .eml draft file", dl.value.suggested_filename.endswith(".eml") and msg["X-Unsent"] == "1", dl.value.suggested_filename)
+    subj = str(msg["Subject"])
+    check("outlook: subject from the table", subj.startswith("אז'ורי: 2 פריטים (") and "110047" in subj and "112074" in subj, subj)
+    htmlp = msg.get_body(("html",)); html = htmlp.get_content()
+    check("outlook: HTML body, two blank lines then a real table", "<p>&nbsp;</p><p>&nbsp;</p><table" in html and "<th" in html and "110047" in html and "112074" in html, html[:300])
+    cids = [p for p in msg.walk() if p["Content-ID"]]
+    check("outlook: images embedded as attachments (cid)", len(cids) >= 1 and "cid:" in html and "data:image" not in html, len(cids))
+    check("outlook: menu closed after choosing", pg.locator(".mailmenu:visible").count() == 0)
+    mb.click(); pg.locator(".mailmenu:visible button[data-client=gmail]").click(); pg.wait_for_timeout(1500)
+    url = pg.evaluate("window.__mail") or ""; q = parse_qs(urlparse(url).query)
+    check("gmail: compose window with subject and two blank lines", url.startswith("https://mail.google.com/mail/?view=cm") and q.get("su", [""])[0] == subj and q.get("body", [""])[0] == "\r\n\r\n", url[:150])
+    cb = pg.evaluate("async()=>{const it=(await navigator.clipboard.read())[0];return await (await it.getType('text/html')).text();}")
+    check("gmail: formatted table copied for Ctrl+V", "<table" in cb and "110047" in cb)
+    check("gmail: toast explains the paste", "Ctrl+V" in pg.inner_text("#toast"), pg.inner_text("#toast"))
+    check("last choice is marked", pg.locator(".mailmenu button[data-client=gmail].last").count() >= 1)
+    pg.evaluate("window.__mail = ''; 0")
+    mb.click(); pg.locator(".mailmenu:visible button[data-client=other]").click(); pg.wait_for_timeout(1000)
     url = pg.evaluate("window.__mail") or ""
-    q = parse_qs(urlparse(url).query)
-    subj, body = q.get("subject", [""])[0], q.get("body", [""])[0]
-    check("mail: opens a new message", url.startswith("mailto:?"), url[:120])
-    check("mail: subject from the table", subj.startswith("אז'ורי: 2 פריטים (") and "110047" in subj and "112074" in subj, subj)
-    check("mail: two blank lines, then the header row", body.startswith("\r\n\r\n") and body[4:].startswith("ID | "), repr(body[:60]))
-    check("mail: all found rows in the body within a safe link length", "110047" in body and "112074" in body and "112079" in body and len(url) <= 1900, (len(url), body[:600]))
-    check("mail: long columns dropped and named", "Description" not in body.split("\r\n")[2] and "עמודות הטקסט הארוך" in body, body[-200:])
-    check("mail: toast explains the formatted paste", "נפתח מייל" in pg.inner_text("#toast"), pg.inner_text("#toast"))
+    check("other: default mail app (mailto) with the subject", url.startswith("mailto:?subject=") and "body=%0D%0A%0D%0A" in url, url[:120])
     one = pg.evaluate("mailSubject({cols:[{label:'ID',ref:'id'},{label:'Work Item Type',ref:'System.WorkItemType'},{label:'Title',ref:'System.Title'}],rows:[{id:5,cells:['5','Bug','שגיאה במסך']}],missing:[]})")
     check("mail: one item subject has type, id and title", one == "אז'ורי: Bug 5 - שגיאה במסך", one)
-    big = pg.evaluate("(() => { const rows = []; for (let i = 0; i < 60; i++) rows.push({id:i, cells:[String(i), 'כותרת ארוכה מאוד לבדיקה של אורך הקישור ' + i]}); return mailtoFor({cols:[{label:'ID',ref:'id'},{label:'Title',ref:'System.Title'}], rows, missing:[]}); })()")
-    check("mail: long table is cut to a safe length and says so", len(big["url"]) <= 1900 and big["cut"] > 0 and "%D7" in big["url"], big["cut"])
     check("no js errors", not errs, errs)
     b.close()
 srv.shutdown()

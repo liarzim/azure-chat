@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.10.4",
+  VERSION: "2.10.5",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -419,8 +419,11 @@ async function copyTable(t, btn, quiet) {
   }
 }
 
-/* ---------- send the table by email (the user's default mail app) ---------- */
-const MAIL_MAX = 1900;                    // a mailto link longer than ~2000 characters may not open in Outlook / Windows
+/* ---------- send the table by email ----------
+   Outlook (desktop): a draft .eml with the formatted table, opened by Outlook as a new message.
+   Gmail / other mail app: a new message with the subject and two blank lines; the formatted table
+   (with images) is copied at the same click, so Ctrl+V puts it in the body. A mail link (mailto) or
+   a Gmail link can carry plain text only, never a formatted table. */
 function mailSubject(t) {
   const col = ref => t.cols.findIndex(c => c.ref === ref);
   const iId = col("id"), iTitle = col("System.Title"), iType = col("System.WorkItemType");
@@ -442,38 +445,82 @@ function mailSubject(t) {
   s += " - " + ids.slice(0, 5).join(", ") + (ids.length > 5 ? " ועוד " + (ids.length - 5) : "");
   return s.slice(0, 150);
 }
-function tableToMailText(t, rows, cols) {
-  const clean = v => { const x = String(v).split("\n").join(" • ").replace(/\s+/g, " ").trim(); return x.length > 80 ? x.slice(0, 79) + "…" : x; };   // long text stays in the full copy
-  return [cols.map(i => t.cols[i].label).join(" | "), ...rows.map(r => cols.map(i => clean(r.cells[i])).join(" | "))].join("\r\n");
-}
-function mailtoFor(t) {
-  const subject = mailSubject(t);
-  const all = t.cols.map((c, i) => i);
-  // long text columns (Description, attachments) take most of the room; drop them first when the table does not fit
-  const short = all.filter(i => t.cols[i].kind !== "attach" && !t.rows.some(r => String(r.cells[i]).length > 80 || String(r.cells[i]).includes("\n")));
-  const make = (rows, cols, more) => {
-    const dropped = all.length - cols.length;
-    const note = [more ? more + " שורות נוספות לא נכנסו" : "", dropped ? "עמודות הטקסט הארוך לא נכנסו (" + all.filter(i => !cols.includes(i)).map(i => t.cols[i].label).join(", ") + ")" : ""].filter(Boolean).join(". ");
-    return "mailto:?subject=" + encodeURIComponent(subject) + "&body=" +
-      encodeURIComponent("\r\n\r\n" + tableToMailText(t, rows, cols) + (note ? "\r\n\r\n(" + note + ". הטבלה המלאה הועתקה, הדביקו אותה כאן עם Ctrl+V)" : ""));
-  };
-  let cols = all, n = t.rows.length, url = make(t.rows, cols, 0);
-  if (url.length > MAIL_MAX && short.length && short.length < all.length) { cols = short; url = make(t.rows, cols, 0); }
-  while (url.length > MAIL_MAX && n > 1) { n--; url = make(t.rows.slice(0, n), cols, t.rows.length - n); }
-  if (url.length > MAIL_MAX) url = url.slice(0, MAIL_MAX).replace(/%[0-9A-F]?$/i, "");   // one huge row: cut it
-  return {url, subject, cut: t.rows.length - n, dropped: all.length - cols.length};
+function composeUrl(client, subject) {
+  const body = "\r\n\r\n";
+  if (client === "gmail") return "https://mail.google.com/mail/?view=cm&fs=1&tf=1&su=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  return "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
 }
 function openMailto(url) {
+  if (/^https:/.test(url)) { window.open(url, "_blank", "noopener"); return; }
   const a = document.createElement("a"); a.href = url; a.style.display = "none";
   document.body.appendChild(a); a.click(); a.remove();
 }
-async function mailTable(t, btn) {
-  const m = mailtoFor(t);
-  const copied = copyTable(t, null, true);      // a formatted copy (with images) for pasting over the plain text
-  openMailto(m.url);
+async function mailCompose(t, client) {
+  const subject = mailSubject(t);
+  const copied = copyTable(t, null, true);        // starts inside the click, so the clipboard accepts it
+  openMailto(composeUrl(client, subject));
   const ok = await copied;
-  toast((m.cut || m.dropped ? "נפתח מייל עם חלק מהטבלה (מגבלת אורך של קישור מייל). " : "נפתח מייל חדש עם הטבלה. ") +
-    (ok ? "לטבלה מעוצבת: סמנו את הטבלה במייל והדביקו במקומה עם Ctrl+V." : ""));
+  toast(ok ? "נפתח מייל חדש עם הנושא. הטבלה המעוצבת הועתקה: עמדו בסוף גוף המייל (Ctrl+End) והדביקו עם Ctrl+V."
+           : "נפתח מייל חדש עם הנושא, אבל העתקת הטבלה נכשלה. השתמשו בכפתור העתקת טבלה והדביקו במייל.");
+}
+
+/* HTML email: a draft .eml (X-Unsent) that Outlook opens as a new message with the formatted table and images */
+function b64utf8(str) {
+  const bytes = new TextEncoder().encode(str); let bin = "";
+  for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  return btoa(bin);
+}
+const wrap76 = b => b.replace(/.{1,76}/g, "$&\r\n");
+function buildEml(t, pics) {
+  const subject = mailSubject(t);
+  const parts = [];
+  let table = tableToClipboardHtml(t, pics);
+  // images as attached parts (cid), since Outlook does not show data: images
+  table = table.replace(/src="data:(image\/[a-z]+);base64,([^"]+)"/g, (m, type, data) => {
+    const id = "img" + (parts.length + 1) + "@azuri";
+    parts.push({type, data, id});
+    return 'src="cid:' + id + '"';
+  });
+  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body dir="rtl" style="font-family:Arial,sans-serif;font-size:11pt">' +
+    "<p>&nbsp;</p><p>&nbsp;</p>" + table + "</body></html>";
+  const bnd = "azuri-" + Date.now().toString(36);
+  const lines = [
+    "To: ",
+    "Subject: =?UTF-8?B?" + b64utf8(subject) + "?=",
+    "X-Unsent: 1",
+    "MIME-Version: 1.0",
+    'Content-Type: multipart/related; boundary="' + bnd + '"; type="text/html"',
+    "",
+    "--" + bnd,
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    wrap76(b64utf8(html))
+  ];
+  parts.forEach(p => lines.push("--" + bnd, "Content-Type: " + p.type, "Content-Transfer-Encoding: base64",
+    "Content-ID: <" + p.id + ">", "Content-Disposition: inline", "", wrap76(p.data)));
+  lines.push("--" + bnd + "--", "");
+  return {eml: lines.join("\r\n"), subject, images: parts.length};
+}
+function saveMailFile(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10 * 60 * 1000);
+}
+async function mailTable(t, btn) {
+  const label = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "מכין מייל..."; }
+  try {
+    const hasImgs = t.rows.some(r => r.images && r.images.length);
+    const m = buildEml(t, hasImgs ? await collectClipImages(t) : null);
+    saveMailFile(new Blob([m.eml], {type: "message/rfc822"}), xlsxFileName().replace(/\.xlsx$/, ".eml"));
+    toast("ירד קובץ מייל. פתחו אותו (בסרגל ההורדות) ו-Outlook יפתח מייל חדש עם הטבלה המעוצבת. טיפ: ב-Chrome בחרו \"תמיד לפתוח קבצים מסוג זה\" כדי שייפתח לבד.");
+  } catch (e) {
+    toast("יצירת המייל נכשלה: " + (e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+  }
 }
 
 /* Minimal .xlsx writer (stored zip, no dependencies) */
@@ -791,6 +838,9 @@ function helpHtml(first) {
 }
 
 const NOT_EDITABLE_KINDS = new Set(["id", "attach", "none"]);
+function mailPref(v) {               // the mail app this person picked last (this browser only)
+  try { if (v) localStorage.setItem("azuri.mailClient", v); return localStorage.getItem("azuri.mailClient") || ""; } catch (e) { return v || ""; }
+}
 function renderResult(t, req, el, items) {
   const found = t.rows.length - t.missing.length;
   const fresh = !el;
@@ -801,8 +851,23 @@ function renderResult(t, req, el, items) {
   const actions = document.createElement("div"); actions.className = "actions";
   const copyB = document.createElement("button"); copyB.className = "btn ghost"; copyB.textContent = "העתקת טבלה"; copyB.onclick = () => copyTable(t, copyB);
   const xlsB = document.createElement("button"); xlsB.className = "btn ghost"; xlsB.textContent = "הורדה ל-Excel"; xlsB.onclick = () => downloadXlsx(t, xlsB);
-  const mailB = document.createElement("button"); mailB.className = "btn ghost"; mailB.textContent = "שליחה במייל"; mailB.title = "פתיחת מייל חדש עם הטבלה בתוכנת הדואר שלכם"; mailB.onclick = () => mailTable(t, mailB);
-  actions.append(copyB, xlsB, mailB); meta.appendChild(actions); el.appendChild(meta);
+  const mailB = document.createElement("button"); mailB.className = "btn ghost"; mailB.textContent = "שליחה במייל ▾"; mailB.setAttribute("aria-haspopup", "menu"); mailB.setAttribute("aria-expanded", "false");
+  const mailM = document.createElement("div"); mailM.className = "mailmenu hidden"; mailM.setAttribute("role", "menu");
+  [["outlook", "Outlook במחשב", "מייל חדש עם הטבלה המעוצבת (קובץ מייל שנפתח בלחיצה)"],
+   ["gmail", "Gmail", "מייל חדש ב-Gmail, הטבלה מועתקת להדבקה"],
+   ["other", "תוכנת דואר אחרת", "תוכנת הדואר שמוגדרת במחשב, הטבלה מועתקת להדבקה"]].forEach(([k, name, hint]) => {
+    const it = document.createElement("button"); it.type = "button"; it.setAttribute("role", "menuitem"); it.dataset.client = k;
+    it.innerHTML = "<b>" + escHtml(name) + "</b><span>" + escHtml(hint) + "</span>";
+    if (k === mailPref()) it.classList.add("last");
+    it.onclick = () => { closeM(); mailPref(k); mailM.querySelectorAll("button").forEach(x => x.classList.toggle("last", x === it));
+      k === "outlook" ? mailTable(t, mailB) : mailCompose(t, k); };
+    mailM.appendChild(it);
+  });
+  const closeM = () => { mailM.classList.add("hidden"); mailB.setAttribute("aria-expanded", "false"); };
+  mailB.onclick = e => { e.stopPropagation(); const open = mailM.classList.toggle("hidden") === false; mailB.setAttribute("aria-expanded", String(open));
+    if (open) setTimeout(() => document.addEventListener("click", closeM, {once: true}), 0); };
+  const mailW = document.createElement("span"); mailW.className = "mailwrap"; mailW.append(mailB, mailM);
+  actions.append(copyB, xlsB, mailW); meta.appendChild(actions); el.appendChild(meta);
 
   const wrap = document.createElement("div"); wrap.className = "tbl";
   let h = "<table><thead><tr>" + t.cols.map(c => "<th>" + escHtml(c.label) + "</th>").join("") + "</tr></thead><tbody>";

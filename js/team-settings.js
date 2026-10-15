@@ -317,7 +317,7 @@ const TeamUI = {
         ro.onchange = () => { u.role = ro.value; changed(); };
         const sq = makeMultiPicker({label: "סקוואדים נוספים של " + (u.name || u.email || "המשתמש"), placeholder: "בחירת סקוואדים", value: u.squads, load: squadOpts,
           onChange: v => { u.squads = v; changed(); }});
-        const ar = makeMultiPicker({label: "Area Path של " + (u.name || u.email || "המשתמש"), placeholder: "בחירת Area Path", value: u.areas, load: () => treeOptions("area"), short: lastPart,
+        const ar = makeMultiPicker({label: "Area Path של " + (u.name || u.email || "המשתמש"), placeholder: "בחירת Area Path", value: u.areas, load: () => treeOptions("area"), short: lastPart, tree: true,
           onChange: v => {
             // one area per row: more than one opens a row for each, with the same user, role, squads and note
             u.areas = v.slice(0, 1);

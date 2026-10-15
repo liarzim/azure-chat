@@ -498,7 +498,7 @@ tr.locked .rowedit { opacity: .7; }
 .permtable input,.permtable select,.permtable textarea{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font:inherit;color:inherit}
 .permtable td:first-child { min-width: 200px; }
 .err-inline { color: var(--bad); }
-.mpk .pk-panel{min-width:260px}
+.mpk .pk-panel{min-width:300px}
 .mpk-list{max-height:240px;overflow:auto}
 .mpk-opt{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:14px;color:var(--ink);margin:0}
 .mpk-opt:hover{background:var(--accent-soft)}
@@ -511,3 +511,6 @@ tr.locked .rowedit { opacity: .7; }
 .permtable .pfilter th{background:var(--panel);padding:4px}
 .permtable .pfilter input,.permtable .pfilter select{font-size:12px;padding:4px 6px}
 .permtable .picker{position:relative}
+.mpk-node{display:flex;align-items:center;gap:2px;border-radius:6px}
+.mpk-node .mpk-opt{flex:1}
+.mpk-opt input:disabled{opacity:.6}

@@ -158,7 +158,47 @@ function makeMultiPicker(opts) {
   };
   draw();
   let list = null;
-  const render = q => {
+  const expanded = new Set();
+  const render = q => opts.tree ? renderTree(q) : renderFlat(q);
+  /* Tree (area paths): choosing a node covers everything under it. Those show as checked and locked,
+     and only the top node is kept (it already includes its children). */
+  const isUnder = (v, parent) => String(v).toLowerCase().startsWith(String(parent).toLowerCase() + "\\");
+  const renderTree = q => {
+    const box = panel.querySelector(".mpk-list"); box.innerHTML = "";
+    const qn = norm(q || "");
+    const hit = o => !qn || norm(o.label + " " + o.value).includes(qn);
+    const show = new Set();
+    list.forEach(o => { if (hit(o)) { show.add(o.value); list.forEach(a => { if (isUnder(o.value, a.value)) show.add(a.value); }); } });
+    const ul = document.createElement("div"); ul.setAttribute("role", "tree"); box.appendChild(ul);
+    list.forEach(o => {
+      if (!show.has(o.value)) return;
+      // hidden while an ancestor is collapsed (search opens everything)
+      if (!qn && list.some(a => isUnder(o.value, a.value) && !expanded.has(a.value))) return;
+      const kids = list.some(c => c.parent === o.value);
+      const open = qn ? true : expanded.has(o.value);
+      const covered = selected.some(s => isUnder(o.value, s));
+      const row = document.createElement("div"); row.className = "mpk-node"; row.setAttribute("role", "treeitem"); row.style.paddingInlineStart = (4 + (o.depth || 0) * 16) + "px";
+      if (kids) row.setAttribute("aria-expanded", String(open));
+      const tg = document.createElement("button"); tg.type = "button"; tg.className = "pk-tg"; tg.tabIndex = -1; tg.textContent = kids ? (open ? "▾" : "◂") : "";
+      tg.setAttribute("aria-label", (open ? "סגירה: " : "פתיחה: ") + o.label);
+      if (kids) tg.onclick = e => { e.preventDefault(); open ? expanded.delete(o.value) : expanded.add(o.value); render(panel.querySelector(".pk-search").value); };
+      const l = document.createElement("label"); l.className = "mpk-opt";
+      const cb = document.createElement("input"); cb.type = "checkbox";
+      cb.checked = covered || selected.includes(o.value); cb.disabled = covered;
+      cb.indeterminate = !cb.checked && selected.some(s => isUnder(s, o.value));
+      if (covered) l.title = "נבחר כי הוא מתחת ל-Area שנבחר";
+      cb.onchange = () => {
+        if (cb.checked) selected = [...selected.filter(s => !isUnder(s, o.value)), o.value];   // the parent replaces its children
+        else selected = selected.filter(s => s !== o.value);
+        render(panel.querySelector(".pk-search").value);
+      };
+      l.append(cb, document.createTextNode(" " + o.label));
+      if (kids && cb.checked && !covered) { const s = document.createElement("small"); s.textContent = "כולל כל מה שמתחת"; l.appendChild(s); }
+      row.append(tg, l); ul.appendChild(row);
+    });
+    if (!ul.children.length) box.innerHTML = '<div class="pk-empty">לא נמצא</div>';
+  };
+  const renderFlat = q => {
     const box = panel.querySelector(".mpk-list"); box.innerHTML = "";
     const qn = norm(q || "");
     const rows = list.filter(o => !qn || norm(o.label + " " + o.value).includes(qn));
@@ -183,7 +223,13 @@ function makeMultiPicker(opts) {
       '<div class="mpk-bar"><button type="button" class="btn ghost mini mpk-clear">ניקוי</button><span class="sp"></span><button type="button" class="btn mini mpk-ok">אישור</button></div>';
     panel.querySelector(".mpk-ok").onclick = () => { close(true); btn.focus(); };
     panel.querySelector(".mpk-clear").onclick = () => { selected = []; render(panel.querySelector(".pk-search").value); };
-    try { list = await opts.load(); } catch (e) { panel.querySelector(".mpk-list").innerHTML = '<div class="pk-empty">לא ניתן לטעון: ' + escHtml(e.message || e) + "</div>"; return; }
+    try {
+      list = await opts.load();
+      if (opts.tree && !expanded.size) {          // open the top level and the way to what is already chosen
+        list.filter(o => !o.parent).forEach(o => expanded.add(o.value));
+        selected.forEach(s => list.forEach(a => { if (isUnder(s, a.value)) expanded.add(a.value); }));
+      }
+    } catch (e) { panel.querySelector(".mpk-list").innerHTML = '<div class="pk-empty">לא ניתן לטעון: ' + escHtml(e.message || e) + "</div>"; return; }
     const s = panel.querySelector(".pk-search");
     s.oninput = () => render(s.value);
     s.onkeydown = e => { if (e.key === "Escape") { e.stopPropagation(); close(true); btn.focus(); } };
@@ -197,7 +243,7 @@ function makeMultiPicker(opts) {
 async function treeOptions(kind) {
   const root = (await Meta.classPaths()).trees[kind];
   const out = [];
-  const walk = (n, d) => { out.push({value: n.path, label: n.name, depth: d, hint: n.path}); (n.children || []).forEach(c => walk(c, d + 1)); };
-  if (root) walk(root, 0);
+  const walk = (n, d, parent) => { out.push({value: n.path, label: n.name, depth: d, hint: n.path, parent}); (n.children || []).forEach(c => walk(c, d + 1, n.path)); };
+  if (root) walk(root, 0, null);
   return out;
 }

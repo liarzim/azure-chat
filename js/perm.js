@@ -25,7 +25,7 @@ function normalizePermissions(p) {
       const email = String((u && u.email) || "").trim().toLowerCase();
       if (!email) return;
       const role = ["admin", "readonly"].includes(u.role) ? u.role : "user";
-      out.users.push({email, role, squads: list(u.squads), areas: list(u.areas), note: String(u.note || "").trim()});
+      out.users.push({email, name: String(u.name || "").trim(), role, squads: list(u.squads), areas: list(u.areas), note: String(u.note || "").trim()});
     });
   }
   return out;

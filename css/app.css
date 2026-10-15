@@ -498,3 +498,16 @@ tr.locked .rowedit { opacity: .7; }
 .permtable input,.permtable select,.permtable textarea{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font:inherit;color:inherit}
 .permtable td:first-child { min-width: 200px; }
 .err-inline { color: var(--bad); }
+.mpk .pk-panel{min-width:260px}
+.mpk-list{max-height:240px;overflow:auto}
+.mpk-opt{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:14px;color:var(--ink);margin:0}
+.mpk-opt:hover{background:var(--accent-soft)}
+.mpk-opt small{color:var(--muted);font-size:11px;margin-inline-start:auto}
+.mpk-bar{display:flex;gap:6px;align-items:center;border-top:1px solid var(--line);padding-top:6px;margin-top:4px;position:sticky;bottom:0;background:var(--panel)}
+.mpk-bar .sp{flex:1}
+.mpk-chips{display:flex;flex-wrap:wrap;gap:4px}
+.mpk-chip{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 8px;font-size:12px;white-space:nowrap}
+.btn.mini{padding:5px 10px;font-size:13px}
+.permtable .pfilter th{background:var(--panel);padding:4px}
+.permtable .pfilter input,.permtable .pfilter select{font-size:12px;padding:4px 6px}
+.permtable .picker{position:relative}

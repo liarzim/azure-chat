@@ -263,38 +263,81 @@ const TeamUI = {
     ml.appendChild(mode);
     const add = document.createElement("button"); add.type = "button"; add.className = "btn ghost"; add.textContent = "+ משתמש";
     const sp = document.createElement("span"); sp.className = "sp";
-    modeRow.append(ml, sp, add);
-    const dl = document.createElement("datalist"); dl.id = "permSquads";
-    Meta.typeMeta("User Story").then(m => { const f = m.byRef.get(PERM_SQUAD); (f && f.allowed || []).forEach(v => dl.appendChild(new Option(v, v))); }).catch(() => {});
+    const cnt = document.createElement("span"); cnt.className = "muted";
+    modeRow.append(ml, sp, cnt, add);
+    // one Area Path per row: rows saved with several areas (older format) are split
+    const split = [];
+    p.users.forEach(u => { if (u.areas.length > 1) u.areas.forEach(a => split.push(Object.assign({}, u, {squads: u.squads.slice(), areas: [a]}))); else split.push(u); });
+    p.users.splice(0, p.users.length, ...split);
+    const squadOpts = async () => { const m = await Meta.typeMeta("User Story"); const f = m.byRef.get(PERM_SQUAD); return ((f && f.allowed) || []).map(v => ({value: v, label: v})); };
+    const lastPart = v => String(v).split("\\").pop();
+    const roleNames = {user: "רגיל", admin: "מנהל", readonly: "קריאה בלבד"};
     const tbl = document.createElement("table"); tbl.className = "ttable permtable";
-    tbl.innerHTML = "<thead><tr><th>מייל (כמו ב-Azure)</th><th>תפקיד</th><th>סקוואדים נוספים</th><th>Area Paths נוספים (שורה לכל אחד)</th><th>הערה</th><th></th></tr></thead>";
-    const tb = document.createElement("tbody"); tbl.appendChild(tb);
+    const thead = document.createElement("thead");
+    thead.innerHTML = "<tr><th>משתמש (מ-Azure)</th><th>תפקיד</th><th>סקוואדים נוספים</th><th>Area Path נוסף</th><th>הערה</th><th></th></tr>";
+    // filters under the headings
+    const flt = this.permFilter = this.permFilter || {who: "", role: "", squad: "", area: "", note: ""};
+    const fr = document.createElement("tr"); fr.className = "pfilter";
+    const fIn = (k, ph) => { const i = document.createElement("input"); i.type = "search"; i.placeholder = ph; i.value = flt[k]; i.setAttribute("aria-label", "סינון: " + ph); i.oninput = () => { flt[k] = i.value; applyFilter(); }; return i; };
+    const fSel = (k, label) => { const s2 = document.createElement("select"); s2.setAttribute("aria-label", "סינון לפי " + label); s2.dataset.f = k; s2.onchange = () => { flt[k] = s2.value; applyFilter(); }; return s2; };
+    const fRole = fSel("role", "תפקיד"), fSq = fSel("squad", "סקוואד"), fAr = fSel("area", "Area Path");
+    [fIn("who", "חיפוש שם או מייל"), fRole, fSq, fAr, fIn("note", "חיפוש בהערה")].forEach(x => { const th = document.createElement("th"); th.appendChild(x); fr.appendChild(th); });
+    const thx = document.createElement("th"); const clr = document.createElement("button"); clr.type = "button"; clr.className = "btn ghost mini"; clr.textContent = "ניקוי"; clr.title = "ניקוי הסינון";
+    clr.onclick = () => { Object.keys(flt).forEach(k => flt[k] = ""); fr.querySelectorAll("input").forEach(i => i.value = ""); fillFilters(); applyFilter(); };
+    thx.appendChild(clr); fr.appendChild(thx); thead.appendChild(fr);
+    const fillFilters = () => {
+      const opt = (sel, all, values, label) => { sel.innerHTML = ""; sel.add(new Option(all, "")); values.forEach(v => sel.add(new Option(label ? label(v) : v, v))); sel.value = values.includes(flt[sel.dataset.f]) ? flt[sel.dataset.f] : ""; flt[sel.dataset.f] = sel.value; };
+      opt(fRole, "כל התפקידים", Object.keys(roleNames), v => roleNames[v]);
+      opt(fSq, "כל הסקוואדים", [...new Set(p.users.flatMap(u => u.squads))].sort());
+      opt(fAr, "כל ה-Areas", [...new Set(p.users.flatMap(u => u.areas))].sort(), lastPart);
+    };
+    const tb = document.createElement("tbody"); tbl.append(thead, tb);
+    const match = u => (!flt.who || norm(u.email + " " + (u.name || "")).includes(norm(flt.who))) && (!flt.role || u.role === flt.role) &&
+      (!flt.squad || u.squads.includes(flt.squad)) && (!flt.area || u.areas.includes(flt.area)) && (!flt.note || norm(u.note || "").includes(norm(flt.note)));
+    const applyFilter = () => {
+      let n = 0;
+      tb.querySelectorAll("tr[data-i]").forEach(tr => { const ok = match(p.users[+tr.dataset.i]); tr.classList.toggle("hidden", !ok); if (ok) n++; });
+      const any = Object.values(flt).some(Boolean);
+      cnt.textContent = any ? "מוצגות " + n + " מתוך " + p.users.length + " שורות" : p.users.length ? p.users.length + " שורות" : "";
+    };
+    const changed = () => { this.markDirty(); fillFilters(); applyFilter(); };
     const draw = () => {
       tb.innerHTML = "";
-      if (!p.users.length) { tb.innerHTML = '<tr><td colspan="6" class="muted">אין חריגים. כולם מקבלים הרשאות לפי הצוותים שלהם ב-Azure.</td></tr>'; return; }
+      if (!p.users.length) { tb.innerHTML = '<tr><td colspan="6" class="muted">אין חריגים. כולם מקבלים הרשאות לפי הצוותים שלהם ב-Azure.</td></tr>'; fillFilters(); applyFilter(); return; }
       p.users.forEach((u, i) => {
-        const tr = document.createElement("tr");
-        const em = document.createElement("input"); em.type = "email"; em.dir = "ltr"; em.value = u.email; em.placeholder = "name@example.gov.il"; em.setAttribute("aria-label", "מייל");
-        em.oninput = () => { u.email = em.value.trim().toLowerCase(); this.markDirty(); };
-        const ro = document.createElement("select"); ro.setAttribute("aria-label", "תפקיד של " + (u.email || "המשתמש"));
-        [["user", "רגיל"], ["admin", "מנהל"], ["readonly", "קריאה בלבד"]].forEach(([v, l]) => ro.add(new Option(l, v))); ro.value = u.role;
-        ro.onchange = () => { u.role = ro.value; this.markDirty(); };
-        const sq = document.createElement("input"); sq.value = u.squads.join(", "); sq.setAttribute("list", "permSquads"); sq.placeholder = "למשל Payroll, CRM"; sq.setAttribute("aria-label", "סקוואדים נוספים של " + (u.email || "המשתמש"));
-        sq.oninput = () => { u.squads = sq.value.split(/[,;]/).map(x => x.trim()).filter(Boolean); this.markDirty(); };
-        const ar = document.createElement("textarea"); ar.rows = Math.max(1, u.areas.length); ar.dir = "ltr"; ar.value = u.areas.join("\n"); ar.placeholder = "Portfolio Merkava\\Payroll"; ar.setAttribute("aria-label", "Area Paths נוספים של " + (u.email || "המשתמש"));
-        ar.oninput = () => { u.areas = ar.value.split("\n").map(x => x.trim()).filter(Boolean); this.markDirty(); };
+        const tr = document.createElement("tr"); tr.dataset.i = i;
+        const who = makePersonPicker({label: "משתמש", azureRequired: true}, u.email ? (u.name ? u.name + " <" + u.email + ">" : u.email) : null, () => {
+          const v = who.get(); if (!v) return;
+          const m = String(v).match(/^(.*?)\s*<([^>]+)>\s*$/);
+          u.email = (m ? m[2] : String(v)).trim().toLowerCase(); u.name = m ? m[1].trim() : "";
+          changed();
+        });
+        const ro = document.createElement("select"); ro.setAttribute("aria-label", "תפקיד של " + (u.name || u.email || "המשתמש"));
+        Object.entries(roleNames).forEach(([v, l]) => ro.add(new Option(l, v))); ro.value = u.role;
+        ro.onchange = () => { u.role = ro.value; changed(); };
+        const sq = makeMultiPicker({label: "סקוואדים נוספים של " + (u.name || u.email || "המשתמש"), placeholder: "בחירת סקוואדים", value: u.squads, load: squadOpts,
+          onChange: v => { u.squads = v; changed(); }});
+        const ar = makeMultiPicker({label: "Area Path של " + (u.name || u.email || "המשתמש"), placeholder: "בחירת Area Path", value: u.areas, load: () => treeOptions("area"), short: lastPart,
+          onChange: v => {
+            // one area per row: more than one opens a row for each, with the same user, role, squads and note
+            u.areas = v.slice(0, 1);
+            const extra = v.slice(1).map(a => Object.assign({}, u, {squads: u.squads.slice(), areas: [a]}));
+            if (extra.length) { p.users.splice(i + 1, 0, ...extra); toast("נפתחו " + extra.length + " שורות נוספות, אחת לכל Area Path"); this.markDirty(); draw(); }
+            else changed();
+          }});
         const nt = document.createElement("input"); nt.value = u.note || ""; nt.placeholder = "למה"; nt.setAttribute("aria-label", "הערה");
-        nt.oninput = () => { u.note = nt.value; this.markDirty(); };
-        const del = mkIconBtn("✕", "מחיקת " + (u.email || "המשתמש"), false, () => { p.users.splice(i, 1); this.markDirty(); draw(); }, "del");
-        [em, ro, sq, ar, nt, del].forEach(x => { const td = document.createElement("td"); td.appendChild(x); tr.appendChild(td); });
+        nt.oninput = () => { u.note = nt.value; this.markDirty(); applyFilter(); };
+        const del = mkIconBtn("✕", "מחיקת " + (u.name || u.email || "המשתמש"), false, () => { p.users.splice(i, 1); this.markDirty(); draw(); }, "del");
+        [who.el, ro, sq.el, ar.el, nt, del].forEach(x => { const td = document.createElement("td"); td.appendChild(x); tr.appendChild(td); });
         tb.appendChild(tr);
       });
+      fillFilters(); applyFilter();
     };
-    add.onclick = () => { p.users.push({email: "", role: "user", squads: [], areas: [], note: ""}); this.markDirty(); draw(); const f = tb.querySelector("tr:last-child input"); if (f) f.focus(); };
+    add.onclick = () => { p.users.push({email: "", name: "", role: "user", squads: [], areas: [], note: ""}); Object.keys(flt).forEach(k => flt[k] = ""); fr.querySelectorAll("input").forEach(x => x.value = ""); this.markDirty(); draw(); const f = tb.querySelector("tr:last-child input"); if (f) f.focus(); };
     draw();
     const lock = document.createElement("p"); lock.className = "muted";
     if (!Perm.canSaveSettings()) lock.innerHTML = "<b>אתם לא מנהלי הרשאות, ולכן לא תוכלו לשמור שינויים בהגדרות.</b>";
-    body.append(mine, intro, modeRow, dl, tbl, lock);
+    body.append(mine, intro, modeRow, tbl, lock);
   },
 
   /* ---------- GitHub connection ---------- */

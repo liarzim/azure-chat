@@ -142,3 +142,62 @@ function makeTreePicker(f, value, kind, onChange) {
   };
   return {el: wrap, get: () => selected, set: v => { selected = v || null; draw(); }};
 }
+
+/* ---------- Multi select with checkboxes and search (squads, area paths) ----------
+   load(): [{value, label, depth?, hint?}] */
+function makeMultiPicker(opts) {
+  const wrap = document.createElement("div"); wrap.className = "picker mpk";
+  const btn = document.createElement("button"); btn.type = "button"; btn.className = "pk-btn"; btn.setAttribute("aria-label", opts.label); btn.setAttribute("aria-haspopup", "listbox");
+  const panel = document.createElement("div"); panel.className = "pk-panel hidden";
+  wrap.append(btn, panel);
+  let selected = (opts.value || []).slice();
+  const draw = () => {
+    if (!selected.length) { btn.innerHTML = '<span class="pk-ph">' + escHtml(opts.placeholder || "בחירה") + "</span>"; return; }
+    const short = v => opts.short ? opts.short(v) : v;
+    btn.innerHTML = '<span class="mpk-chips">' + selected.map(v => '<span class="mpk-chip" title="' + escHtml(v) + '">' + escHtml(short(v)) + "</span>").join("") + "</span>";
+  };
+  draw();
+  let list = null;
+  const render = q => {
+    const box = panel.querySelector(".mpk-list"); box.innerHTML = "";
+    const qn = norm(q || "");
+    const rows = list.filter(o => !qn || norm(o.label + " " + o.value).includes(qn));
+    if (!rows.length) { box.innerHTML = '<div class="pk-empty">לא נמצא</div>'; return; }
+    rows.forEach(o => {
+      const l = document.createElement("label"); l.className = "mpk-opt"; l.style.paddingInlineStart = (8 + (qn ? 0 : (o.depth || 0) * 16)) + "px";
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = selected.includes(o.value);
+      cb.onchange = () => { selected = cb.checked ? [...selected, o.value] : selected.filter(v => v !== o.value); };
+      l.append(cb, document.createTextNode(" " + o.label));
+      if (o.hint && qn) { const s = document.createElement("small"); s.dir = "ltr"; s.textContent = o.hint; l.appendChild(s); }
+      box.appendChild(l);
+    });
+  };
+  const close = apply => {
+    panel.classList.add("hidden");
+    if (apply) { draw(); opts.onChange(selected.slice()); }
+  };
+  btn.onclick = async () => {
+    if (!panel.classList.contains("hidden")) { close(true); return; }
+    Pickers.closeAll(panel); panel.classList.remove("hidden");
+    panel.innerHTML = '<input class="pk-search" type="search" placeholder="חיפוש" aria-label="חיפוש ב-' + escHtml(opts.label) + '"><div class="mpk-list"><div class="pk-empty">טוען...</div></div>' +
+      '<div class="mpk-bar"><button type="button" class="btn ghost mini mpk-clear">ניקוי</button><span class="sp"></span><button type="button" class="btn mini mpk-ok">אישור</button></div>';
+    panel.querySelector(".mpk-ok").onclick = () => { close(true); btn.focus(); };
+    panel.querySelector(".mpk-clear").onclick = () => { selected = []; render(panel.querySelector(".pk-search").value); };
+    try { list = await opts.load(); } catch (e) { panel.querySelector(".mpk-list").innerHTML = '<div class="pk-empty">לא ניתן לטעון: ' + escHtml(e.message || e) + "</div>"; return; }
+    const s = panel.querySelector(".pk-search");
+    s.oninput = () => render(s.value);
+    s.onkeydown = e => { if (e.key === "Escape") { e.stopPropagation(); close(true); btn.focus(); } };
+    render(""); s.focus();
+  };
+  // clicking outside applies the choice (like closing a dropdown)
+  document.addEventListener("mousedown", e => { if (!panel.classList.contains("hidden") && !wrap.contains(e.target)) close(true); });
+  return {el: wrap, get: () => selected.slice(), set: v => { selected = (v || []).slice(); draw(); }};
+}
+/* Area or iteration tree flattened for makeMultiPicker */
+async function treeOptions(kind) {
+  const root = (await Meta.classPaths()).trees[kind];
+  const out = [];
+  const walk = (n, d) => { out.push({value: n.path, label: n.name, depth: d, hint: n.path}); (n.children || []).forEach(c => walk(c, d + 1)); };
+  if (root) walk(root, 0);
+  return out;
+}

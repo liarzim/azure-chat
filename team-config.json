@@ -137,10 +137,11 @@
     "users": [
       {
         "email": "michaelia@goifinance.onmicrosoft.com",
+        "name": "מיכאל ליארזי",
         "role": "admin",
         "squads": [],
         "areas": [],
-        "note": "מיכאל ליארזי, מנהל אז'ורי"
+        "note": "מנהל אז'ורי"
       }
     ]
   },

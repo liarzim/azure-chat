@@ -1,0 +1,140 @@
+"use strict";
+/* ============================================================
+   Update permissions: who may change which work items in Azuri.
+
+   A person may change (and create) an item when at least one of these matches:
+     - the item's Area Path is one of their Azure team's areas (or below it)
+     - the item's Leading Squad is one of their squads
+   Their areas and squads come from two places, combined:
+     1. Azure DevOps: the teams they belong to (team areas; a team whose name is a squad gives that squad)
+     2. The exceptions table in the team settings (team-config.json → permissions.users),
+        by email: extra squads / areas, "admin" (everything) or "readonly" (nothing).
+
+   This is a guard inside Azuri only. Azure DevOps itself still allows whatever the token allows.
+   ============================================================ */
+
+const PERM_SQUAD = "Custom.LeadingSquad";
+const PERM_AREA = "System.AreaPath";
+
+function normalizePermissions(p) {
+  const out = {mode: "block", users: []};
+  if (p && typeof p === "object") {
+    if (p.mode === "off") out.mode = "off";
+    const list = (v, low) => (Array.isArray(v) ? v : String(v || "").split(/[\n,;]/)).map(x => String(x || "").trim()).filter(Boolean).map(x => low ? x.toLowerCase() : x);
+    (Array.isArray(p.users) ? p.users : []).forEach(u => {
+      const email = String((u && u.email) || "").trim().toLowerCase();
+      if (!email) return;
+      const role = ["admin", "readonly"].includes(u.role) ? u.role : "user";
+      out.users.push({email, role, squads: list(u.squads), areas: list(u.areas), note: String(u.note || "").trim()});
+    });
+  }
+  return out;
+}
+
+const Perm = {
+  state: null,          // {teams:[{name, areas:[{path, children}], squads:[]}], areas, squads, role, row, error, email}
+  _p: null,
+
+  cfg() { return normalizePermissions(TeamConfig.data && TeamConfig.data.permissions); },
+  me() { return String(Auth.userEmail || "").trim().toLowerCase(); },
+  key(s) { return String(s || "").trim().toLowerCase().replace(/\s+/g, " "); },
+
+  reset() { this.state = null; this._p = null; },
+  ready() { if (!this._p) this._p = this.load(); return this._p; },
+
+  async load() {
+    const st = {teams: [], areas: [], squads: [], role: "user", row: null, error: "", email: this.me()};
+    try { st.teams = Auth.mode === "demo" ? this.demoTeams() : await this.azureTeams(); }
+    catch (e) { st.error = (e && e.message) || String(e); }
+    let squadNames = [];
+    try { const m = await Meta.typeMeta("User Story"); const f = m.byRef.get(PERM_SQUAD); squadNames = (f && f.allowed) || []; } catch (e) {}
+    st.teams.forEach(t => {
+      t.areas.forEach(a => st.areas.push(a));
+      t.squads.forEach(s => st.squads.push(s));
+      // a team named like a squad ("Meteor", "Meteor Team", "Meteor - Dev") gives that squad
+      squadNames.forEach(s => { const k = this.key(s), n = this.key(t.name); if (n === k || n.startsWith(k + " ") || n.startsWith(k + "-") || n.startsWith(k + "_")) { st.squads.push(s); t.squads.push(s); } });
+    });
+    const row = this.cfg().users.find(u => u.email === st.email);
+    if (row) {
+      st.row = row; st.role = row.role;
+      row.squads.forEach(s => st.squads.push(s));
+      row.areas.forEach(a => st.areas.push({path: a, children: true}));
+    }
+    st.squads = [...new Set(st.squads)];
+    this.state = st;
+    return st;
+  },
+
+  /* Azure: my teams in this project, and the area paths each team owns. */
+  async azureTeams() {
+    const project = (TeamConfig.data && TeamConfig.data.project) || "";
+    const d = await api(ADO + "/_apis/teams?$mine=true&$top=200&api-version=7.1-preview.3");
+    const teams = (d.value || []).filter(t => !project || this.key(t.projectName) === this.key(project));
+    return Promise.all(teams.map(async t => {
+      const out = {name: t.name, areas: [], squads: []};
+      try {
+        const v = await api(ADO + "/" + encodeURIComponent(t.projectName || project) + "/" + encodeURIComponent(t.name) + "/_apis/work/teamsettings/teamfieldvalues?api-version=7.1");
+        const field = (v.field && v.field.referenceName) || PERM_AREA;
+        (v.values || []).forEach(x => {
+          if (field === PERM_AREA) out.areas.push({path: x.value, children: !!x.includeChildren});
+          else if (field === PERM_SQUAD) out.squads.push(x.value);
+        });
+      } catch (e) { out.error = e.message || String(e); }
+      return out;
+    }));
+  },
+  demoTeams() {
+    return [{name: "Meteor", areas: [{path: "Portfolio Merkava\\MK2\\Meteor", children: true}], squads: []}];
+  },
+
+  areaOk(path) {
+    const p = this.key(path).replace(/\\+$/, "");
+    if (!p) return false;
+    return this.state.areas.some(a => {
+      const k = this.key(a.path).replace(/\\+$/, "");
+      return p === k || (a.children && p.startsWith(k + "\\"));
+    });
+  },
+  squadOk(squad) {
+    const s = this.key(squad);
+    return !!s && this.state.squads.some(x => this.key(x) === s);
+  },
+
+  /* fields: the item's fields (System.AreaPath, Custom.LeadingSquad). Returns {ok, why}. */
+  allows(fields) {
+    if (this.cfg().mode === "off") return {ok: true};
+    const st = this.state;
+    if (!st) return {ok: false, why: "ההרשאות עדיין נטענות. נסו שוב בעוד רגע."};
+    if (st.role === "admin") return {ok: true};
+    if (st.role === "readonly") return {ok: false, why: "בטבלת ההרשאות אתם מוגדרים לקריאה בלבד."};
+    const area = fields && fields[PERM_AREA], squad = fields && fields[PERM_SQUAD];
+    if (this.areaOk(area) || this.squadOk(squad)) return {ok: true};
+    if (!st.areas.length && !st.squads.length) {
+      return {ok: false, why: st.error ? "לא הצלחנו לברר מ-Azure לאילו צוותים אתם שייכים (" + st.error + "). פנו למנהל ההרשאות שיוסיף אתכם לטבלת ההרשאות."
+                                       : "לא מצאנו צוות Azure או סקוואד שלכם. פנו למנהל ההרשאות שיוסיף אתכם לטבלת ההרשאות."};
+    }
+    const owner = [squad ? "Squad " + squad : "", area ? "Area " + area : ""].filter(Boolean).join(", ");
+    return {ok: false, why: "אין לכם הרשאה לעדכן פריט של סקוואד אחר" + (owner ? " (" + owner + ")" : "") + ". אפשר לעדכן רק פריטים של הסקוואדים שלכם: " + this.summary() + "."};
+  },
+  /* An update needs permission on the item as it is and as it will be (no moving items to other squads). */
+  check(item, changes) {
+    const now = item.fields || {};
+    const after = Object.assign({}, now, changes || {});
+    if (item.id) { const a = this.allows(now); if (!a.ok) return a; }
+    return this.allows(after);
+  },
+
+  summary() {
+    const st = this.state; if (!st) return "";
+    if (st.role === "admin") return "מנהל הרשאות: כל הפריטים";
+    if (st.role === "readonly") return "קריאה בלבד";
+    const sq = st.squads.join(", "), ar = [...new Set(st.areas.map(a => a.path.split("\\").pop()))].join(", ");
+    return [sq ? "Squad: " + sq : "", ar ? "Area: " + ar : ""].filter(Boolean).join(" · ") || "אין";
+  },
+
+  /* Settings can be saved only by admins, once at least one admin is listed. */
+  canSaveSettings() {
+    const admins = this.cfg().users.filter(u => u.role === "admin");
+    return !admins.length || admins.some(u => u.email === this.me());
+  }
+};

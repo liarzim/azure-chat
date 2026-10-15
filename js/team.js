@@ -136,6 +136,7 @@ const TeamConfig = {
     out.requiredFields = out.requiredFields || {};
     out.types.forEach(t => { if (!Array.isArray(out.requiredFields[t])) out.requiredFields[t] = []; });
     out.sharedServices = normalizeSharedServices(out.sharedServices);
+    out.permissions = normalizePermissions(out.permissions);
     out.templates = out.templates || {};
     Object.values(out.templates).forEach(tp => {
       tp.field = tp.field || "System.Description";
@@ -279,11 +280,11 @@ function checkTemplate(tpl, html) {
 /* ---------- Saving to GitHub ---------- */
 const GitHubStore = {
   KEY: "gh_token",
-  token() { try { return sessionStorage.getItem(this.KEY) || localStorage.getItem(this.KEY) || ""; } catch (e) { return ""; } },
-  setToken(t, remember) {
+  token() { try { return sessionStorage.getItem(this.KEY) || ""; } catch (e) { return ""; } },
+  setToken(t) {                       // this tab only: gone when the tab is closed
     try {
       sessionStorage.removeItem(this.KEY); localStorage.removeItem(this.KEY);
-      if (t) (remember ? localStorage : sessionStorage).setItem(this.KEY, t);
+      if (t) sessionStorage.setItem(this.KEY, t);
     } catch (e) {}
   },
   url() { return "https://api.github.com/repos/" + GITHUB.owner + "/" + GITHUB.repo + "/contents/" + GITHUB.path; },

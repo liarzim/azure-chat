@@ -1,7 +1,7 @@
 """Chat search: words instead of numbers -> a list to pick from -> the usual table. Demo + mocked Azure DevOps."""
 import os, sys, json, re, base64
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from server import start, ROOT
+from server import start, ROOT, is_teams, teams_body
 from playwright.sync_api import sync_playwright
 fails = []
 def check(n, c, i=""):
@@ -68,6 +68,7 @@ def handler(route, req):
     if req.all_headers().get("authorization") != AUTH: return route.fulfill(status=203, body="x", headers={**CORS, "content-type": "text/html"})
     if "/_apis/projects?" in u: return J({"value": []})
     if "/_apis/connectionData" in u: return J({"authenticatedUser": {"providerDisplayName": "מיכאל", "properties": {"Account": {"$value": "m@x.com"}}}})
+    if is_teams(u): return J(teams_body(u))
     if "/_apis/wit/wiql" in u: wiqls.append(json.loads(req.post_data)["query"]); return J({"workItems": [{"id": 501}, {"id": 502}]})
     m = re.search(r"/_apis/wit/workitems\?ids=([\d,]+)", u)
     if m: return J({"value": [ITEMS[int(x)] for x in m.group(1).split(",") if int(x) in ITEMS]})

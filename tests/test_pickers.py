@@ -2,7 +2,7 @@
 import os, sys, json, re, base64
 from urllib.parse import unquote
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from server import start, ROOT
+from server import start, ROOT, is_teams, teams_body
 from playwright.sync_api import sync_playwright
 fails = []
 def check(n, c, i=""):
@@ -80,6 +80,7 @@ def handler(route, req):
     if "/teams" in u or "/wiql" in u or "fields=System.AssignedTo" in u: calls.append(u)
     if "/_apis/projects?" in u: return J({"value": []})
     if "/_apis/connectionData" in u: return J({"authenticatedUser": {"providerDisplayName": "מיכאל", "properties": {"Account": {"$value": "m@x.com"}}}})
+    if is_teams(u): return J(teams_body(u))
     if re.search(r"/teams/[^/]+/members", u): return J({"value": [{"identity": {"displayName": "צוות " + u.split("/teams/")[1][:2], "uniqueName": "t" + u.split("/teams/")[1][:2] + "@x.com"}}, {"identity": {"displayName": "קבוצה", "uniqueName": "[x]\\grp", "isContainer": True}}]})
     if "/teams?" in u:
         return J({"value": [{"id": "a1", "name": "A"}, {"id": "b2", "name": "B"}]}) if mode["teams"] else J({"message": "TF401027"}, 401)

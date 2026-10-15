@@ -1,7 +1,7 @@
 """Updating against a simulated Azure DevOps: checks the exact requests the tool sends."""
 import os, sys, json, base64, copy, re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from server import start, ROOT
+from server import start, ROOT, is_teams, teams_body
 from playwright.sync_api import sync_playwright
 fails = []
 def check(n, c, i=""):
@@ -29,6 +29,7 @@ def handler(route, req):
     J = lambda d, s=200: route.fulfill(status=s, json=d, headers=CORS)
     if "/_apis/projects?" in u: return J({"value": [{"name": "Portfolio Merkava"}]})
     if "/_apis/connectionData" in u: return J({"authenticatedUser": {"providerDisplayName": ME["displayName"], "properties": {"Account": {"$type": "System.String", "$value": ME["uniqueName"]}}}})
+    if is_teams(u): return J(teams_body(u))
     if "/IdentityPicker/Identities" in u:
         log["picker"] += 1; q = json.loads(req.post_data)["query"]
         people = [{"displayName": "חיה נשר", "signInAddress": "Chayane@GOIFinance.onmicrosoft.com"}, {"displayName": "חיים כהן", "signInAddress": "chaimc@GOIFinance.onmicrosoft.com"}]

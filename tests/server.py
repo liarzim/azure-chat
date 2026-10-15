@@ -34,3 +34,13 @@ def start(port=8777):
 
 if __name__ == "__main__":
     start(int(sys.argv[1]) if len(sys.argv) > 1 else 8777); print("serving"); threading.Event().wait()
+
+
+# Azure teams of the signed-in user (update permissions). Default: one team that owns the whole project.
+TEAM_AREAS = ["Portfolio Merkava"]
+def is_teams(u):
+    return "/_apis/teams?" in u or "/teamsettings/teamfieldvalues?" in u
+def teams_body(u, areas=None):
+    if "/_apis/teams?" in u:
+        return {"value": [{"name": "Test Team", "projectName": "Portfolio Merkava"}]}
+    return {"field": {"referenceName": "System.AreaPath"}, "values": [{"value": a, "includeChildren": True} for a in (areas or TEAM_AREAS)]}

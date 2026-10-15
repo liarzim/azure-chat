@@ -1,0 +1,135 @@
+"""Update permissions (own squad / area only) and tokens kept only in the tab."""
+import os, sys, json, base64, re
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from server import start, ROOT
+from playwright.sync_api import sync_playwright
+fails = []
+def check(n, c, i=""):
+    print(("PASS " if c else "FAIL ") + n + ("" if c else "  -> " + str(i)[:500]))
+    if not c: fails.append(n)
+META = json.load(open(os.path.join(ROOT, "demo", "meta.json"), encoding="utf-8"))
+PAT = "test-pat"; AUTH = "Basic " + base64.b64encode((":" + PAT).encode()).decode()
+CORS = {"access-control-allow-origin": "*", "access-control-allow-headers": "authorization, content-type, accept", "access-control-allow-methods": "GET, POST, PATCH, OPTIONS"}
+def item(i, area, squad):
+    return {"id": i, "rev": 1, "fields": {"System.WorkItemType": "User Story", "System.Title": "פריט " + str(i), "System.State": "Active", "System.TeamProject": "Portfolio Merkava",
+            "System.AreaPath": area, "Custom.LeadingSquad": squad, "System.IterationPath": "Portfolio Merkava\\PI4_26"}, "relations": []}
+ITEMS = {501: item(501, "Portfolio Merkava\\MK2\\Meteor\\Meteor Sigma", "Meteor"), 502: item(502, "Portfolio Merkava\\Payroll", "Payroll"),
+         503: item(503, "Portfolio Merkava\\MK2\\LOG", "Payroll")}
+TEAMS = {"mode": "area"}
+def handler(route, req):
+    if req.method == "OPTIONS": return route.fulfill(status=204, headers=CORS)
+    u = req.url
+    if req.headers.get("authorization") != AUTH: return route.fulfill(status=203, body="<html></html>", headers={**CORS, "content-type": "text/html"})
+    J = lambda d, s=200: route.fulfill(status=s, json=d, headers=CORS)
+    if "/_apis/projects?" in u: return J({"value": [{"name": "Portfolio Merkava"}]})
+    if "/_apis/connectionData" in u: return J({"authenticatedUser": {"providerDisplayName": "בודק", "properties": {"Account": {"$value": "tester@gov.example"}}}})
+    if "/_apis/teams?" in u:
+        if TEAMS["mode"] == "error": return J({"message": "no access"}, 500)
+        name = "Payroll Team" if TEAMS["mode"] == "name" else "Pay Team"
+        return J({"value": [{"name": name, "projectName": "Portfolio Merkava"}, {"name": "Other Project Team", "projectName": "Other"}]})
+    if "/teamfieldvalues?" in u:
+        if TEAMS["mode"] == "squadfield": return J({"field": {"referenceName": "Custom.LeadingSquad"}, "values": [{"value": "Payroll"}]})
+        if TEAMS["mode"] == "name": return J({"field": {"referenceName": "System.AreaPath"}, "values": []})
+        return J({"field": {"referenceName": "System.AreaPath"}, "values": [{"value": "Portfolio Merkava\\Payroll", "includeChildren": True}]})
+    if "/_apis/wit/fields?" in u: return J({"value": META["fields"]})
+    if "/classificationnodes?" in u: return J({"value": META["classificationnodes"]})
+    m = re.search(r"/workitemtypes/([^/?]+)/fields\?", u)
+    if m: return J({"value": META["typeFields"][unquote(m.group(1))]})
+    if re.search(r"/_apis/wit/workitemtypes\?", u): return J({"value": META["workitemtypes"]})
+    if re.search(r"/work/processes/[^/]+/workitemtypes\?", u): return J({"value": META["processWits"]})
+    m = re.search(r"/workItemTypes/([^/?]+)/layout\?", u)
+    if m: return J(META["layouts"][next(w["name"] for w in META["processWits"] if w["referenceName"] == m.group(1))])
+    m = re.search(r"/_apis/wit/workitems\?ids=([\d,]+)", u)
+    if m: return J({"value": [ITEMS.get(int(i)) for i in m.group(1).split(",")]})
+    return J({"message": "not mocked " + u}, 404)
+from urllib.parse import unquote
+PLAN = """async (args) => { const [id, ch] = args; const it = (await fetchItems([id]))[0]; const p = await Edit.plan(it, ch, ""); return p.errors.join(" | "); }"""
+srv = start(8823)
+with sync_playwright() as p:
+    b = p.chromium.launch()
+    # ---------- demo: the demo user is in team Meteor (area MK2\\Meteor); items ending in 3 belong to Payroll ----------
+    ctx = b.new_context(viewport={"width": 1300, "height": 850}); pg = ctx.new_page(); errs = []
+    pg.on("pageerror", lambda e: errs.append(str(e)))
+    pg.goto("http://127.0.0.1:8823/"); pg.click("#demoBtn")
+    pg.fill("#input", "110047, 112073"); pg.keyboard.press("Enter"); pg.locator(".msg.bot table").first.wait_for(); pg.wait_for_timeout(800)
+    rows = pg.locator(".msg.bot table").first.locator("tbody tr")
+    check("own squad row is editable", "locked" not in (rows.nth(0).get_attribute("class") or "") and rows.nth(0).locator(".rowedit").inner_text() == "✎")
+    check("other squad row is read only with a lock", "locked" in (rows.nth(1).get_attribute("class") or "") and rows.nth(1).locator(".rowedit").inner_text() == "🔒")
+    rows.nth(1).locator("td.ed").first.click(); pg.wait_for_timeout(200)
+    check("clicking a locked cell explains, no edit panel", "סקוואד אחר" in pg.inner_text("#toast") and pg.locator("#editPanel:not(.hidden)").count() == 0, pg.inner_text("#toast"))
+    rows.nth(0).locator("td.ed").first.click(); pg.locator("#editPanel:not(.hidden)").wait_for(timeout=10000)
+    check("own item opens for editing", True); pg.click("#epClose"); pg.wait_for_timeout(200)
+    err = pg.evaluate(PLAN, [112073, {"System.State": "Active"}])
+    check("update of another squad's item is blocked at the preview", "אין לכם הרשאה" in err and "Payroll" in err, err)
+    err = pg.evaluate(PLAN, [110047, {"Custom.LeadingSquad": "Payroll", "System.AreaPath": "Portfolio Merkava\\Payroll"}])
+    check("moving an own item to another squad is blocked", "אין לכם הרשאה" in err, err)
+    err = pg.evaluate(PLAN, [110047, {"System.State": "Active"}])
+    check("own item: no permission error", "הרשאה" not in err, err)
+    err = pg.evaluate("""async () => { const it = {id: 0, fields: {"System.WorkItemType": "Task", "System.AreaPath": "Portfolio Merkava\\\\Payroll", "Custom.LeadingSquad": "Payroll"}}; const p = await Edit.plan(it, {"System.Title": "x"}, ""); return p.errors.join(" | "); }""")
+    check("creating an item for another squad is blocked", "אין לכם הרשאה" in err, err)
+    err = pg.evaluate("""async () => { try { await Edit.commit({item: (await fetchItems([112073]))[0], diffs: [], changes: {"System.State": "Active"}, comment: ""}); return "written"; } catch (e) { return e.message; } }""")
+    check("last guard before writing", "אין לכם הרשאה" in err, err)
+    # exceptions table
+    setp = lambda perms: pg.evaluate("async (p) => { TeamConfig.data.permissions = normalizePermissions(p); Perm.reset(); await Perm.ready(); return Perm.summary(); }", perms)
+    s = setp({"users": [{"email": "demo.user@example.com", "squads": ["Payroll"]}]})
+    check("exceptions table adds a squad", "Payroll" in s and "הרשאה" not in pg.evaluate(PLAN, [112073, {"System.State": "Active"}]), s)
+    setp({"users": [{"email": "DEMO.USER@example.com", "role": "readonly"}]})
+    check("read only role blocks even own items", "קריאה בלבד" in pg.evaluate(PLAN, [110047, {"System.State": "Active"}]))
+    setp({"users": [{"email": "demo.user@example.com", "role": "admin"}]})
+    check("admin may update everything", "הרשאה" not in pg.evaluate(PLAN, [112073, {"System.State": "Active"}]))
+    setp({"mode": "off"})
+    check("check turned off: everything allowed", "הרשאה" not in pg.evaluate(PLAN, [112073, {"System.State": "Active"}]))
+    setp({"users": [{"email": "boss@example.com", "role": "admin"}]})
+    check("non admin cannot save settings once an admin exists", pg.evaluate("Perm.canSaveSettings()") is False)
+    pg.evaluate("TeamUI.save(false); 0"); pg.wait_for_timeout(200)
+    check("save explains why", "מנהלי ההרשאות" in pg.inner_text("#toast"), pg.inner_text("#toast"))
+    setp({})
+    check("no admins yet: anyone may save (first setup)", pg.evaluate("Perm.canSaveSettings()") is True)
+    # settings tab
+    pg.evaluate("TeamUI.open(); 0"); pg.click("#teamTabs [data-tab=perms]"); pg.wait_for_timeout(500)
+    txt = pg.inner_text("#teamBody")
+    check("settings tab shows my teams and access", "Meteor" in txt and "ההרשאות שלכם" in txt and "גלוי לכל" in txt, txt[:300])
+    pg.click("#teamBody button:has-text('+ משתמש')")
+    pg.locator("#teamBody .permtable tbody tr input[type=email]").last.fill("Someone@Gov.example")
+    pg.locator("#teamBody .permtable tbody tr select").last.select_option("admin")
+    pg.locator("#teamBody .permtable tbody tr textarea").last.fill("Portfolio Merkava\\Payroll\nPortfolio Merkava\\HR")
+    d = pg.evaluate("TeamUI.prepared().permissions")
+    check("table saves normalized rows", d["users"][0] == {"email": "someone@gov.example", "role": "admin", "squads": [], "areas": ["Portfolio Merkava\\Payroll", "Portfolio Merkava\\HR"], "note": ""} and d["mode"] == "block", d)
+    pg.evaluate("TeamUI.close(true); 0")
+    check("no js errors (demo)", not errs, errs)
+    # ---------- real Azure (mocked): teams and areas come from Azure ----------
+    def login(mode):
+        TEAMS["mode"] = mode
+        c = b.new_context(); c.route("https://dev.azure.com/**", handler)
+        pg2 = c.new_page(); e2 = []; pg2.on("pageerror", lambda e: e2.append(str(e)))
+        pg2.goto("http://127.0.0.1:8823/"); pg2.fill("#pat", PAT); pg2.click("#patBtn"); pg2.locator("#app:not(.hidden)").wait_for()
+        pg2.evaluate("Perm.ready()")
+        return c, pg2, e2
+    c2, pg2, e2 = login("area")
+    st = pg2.evaluate("Perm.state")
+    check("token stays in the tab only", pg2.evaluate("!!sessionStorage.getItem('ado_pat') && !localStorage.getItem('ado_pat')") and pg2.locator("#remember").count() == 0)
+    check("areas from my Azure team in this project", [a["path"] for a in st["areas"]] == ["Portfolio Merkava\\Payroll"] and st["email"] == "tester@gov.example", st)
+    check("area match: Payroll area allowed, sub-area too", pg2.evaluate("Perm.allows({'System.AreaPath': 'Portfolio Merkava\\\\Payroll\\\\Sub'}).ok") and not pg2.evaluate("Perm.allows({'System.AreaPath': 'Portfolio Merkava\\\\PayrollX'}).ok"))
+    check("item of another team is blocked", "אין לכם הרשאה" in pg2.evaluate(PLAN, [501, {"System.State": "New"}]))
+    c2.close()
+    c3, pg3, e3 = login("name")
+    check("team named like a squad gives that squad; squad match alone is enough", pg3.evaluate("Perm.state.squads") == ["Payroll"] and "הרשאה" not in pg3.evaluate(PLAN, [503, {"System.State": "New"}]), pg3.evaluate("Perm.state.squads"))
+    c3.close()
+    c4, pg4, e4 = login("squadfield")
+    check("team field Leading Squad gives squads", pg4.evaluate("Perm.state.squads") == ["Payroll"])
+    c4.close()
+    c5, pg5, e5 = login("error")
+    err = pg5.evaluate(PLAN, [502, {"System.State": "New"}])
+    check("teams cannot be read: blocked with a clear reason", "לא הצלחנו לברר" in err, err)
+    check("no js errors (api)", not (e2 + e3 + e4 + e5), e2 + e3 + e4 + e5)
+    c5.close()
+    # ---------- tokens saved by older versions are removed ----------
+    c6 = b.new_context(); c6.add_init_script("if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded', '1'); localStorage.setItem('ado_pat', 'old-token'); localStorage.setItem('gh_token', 'old-gh'); localStorage.setItem('ado_user', 'x'); }")
+    pg6 = c6.new_page(); pg6.goto("http://127.0.0.1:8823/"); pg6.wait_for_timeout(500)
+    check("old saved tokens are deleted and not used", pg6.evaluate("localStorage.getItem('ado_pat') === null && localStorage.getItem('gh_token') === null") and pg6.locator("#login:not(.hidden)").count() == 1)
+    pg6.evaluate("GitHubStore.setToken('gh-new'); 0")
+    check("GitHub token kept in the tab only", pg6.evaluate("sessionStorage.getItem('gh_token') === 'gh-new' && localStorage.getItem('gh_token') === null"))
+    c6.close()
+    b.close()
+srv.shutdown()
+print("FAILURES:", fails); sys.exit(1 if fails else 0)

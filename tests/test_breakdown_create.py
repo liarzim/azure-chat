@@ -2,7 +2,7 @@
 import os, sys, json, re, base64
 from urllib.parse import unquote
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from server import start, ROOT
+from server import start, ROOT, is_teams, teams_body
 from playwright.sync_api import sync_playwright
 fails = []
 def check(n, c, i=""):
@@ -192,6 +192,7 @@ def handler(route, req):
     if req.all_headers().get("authorization") != AUTH: return route.fulfill(status=203, body="x", headers={**CORS, "content-type": "text/html"})
     if "/_apis/projects?" in u: return J({"value": []})
     if "/_apis/connectionData" in u: return J({"authenticatedUser": {"providerDisplayName": "מיכאל", "properties": {"Account": {"$value": "m@x.com"}}}})
+    if is_teams(u): return J(teams_body(u))
     if "/_apis/wit/fields?" in u: return J({"value": META["fields"]})
     if "/classificationnodes?" in u: return J({"value": NODES_NO_NEXT_PI})
     m = re.search(r"/workitemtypes/([^/?]+)/fields\?", u)

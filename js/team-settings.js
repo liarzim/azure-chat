@@ -32,7 +32,7 @@ const TeamUI = {
   render() {
     document.querySelectorAll("#teamTabs [data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === this.tab));
     const types = $("teamTypes"); types.innerHTML = "";
-    $("teamTypesRow").classList.toggle("hidden", this.tab === "github" || this.tab === "shared");
+    $("teamTypesRow").classList.toggle("hidden", this.tab === "github" || this.tab === "shared" || this.tab === "perms");
     this.draft.types.forEach(t => {
       const b = document.createElement("button"); b.type = "button"; b.className = "seg" + (t === this.type ? " on" : "");
       const n = this.tab === "fields" ? (this.draft.requiredFields[t] || []).length : ((this.draft.templates[t] || {}).headings || []).length;
@@ -45,6 +45,7 @@ const TeamUI = {
     if (this.tab === "fields") this.renderFields(body);
     else if (this.tab === "template") this.renderTemplate(body);
     else if (this.tab === "shared") this.renderShared(body);
+    else if (this.tab === "perms") this.renderPerms(body);
     else this.renderGithub(body);
   },
 
@@ -240,6 +241,62 @@ const TeamUI = {
     el.querySelectorAll("b").forEach((b, i) => { const h = tpl.headings[i]; if (h && h.required) b.insertAdjacentHTML("beforeend", ' <span class="reqmark">חובה</span>'); });
   },
 
+  /* ---------- Update permissions: my access + the exceptions table ---------- */
+  renderPerms(body) {
+    const p = this.draft.permissions = normalizePermissions(this.draft.permissions);
+    const mine = document.createElement("div"); mine.className = "permme"; mine.innerHTML = '<div class="muted">בודק את ההרשאות שלכם...</div>';
+    Perm.ready().then(st => {
+      const teams = st.teams.length ? st.teams.map(t => escHtml(t.name)).join(", ") : "לא נמצאו";
+      mine.innerHTML = "<b>ההרשאות שלכם</b> (" + escHtml(st.email || Auth.userName || "") + ")<br>" +
+        "צוותים ב-Azure: " + teams + (st.error ? ' <span class="err-inline">(' + escHtml(st.error) + ")</span>" : "") + "<br>" +
+        "מותר לעדכן: " + escHtml(Perm.summary()) + (p.mode === "off" ? " <b>(הבדיקה כבויה, כולם יכולים לעדכן הכל)</b>" : "");
+    }).catch(e => { mine.textContent = "בדיקת ההרשאות נכשלה: " + (e.message || e); });
+    const intro = document.createElement("div"); intro.className = "muted permintro";
+    intro.innerHTML = "<p>אפשר לעדכן וליצור פריט כשלפחות אחד מהם שלכם: <b>Area Path</b> של צוות Azure שאתם חברים בו (כולל מה שמתחתיו), או <b>Leading Squad</b> שלכם. צוות Azure ששמו כשם סקוואד נותן את הסקוואד הזה.</p>" +
+      "<p>בטבלה מוסיפים רק <b>חריגים</b>: סקוואדים או Areas נוספים, <b>מנהל</b> (מעדכן הכל ושומר הגדרות) או <b>קריאה בלבד</b>. כשיש לפחות מנהל אחד, רק מנהלים יכולים לשמור הגדרות.</p>" +
+      "<p>⚠ הטבלה נשמרת בקובץ team-config.json, שגלוי לכל מי שיש לו את כתובת האתר. זו בדיקה בתוך אז'ורי בלבד: באתר של Azure DevOps ההרשאות לא משתנות.</p>";
+    const modeRow = document.createElement("div"); modeRow.className = "tbar";
+    const ml = document.createElement("label"); ml.className = "chk"; ml.textContent = "בדיקת הרשאות: ";
+    const mode = document.createElement("select"); mode.id = "permMode";
+    mode.add(new Option("פעילה: חוסמת עדכון של פריטים לא שלכם", "block")); mode.add(new Option("כבויה: כולם מעדכנים הכל", "off"));
+    mode.value = p.mode; mode.onchange = () => { p.mode = mode.value; this.markDirty(); };
+    ml.appendChild(mode);
+    const add = document.createElement("button"); add.type = "button"; add.className = "btn ghost"; add.textContent = "+ משתמש";
+    const sp = document.createElement("span"); sp.className = "sp";
+    modeRow.append(ml, sp, add);
+    const dl = document.createElement("datalist"); dl.id = "permSquads";
+    Meta.typeMeta("User Story").then(m => { const f = m.byRef.get(PERM_SQUAD); (f && f.allowed || []).forEach(v => dl.appendChild(new Option(v, v))); }).catch(() => {});
+    const tbl = document.createElement("table"); tbl.className = "ttable permtable";
+    tbl.innerHTML = "<thead><tr><th>מייל (כמו ב-Azure)</th><th>תפקיד</th><th>סקוואדים נוספים</th><th>Area Paths נוספים (שורה לכל אחד)</th><th>הערה</th><th></th></tr></thead>";
+    const tb = document.createElement("tbody"); tbl.appendChild(tb);
+    const draw = () => {
+      tb.innerHTML = "";
+      if (!p.users.length) { tb.innerHTML = '<tr><td colspan="6" class="muted">אין חריגים. כולם מקבלים הרשאות לפי הצוותים שלהם ב-Azure.</td></tr>'; return; }
+      p.users.forEach((u, i) => {
+        const tr = document.createElement("tr");
+        const em = document.createElement("input"); em.type = "email"; em.dir = "ltr"; em.value = u.email; em.placeholder = "name@example.gov.il"; em.setAttribute("aria-label", "מייל");
+        em.oninput = () => { u.email = em.value.trim().toLowerCase(); this.markDirty(); };
+        const ro = document.createElement("select"); ro.setAttribute("aria-label", "תפקיד של " + (u.email || "המשתמש"));
+        [["user", "רגיל"], ["admin", "מנהל"], ["readonly", "קריאה בלבד"]].forEach(([v, l]) => ro.add(new Option(l, v))); ro.value = u.role;
+        ro.onchange = () => { u.role = ro.value; this.markDirty(); };
+        const sq = document.createElement("input"); sq.value = u.squads.join(", "); sq.setAttribute("list", "permSquads"); sq.placeholder = "למשל Payroll, CRM"; sq.setAttribute("aria-label", "סקוואדים נוספים של " + (u.email || "המשתמש"));
+        sq.oninput = () => { u.squads = sq.value.split(/[,;]/).map(x => x.trim()).filter(Boolean); this.markDirty(); };
+        const ar = document.createElement("textarea"); ar.rows = Math.max(1, u.areas.length); ar.dir = "ltr"; ar.value = u.areas.join("\n"); ar.placeholder = "Portfolio Merkava\\Payroll"; ar.setAttribute("aria-label", "Area Paths נוספים של " + (u.email || "המשתמש"));
+        ar.oninput = () => { u.areas = ar.value.split("\n").map(x => x.trim()).filter(Boolean); this.markDirty(); };
+        const nt = document.createElement("input"); nt.value = u.note || ""; nt.placeholder = "למה"; nt.setAttribute("aria-label", "הערה");
+        nt.oninput = () => { u.note = nt.value; this.markDirty(); };
+        const del = mkIconBtn("✕", "מחיקת " + (u.email || "המשתמש"), false, () => { p.users.splice(i, 1); this.markDirty(); draw(); }, "del");
+        [em, ro, sq, ar, nt, del].forEach(x => { const td = document.createElement("td"); td.appendChild(x); tr.appendChild(td); });
+        tb.appendChild(tr);
+      });
+    };
+    add.onclick = () => { p.users.push({email: "", role: "user", squads: [], areas: [], note: ""}); this.markDirty(); draw(); const f = tb.querySelector("tr:last-child input"); if (f) f.focus(); };
+    draw();
+    const lock = document.createElement("p"); lock.className = "muted";
+    if (!Perm.canSaveSettings()) lock.innerHTML = "<b>אתם לא מנהלי הרשאות, ולכן לא תוכלו לשמור שינויים בהגדרות.</b>";
+    body.append(mine, intro, modeRow, dl, tbl, lock);
+  },
+
   /* ---------- GitHub connection ---------- */
   renderGithub(body) {
     const has = !!GitHubStore.token();
@@ -251,12 +308,12 @@ const TeamUI = {
       "<li>תחת <b>Permissions ← Repository permissions</b> הגדירו <b>Contents: Read and write</b>. שום הרשאה אחרת.</li>" +
       "<li>צרו את ה-token והדביקו אותו כאן.</li></ol>" +
       '<label for="ghTok">GitHub token</label><input class="field" id="ghTok" type="password" autocomplete="off" spellcheck="false" placeholder="' + (has ? "שמור token. הדביקו חדש כדי להחליף" : "github_pat_...") + '">' +
-      '<label class="chk"><input type="checkbox" id="ghRemember"> לזכור במחשב הזה</label>' +
+      '<p class="muted">ה-token נשמר רק בלשונית הזו ונמחק כשסוגרים אותה.</p>' +
       '<div class="tbar"><button class="btn" type="button" id="ghSave">שמירה ובדיקה</button>' + (has ? '<button class="btn ghost" type="button" id="ghClear">הסרת token</button>' : "") + '<span class="muted" id="ghMsg">' + (has ? "יש token שמור" : "אין token") + "</span></div>" +
       '<p class="muted">רק מי שיש לו token כזה יכול לשמור הגדרות לצוות. כל השאר רואים את ההגדרות ופועלים לפיהן.</p></div>';
     $("ghSave").onclick = async () => {
       const v = $("ghTok").value.trim();
-      if (v) GitHubStore.setToken(v, $("ghRemember").checked);
+      if (v) GitHubStore.setToken(v);
       $("ghMsg").textContent = "בודק...";
       try { const n = await GitHubStore.test(); $("ghMsg").textContent = "מחובר ל-" + n + " עם הרשאת כתיבה"; $("ghTok").value = ""; }
       catch (e) { $("ghMsg").textContent = e.message; }
@@ -273,17 +330,20 @@ const TeamUI = {
       if (!tp.headings.length) delete d.templates[t];
     });
     d.sharedServices = normalizeSharedServices(d.sharedServices);
+    d.permissions = normalizePermissions(d.permissions);
     d.updatedAt = new Date().toISOString();
     d.updatedBy = Auth.userName || "";
     return d;
   },
   async save(force) {
+    if (!Perm.canSaveSettings()) { toast("רק מנהלי ההרשאות שבטבלת ההרשאות יכולים לשמור הגדרות לצוות."); return; }
     if (!GitHubStore.token()) { this.tab = "github"; this.render(); toast("כדי לשמור לצוות צריך קודם לחבר GitHub token"); return; }
     const d = this.prepared();
     const btn = $("teamSave"); btn.disabled = true; btn.textContent = "שומר...";
     try {
       await GitHubStore.save(d, TeamConfig.data.updatedAt, force);
       TeamConfig.data = TeamConfig.normalize(d); TeamConfig.source = "site";
+      Perm.reset(); Perm.ready().catch(() => {});
       this.draft = TeamConfig.clone(); this.dirty = false; this.render();
       toast("נשמר ב-GitHub. כל הצוות יקבל את ההגדרות תוך כדקה");
     } catch (e) {

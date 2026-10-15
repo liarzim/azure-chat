@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.10.5",
+  VERSION: "2.11",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -113,6 +113,11 @@ function sameField(a, b) {
 }
 
 /* ============================ AUTH ============================ */
+/* Tokens are kept only in this tab (sessionStorage). Older versions could keep them on the computer
+   (localStorage, "remember"); those copies are deleted on every start. */
+function purgeSavedTokens() {
+  try { ["ado_pat", "ado_user", "ado_email", "gh_token"].forEach(k => localStorage.removeItem(k)); } catch (e) {}
+}
 const Auth = {
   mode: null,          // "msal" | "pat" | "demo"
   msal: null, account: null, pat: null, userName: "", userEmail: "",
@@ -120,6 +125,7 @@ const Auth = {
   redirectUri() { return location.origin + location.pathname.replace(/index\.html?$/i, ""); },
 
   async init() {
+    purgeSavedTokens();
     if (CONFIG.CLIENT_ID && window.msal) {
       this.msal = new msal.PublicClientApplication({
         auth: {clientId: CONFIG.CLIENT_ID, authority: "https://login.microsoftonline.com/" + CONFIG.TENANT, redirectUri: this.redirectUri()},
@@ -129,7 +135,7 @@ const Auth = {
       const acct = (res && res.account) || this.msal.getAllAccounts()[0];
       if (acct) { this.mode = "msal"; this.account = acct; this.userName = acct.name || acct.username; return true; }
     }
-    for (const store of [sessionStorage, localStorage]) {
+    for (const store of [sessionStorage]) {
       const pat = store.getItem("ado_pat");
       if (pat) { this.mode = "pat"; try { this.pat = this.cleanPat(pat); } catch (e) { store.removeItem("ado_pat"); continue; } this.userName = store.getItem("ado_user") || ""; this.userEmail = store.getItem("ado_email") || ""; return true; }
     }
@@ -147,7 +153,7 @@ const Auth = {
     return clean;
   },
 
-  async loginPat(pat, remember) {
+  async loginPat(pat) {
     this.mode = "pat"; this.pat = this.cleanPat(pat);
     await api(ADO + "/_apis/projects?$top=1&api-version=7.1");   // validates the token
     try {
@@ -157,7 +163,7 @@ const Auth = {
       this.userEmail = (u.properties && u.properties.Account && (u.properties.Account.$value || u.properties.Account)) || "";
       if (typeof this.userEmail !== "string") this.userEmail = "";
     } catch (e) { this.userName = ""; this.userEmail = ""; }
-    const store = remember ? localStorage : sessionStorage;
+    const store = sessionStorage;            // tokens live only until the tab is closed, never on the computer
     store.setItem("ado_pat", this.pat);
     store.setItem("ado_user", this.userName);
     store.setItem("ado_email", this.userEmail);
@@ -299,7 +305,7 @@ function buildTable(fieldNames, items, ids) {
       else if (name && !images[i].name) images[i].name = name;
       return i + 1;
     };
-    return {id, missing: false, project: f["System.TeamProject"], type: f["System.WorkItemType"], images, cells: cols.map(c => cellValue(c, it, f, reg))};
+    return {id, missing: false, project: f["System.TeamProject"], type: f["System.WorkItemType"], area: f["System.AreaPath"], squad: f["Custom.LeadingSquad"], images, cells: cols.map(c => cellValue(c, it, f, reg))};
   });
   const projects = [...new Set(rows.filter(r => !r.missing).map(r => r.project))];
   return {cols, rows, missing: rows.filter(r => r.missing).map(r => r.id), unknown: cols.filter(c => !c.found).map(c => c.label), projects};
@@ -841,6 +847,18 @@ const NOT_EDITABLE_KINDS = new Set(["id", "attach", "none"]);
 function mailPref(v) {               // the mail app this person picked last (this browser only)
   try { if (v) localStorage.setItem("azuri.mailClient", v); return localStorage.getItem("azuri.mailClient") || ""; } catch (e) { return v || ""; }
 }
+/* Rows the user may not change: read only, with the reason on the lock. */
+function lockRows(wrap, t) {
+  wrap.querySelectorAll("tbody tr").forEach((tr, ri) => {
+    const r = t.rows[ri]; if (!r || r.missing) return;
+    const a = Perm.allows({"System.AreaPath": r.area, "Custom.LeadingSquad": r.squad});
+    tr.classList.toggle("locked", !a.ok);
+    if (a.ok) { delete tr.dataset.why; return; }
+    tr.dataset.why = a.why;
+    tr.querySelectorAll(".rowedit").forEach(b => { b.textContent = "🔒"; b.title = "קריאה בלבד: " + a.why; b.setAttribute("aria-label", "קריאה בלבד: " + r.id); });
+    tr.querySelectorAll("td.ed").forEach(td => td.title = "קריאה בלבד");
+  });
+}
 function renderResult(t, req, el, items) {
   const found = t.rows.length - t.missing.length;
   const fresh = !el;
@@ -887,8 +905,11 @@ function renderResult(t, req, el, items) {
   wrap.innerHTML = h + "</tbody></table>";
   el.appendChild(wrap);
   hydrateImages(wrap, t);
+  Perm.ready().then(() => lockRows(wrap, t)).catch(() => {});
   wrap.addEventListener("click", e => {
     if (e.target.closest("a, img")) return;
+    const tr = e.target.closest("tr.locked");
+    if (tr && (e.target.closest(".rowedit") || e.target.closest("td.ed"))) { toast(tr.dataset.why || "קריאה בלבד"); return; }
     const b = e.target.closest(".rowedit");
     if (b) { EditPanel.open(el, +b.dataset.r, null); return; }
     const td = e.target.closest("td.ed");
@@ -966,6 +987,7 @@ function showLogin(err) {
 }
 function showApp() {
   $("login").classList.add("hidden"); $("app").classList.remove("hidden");
+  Perm.reset(); Perm.ready().then(() => { const s = Perm.summary(); $("who").title = s ? "הרשאות עדכון: " + s : ""; }).catch(() => {});
   if (typeof Meta !== "undefined" && Auth.mode === "pat") Meta.prefetch(["Task", "User Story", "Bug", "Feature", "Epic"]);
   $("orgName").textContent = CONFIG.ORG;
   $("who").textContent = Auth.userName || "";
@@ -981,7 +1003,7 @@ function initUi() {
     ev.preventDefault();
     const v = $("pat").value.trim(); if (!v) return;
     $("patBtn").disabled = true; $("patBtn").textContent = "בודק...";
-    try { await Auth.loginPat(v, $("remember").checked); $("pat").value = ""; showApp(); }
+    try { await Auth.loginPat(v); $("pat").value = ""; showApp(); }
     catch (e) { Auth.mode = null; showLogin(e.message || String(e)); }
     finally { $("patBtn").disabled = false; $("patBtn").textContent = "כניסה עם טוקן"; }
   };
@@ -1097,9 +1119,9 @@ function demoItems(ids) {
       "System.State": stateFor[type][i % 4], "System.Reason": "Approved",
       "System.AssignedTo": people[i % 4], "System.CreatedBy": people[(i + 1) % 4],
       "System.CreatedDate": "2026-09-1" + (i % 9) + "T08:00:00Z", "System.ChangedDate": "2026-10-0" + ((i % 6) + 1) + "T10:00:00Z",
-      "System.IterationPath": "Portfolio Merkava\\PI4_26\\4." + ((i % 3) + 1), "System.AreaPath": "Portfolio Merkava\\MK2\\Meteor\\Meteor Sigma",
+      "System.IterationPath": "Portfolio Merkava\\PI4_26\\4." + ((i % 3) + 1), "System.AreaPath": id % 10 === 3 ? "Portfolio Merkava\\Payroll" : "Portfolio Merkava\\MK2\\Meteor\\Meteor Sigma",
       "System.TeamProject": "Portfolio Merkava", "System.Tags": type === "Bug" ? "Demo; UI" : "Demo",
-      "Custom.WSJFPriority": i * 3, "Custom.Customer": "מימון ואשראי", "Custom.LeadingSquad": "Meteor",
+      "Custom.WSJFPriority": i * 3, "Custom.Customer": "מימון ואשראי", "Custom.LeadingSquad": id % 10 === 3 ? "Payroll" : "Meteor",
       "Microsoft.VSTS.Common.ValueArea": "Business", "Custom.CR": false, "Custom.34c3825b-e2cf-4990-b473-d6a7e7d431e7": false, "Custom.Deliveryrisk": false,
       "Custom.d3d0252f-48df-4329-8b93-585a2c0f8dae": false, "Custom.Relevance": false, "Custom.Reviewed": false, "Custom.EscapingDefect": false, "Custom.Reopen": false, "Custom.OSS": false
     };

@@ -95,6 +95,12 @@ Meta.classPaths = function () {
   });
 };
 
+/* Last check right before any write to Azure (the preview already checked it). */
+function permGuard(item, changes) {
+  const a = Perm.check(item, changes || {});
+  if (!a.ok) throw new Error(a.why);
+}
+
 /* ---------- Generic write call ---------- */
 async function apiSend(method, url, body, contentType) {
   if (Auth.mode === "demo") throw new Error("demo");
@@ -261,6 +267,9 @@ const Edit = {
     const creating = !item.id;
     const required = await Meta.requiredRefs(type, {creating, val: finalVal, changed: ref => creating || Object.prototype.hasOwnProperty.call(changes, ref)});
     const diffs = [], errors = [];
+    await Perm.ready();
+    const allowed = Perm.check(item, changes);
+    if (!allowed.ok) errors.push(allowed.why);
     Object.entries(changes).forEach(([ref, v]) => {
       const f = meta.byRef.get(ref);
       if (!f) { errors.push("השדה " + ref + " לא קיים או לא ניתן לעריכה ב-" + type); return; }
@@ -284,6 +293,7 @@ const Edit = {
 
   async commit(plan) {
     const item = plan.item;
+    permGuard(item, plan.changes);
     if (Auth.mode === "demo") return DemoDB.patch(item.id, item.rev, plan.diffs.map(d => [d.ref, this._val(plan, d.ref)]), plan.comment);
     const ops = [{op: "test", path: "/rev", value: item.rev}];
     plan.diffs.forEach(d => {
@@ -487,6 +497,7 @@ async function searchItems(text, types, limit, opts) {
 
 const Create = {
   async commit(plan, parent) {
+    permGuard(plan.item, plan.changes);
     const pairs = plan.diffs.map(d => [d.ref, plan.changes[d.ref]]).filter(([ref, v]) => !isEmptyValue(plan.meta.byRef.get(ref), v));
     if (Auth.mode === "demo") return DemoDB.create(plan.type, pairs, parent);
     const ops = pairs.map(([ref, v]) => ({op: "add", path: "/fields/" + ref, value: v}));

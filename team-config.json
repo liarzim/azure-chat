@@ -132,6 +132,18 @@
       ]
     }
   },
-  "updatedAt": "2026-10-12T13:59:19.595Z",
+  "permissions": {
+    "mode": "block",
+    "users": [
+      {
+        "email": "michaelia@goifinance.onmicrosoft.com",
+        "role": "admin",
+        "squads": [],
+        "areas": [],
+        "note": "מיכאל ליארזי, מנהל אז'ורי"
+      }
+    ]
+  },
+  "updatedAt": "2026-10-15T13:19:54.000Z",
   "updatedBy": "מיכאל ליארזי"
 }

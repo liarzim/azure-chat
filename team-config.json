@@ -132,7 +132,7 @@
       ]
     }
   },
-  "updatedAt": "2026-10-18T16:01:22.513Z",
+  "updatedAt": "2026-10-18T16:21:54.413Z",
   "updatedBy": "מיכאל ליארזי",
   "permissions": {
     "mode": "block",
@@ -155,7 +155,7 @@
         "areas": [
           "Portfolio Merkava\\MK2\\HR\\PYROL"
         ],
-        "note": ""
+        "note": "Scrum Master של הסקוואד"
       },
       {
         "email": "edenben@goifinance.onmicrosoft.com",
@@ -167,7 +167,19 @@
         "areas": [
           "Portfolio Merkava\\MK2\\HR\\CORE"
         ],
-        "note": ""
+        "note": "Scrum Master של הסקוואד"
+      },
+      {
+        "email": "lizubs@goifinance.onmicrosoft.com",
+        "name": "ליזו בן סעדון",
+        "role": "user",
+        "squads": [
+          "Payroll"
+        ],
+        "areas": [
+          "Portfolio Merkava\\MK2\\HR\\PYROL"
+        ],
+        "note": "מיישמת של הסקוואד"
       }
     ]
   }

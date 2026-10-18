@@ -353,14 +353,15 @@ const TeamUI = {
       "<li>צרו את ה-token והדביקו אותו כאן.</li></ol>" +
       '<label for="ghTok">GitHub token</label><input class="field" id="ghTok" type="password" autocomplete="off" spellcheck="false" placeholder="' + (has ? "שמור token. הדביקו חדש כדי להחליף" : "github_pat_...") + '">' +
       '<p class="muted">ה-token נשמר רק בלשונית הזו ונמחק כשסוגרים אותה.</p>' +
-      '<div class="tbar"><button class="btn" type="button" id="ghSave">שמירה ובדיקה</button>' + (has ? '<button class="btn ghost" type="button" id="ghClear">הסרת token</button>' : "") + '<span class="muted" id="ghMsg">' + (has ? "יש token שמור" : "אין token") + "</span></div>" +
+      '<div class="tbar"><button class="btn" type="button" id="ghSave">בדיקת חיבור</button>' + (has ? '<button class="btn ghost" type="button" id="ghClear">הסרת token</button>' : "") + '<span class="muted" id="ghMsg">' + (has ? "יש token שמור" : "אין token") + "</span></div>" +
       '<p class="muted">רק מי שיש לו token כזה יכול לשמור הגדרות לצוות. כל השאר רואים את ההגדרות ופועלים לפיהן.</p></div>';
     $("ghSave").onclick = async () => {
       const v = $("ghTok").value.trim();
       if (v) GitHubStore.setToken(v);
-      $("ghMsg").textContent = "בודק...";
-      try { const n = await GitHubStore.test(); $("ghMsg").textContent = "מחובר ל-" + n + " עם הרשאת כתיבה"; $("ghTok").value = ""; }
-      catch (e) { $("ghMsg").textContent = e.message; }
+      const msg = $("ghMsg"), state = cls => { msg.classList.remove("muted", "conn-ok", "conn-bad"); msg.classList.add(cls); };
+      state("muted"); msg.textContent = "בודק...";
+      try { const n = await GitHubStore.test(); state("conn-ok"); msg.textContent = "✓ מחובר ל-" + n + " עם הרשאת כתיבה"; $("ghTok").value = ""; }
+      catch (e) { state("conn-bad"); msg.textContent = "✕ " + e.message; }
     };
     if ($("ghClear")) $("ghClear").onclick = () => { GitHubStore.setToken(""); this.render(); };
   },

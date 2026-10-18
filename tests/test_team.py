@@ -74,6 +74,12 @@ with sync_playwright() as p:
     pg.fill("#ghTok", "ghp_test"); pg.click("#ghSave")
     pg.locator("#ghMsg:has-text('מחובר')").wait_for(timeout=5000)
     check("token test ok", "מחובר ל-liarzim/azure-chat" in pg.inner_text("#ghMsg"))
+    check("connection check button and green status", pg.inner_text("#ghSave") == "בדיקת חיבור" and "conn-ok" in pg.get_attribute("#ghMsg", "class") and pg.evaluate("getComputedStyle(document.getElementById('ghMsg')).color") == "rgb(26, 127, 55)")
+    n_err = len(errs)
+    pg.fill("#ghTok", "ghp_wrong"); pg.click("#ghSave"); pg.locator("#ghMsg.conn-bad").wait_for(timeout=5000)
+    del errs[n_err:]   # the browser logs the expected 401 of the wrong token
+    check("bad token: red status with the reason", "לא תקין" in pg.inner_text("#ghMsg") and pg.evaluate("getComputedStyle(document.getElementById('ghMsg')).color") != "rgb(26, 127, 55)", pg.inner_text("#ghMsg"))
+    pg.fill("#ghTok", "ghp_test"); pg.click("#ghSave"); pg.locator("#ghMsg.conn-ok").wait_for(timeout=5000)
     pg.click("#teamSave"); pg.locator("#toast:has-text('נשמר ב-GitHub')").wait_for(timeout=5000)
     saved = remote["json"]
     check("PUT happened with sha", len(remote["puts"]) == 1 and remote["puts"][0]["sha"] == "sha1")

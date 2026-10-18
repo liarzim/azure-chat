@@ -520,3 +520,8 @@ tr.locked .rowedit { opacity: .7; }
 .pk-sug small{color:var(--muted);font-size:11px}
 .pk-switch{display:block;width:100%;text-align:start;border:0;border-top:1px solid var(--line);background:none;color:var(--accent);padding:7px 8px;margin-top:4px;font:inherit;font-size:13px;cursor:pointer}
 .pk-switch:hover{background:var(--accent-soft)}
+
+/* connection check: green when it works, red when it does not */
+.conn-ok{color:#1a7f37;font-weight:600}
+.conn-bad{color:var(--bad);font-weight:600}
+@media (prefers-color-scheme: dark){.conn-ok{color:#4ac26b}}

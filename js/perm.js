@@ -138,3 +138,45 @@ const Perm = {
     return !admins.length || admins.some(u => u.email === this.me());
   }
 };
+
+/* ============================================================
+   Areas of a squad: where the squad's work items actually live.
+   Looks at items with that Leading Squad changed in the last 180 days and keeps the
+   Area Paths that hold at least 5% of them (most used first). Suggestions only.
+   ============================================================ */
+const SquadAreas = {
+  cache: new Map(),
+  MIN_SHARE: 0.05, DAYS: 180,
+  get(squad) {
+    const k = String(squad || "").trim();
+    if (!k) return Promise.resolve([]);
+    if (!this.cache.has(k)) this.cache.set(k, this.load(k).catch(e => { this.cache.delete(k); throw e; }));
+    return this.cache.get(k);
+  },
+  /* several squads: their areas together, without repeats */
+  async many(squads) {
+    const lists = await Promise.all((squads || []).map(s => this.get(s).catch(() => [])));
+    const seen = new Map();
+    lists.flat().forEach(a => { const x = seen.get(a.path); if (x) x.count += a.count; else seen.set(a.path, Object.assign({}, a)); });
+    return [...seen.values()].sort((a, b) => b.count - a.count);
+  },
+  async load(squad) {
+    if (Auth.mode === "demo") {
+      const demo = {Meteor: [{path: "Portfolio Merkava\\MK2\\Meteor\\Meteor Sigma", count: 40}, {path: "Portfolio Merkava\\MK2\\Meteor\\Meteor Alpha", count: 6}], Payroll: [{path: "Portfolio Merkava\\Payroll", count: 12}]};
+      return demo[squad] || [];
+    }
+    const proj = encodeURIComponent(TeamConfig.data.project);
+    const q = "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [" + PERM_SQUAD + "] = '" + String(squad).replace(/'/g, "''") +
+      "' AND [System.ChangedDate] >= @today - " + this.DAYS + " ORDER BY [System.ChangedDate] DESC";
+    const w = await apiSend("POST", ADO + "/" + proj + "/_apis/wit/wiql?$top=1000&api-version=7.1", {query: q}, "application/json");
+    const ids = (w.workItems || []).map(x => x.id);
+    const count = new Map();
+    for (let i = 0; i < ids.length; i += 200) {
+      const d = await api(ADO + "/_apis/wit/workitems?ids=" + ids.slice(i, i + 200).join(",") + "&fields=System.AreaPath&errorPolicy=omit&api-version=7.1");
+      (d.value || []).forEach(it => { const p = it && it.fields && it.fields["System.AreaPath"]; if (p) count.set(p, (count.get(p) || 0) + 1); });
+    }
+    const total = [...count.values()].reduce((a, b) => a + b, 0);
+    return [...count.entries()].map(([path, n]) => ({path, count: n})).filter(a => total && a.count / total >= this.MIN_SHARE)
+      .sort((a, b) => b.count - a.count).slice(0, 15);
+  }
+};

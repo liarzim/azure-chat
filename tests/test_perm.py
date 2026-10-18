@@ -16,6 +16,9 @@ def item(i, area, squad):
 ITEMS = {501: item(501, "Portfolio Merkava\\MK2\\Meteor\\Meteor Sigma", "Meteor"), 502: item(502, "Portfolio Merkava\\Payroll", "Payroll"),
          503: item(503, "Portfolio Merkava\\MK2\\LOG", "Payroll")}
 TEAMS = {"mode": "area"}
+for i in range(600, 640): ITEMS[i] = item(i, "Portfolio Merkava\\Payroll" if i < 630 else "Portfolio Merkava\\MK2\\HR", "Payroll")
+ITEMS[640] = item(640, "Portfolio Merkava\\Odd", "Payroll")
+WIQL = []
 def handler(route, req):
     if req.method == "OPTIONS": return route.fulfill(status=204, headers=CORS)
     u = req.url
@@ -39,6 +42,9 @@ def handler(route, req):
     if re.search(r"/work/processes/[^/]+/workitemtypes\?", u): return J({"value": META["processWits"]})
     m = re.search(r"/workItemTypes/([^/?]+)/layout\?", u)
     if m: return J(META["layouts"][next(w["name"] for w in META["processWits"] if w["referenceName"] == m.group(1))])
+    if "/_apis/wit/wiql" in u:
+        q = json.loads(req.post_data)["query"]; WIQL.append(q)
+        return J({"workItems": [{"id": i} for i in range(600, 641)] if "Payroll" in q else []})
     m = re.search(r"/_apis/wit/workitems\?ids=([\d,]+)", u)
     if m: return J({"value": [ITEMS.get(int(i)) for i in m.group(1).split(",")]})
     return J({"message": "not mocked " + u}, 404)
@@ -102,6 +108,8 @@ with sync_playwright() as p:
     check("squads: multi select from Azure list", row.locator(".mpk").nth(0).locator(".mpk-chip").count() == 2)
     row.locator(".mpk").nth(1).locator(".pk-btn").click(); pg.wait_for_timeout(300)
     ap = row.locator(".mpk").nth(1)
+    check("areas: the chosen squads' areas are offered first", "Areas של Payroll, CRM" in ap.locator(".pk-sughead").inner_text())
+    ap.locator(".pk-switch", has_text="הצגת כל העץ").click(); pg.wait_for_timeout(100)
     check("areas: a tree, top level open, deeper levels closed", ap.locator(".mpk-node", has_text="Payroll").count() == 1 and ap.locator(".mpk-node", has_text="LOG").count() == 0)
     ap.locator(".mpk-node", has_text="MK2").first.locator(".pk-tg").click()
     ap.locator(".mpk-node", has_text="Meteor").first.locator("input").check()
@@ -135,6 +143,34 @@ with sync_playwright() as p:
     d = pg.evaluate("TeamUI.prepared().permissions")
     check("older rows with several areas are split, one area per row", [u["areas"] for u in d["users"]] == [["P\\A"], ["P\\B"]] and all(u["squads"] == ["CRM"] for u in d["users"]), d)
     pg.evaluate("TeamUI.close(true); 0")
+    # ---------- Area Path suggested by squad ----------
+    pg.evaluate("TeamUI.close(true); 0")
+    pg.evaluate("TeamConfig.data.permissions = normalizePermissions({users:[{email:'dana@example.com', name:'דנה כהן', squads:['Payroll']}]}); Perm.reset(); 0")
+    pg.evaluate("TeamUI.open(); 0"); pg.click("#teamTabs [data-tab=perms]"); pg.wait_for_timeout(500)
+    ap = pg.locator("#teamBody .permtable tbody tr").last.locator(".mpk").nth(1)
+    ap.locator(".pk-btn").click(); pg.wait_for_timeout(400)
+    check("perm table: areas of the row's squad are offered first", "Areas של Payroll" in ap.locator(".pk-sughead").inner_text() and ap.locator(".mpk-opt").count() == 1 and "Payroll" in ap.locator(".mpk-opt").inner_text())
+    ap.locator(".pk-switch", has_text="הצגת כל העץ").click(); pg.wait_for_timeout(100)
+    check("perm table: one click shows the whole tree", ap.locator(".mpk-node", has_text="MK2").count() == 1)
+    ap.locator(".pk-switch", has_text="חזרה").click(); ap.locator(".mpk-opt input").check()
+    ap.locator(".mpk-ok").click(); pg.wait_for_timeout(200)
+    check("perm table: suggested area chosen", pg.evaluate("TeamUI.prepared().permissions.users[0].areas") == ["Portfolio Merkava\\Payroll"])
+    pg.evaluate("TeamUI.close(true); 0")
+    # edit panel: Leading Squad Meteor → Meteor areas first
+    pg.fill("#input", "110047"); pg.keyboard.press("Enter"); pg.wait_for_timeout(800)
+    pg.locator(".msg.bot table").last.locator(".rowedit").first.click(); pg.locator("#editPanel:not(.hidden)").wait_for()
+    pg.evaluate("EditPanel.addField('System.AreaPath', false); 0"); pg.wait_for_timeout(200)
+    abtn = pg.locator("#epFields .picker .pk-btn[aria-label='Area']").first
+    abtn.click(); pg.wait_for_timeout(400)
+    sugs = pg.locator("#epFields .pk-panel:not(.hidden) .pk-sug").all_inner_texts()
+    check("edit panel: areas of the item's squad come first", len(sugs) == 2 and "Meteor Sigma" in sugs[0] and "Meteor Alpha" in sugs[1] and "Areas של Meteor" in pg.inner_text("#epFields .pk-panel:not(.hidden)"), sugs)
+    pg.locator("#epFields .pk-panel:not(.hidden) .pk-switch", has_text="הצגת כל העץ").click()
+    check("edit panel: whole tree on request", pg.locator("#epFields .pk-panel:not(.hidden) .pk-node", has_text="Payroll").count() >= 1)
+    pg.locator("#epFields .pk-panel:not(.hidden) .pk-switch", has_text="חזרה").click()
+    pg.locator("#epFields .pk-panel:not(.hidden) .pk-sug", has_text="Meteor Alpha").click(); pg.wait_for_timeout(200)
+    check("edit panel: suggested area chosen", "Meteor Alpha" in abtn.inner_text(), abtn.inner_text())
+    pg.click("#epClose"); pg.wait_for_timeout(200)
+    if pg.locator("#teamConfirm:not(.hidden), .ep-confirm:not(.hidden)").count(): pass
     check("no js errors (demo)", not errs, errs)
     # ---------- real Azure (mocked): teams and areas come from Azure ----------
     def login(mode):
@@ -150,6 +186,11 @@ with sync_playwright() as p:
     check("areas from my Azure team in this project", [a["path"] for a in st["areas"]] == ["Portfolio Merkava\\Payroll"] and st["email"] == "tester@gov.example", st)
     check("area match: Payroll area allowed, sub-area too", pg2.evaluate("Perm.allows({'System.AreaPath': 'Portfolio Merkava\\\\Payroll\\\\Sub'}).ok") and not pg2.evaluate("Perm.allows({'System.AreaPath': 'Portfolio Merkava\\\\PayrollX'}).ok"))
     check("item of another team is blocked", "אין לכם הרשאה" in pg2.evaluate(PLAN, [501, {"System.State": "New"}]))
+    areas = pg2.evaluate("SquadAreas.get(\"Pay'roll\").then(() => SquadAreas.get('Payroll'))")
+    check("squad areas: counted from the squad's items, rare areas (under 5%) left out", areas == [{"path": "Portfolio Merkava\\Payroll", "count": 30}, {"path": "Portfolio Merkava\\MK2\\HR", "count": 10}], areas)
+    check("squad areas: safe query (quote escaped, last 180 days, this project)", any("[Custom.LeadingSquad] = 'Pay''roll'" in q and "@today - 180" in q and "@project" in q for q in WIQL), WIQL)
+    pg2.evaluate("SquadAreas.get('Payroll')")
+    check("squad areas: asked once per squad", sum(1 for q in WIQL if "= 'Payroll'" in q) == 1)
     c2.close()
     c3, pg3, e3 = login("name")
     check("team named like a squad gives that squad; squad match alone is enough", pg3.evaluate("Perm.state.squads") == ["Payroll"] and "הרשאה" not in pg3.evaluate(PLAN, [503, {"System.State": "New"}]), pg3.evaluate("Perm.state.squads"))

@@ -425,7 +425,7 @@ function makeEditor(f, value, ctx) {
     get = pk.get; set = pk.set;
     wrap.appendChild(pk.el);
   } else if (f.ref === "System.AreaPath" || f.ref === "System.IterationPath") {
-    const pk = makeTreePicker(f, value, f.ref === "System.AreaPath" ? "area" : "iteration", onChange);
+    const pk = makeTreePicker(f, value, f.ref === "System.AreaPath" ? "area" : "iteration", onChange, {squad: ctx.squad});
     get = pk.get; set = pk.set;
     wrap.appendChild(pk.el);
   } else if (f.type === "dateTime") {
@@ -730,7 +730,8 @@ const EditPanel = {
     const row = document.createElement("div"); row.className = "eprow" + (reason ? " needed" : "");
     const lab = document.createElement("label"); lab.textContent = f.label; if (reason) { const r = document.createElement("span"); r.className = "need"; r.textContent = reason; lab.appendChild(r); }
     const value = arguments.length >= 4 ? initial : s.item.fields[ref];
-    const ed = makeEditor(f, value, {type: s.type, meta: s.meta, onChange: () => this.refresh()});
+    const squad = () => { const e = s.editors.get(PERM_SQUAD); return e ? e.ed.get() : s.item.fields[PERM_SQUAD]; };
+    const ed = makeEditor(f, value, {type: s.type, meta: s.meta, onChange: () => this.refresh(), squad});
     const rm = mkIconBtn("✕", "הסרה", false, () => { s.editors.delete(ref); row.remove(); this.refresh(); }, "del");
     const head = document.createElement("div"); head.className = "ephead"; head.append(lab, rm);
     row.append(head, ed.el);

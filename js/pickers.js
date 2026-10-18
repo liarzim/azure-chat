@@ -80,7 +80,8 @@ function makePersonPicker(f, value, onChange) {
 }
 
 /* ---------- Area / Iteration tree ---------- */
-function makeTreePicker(f, value, kind, onChange) {
+/* extra.squad(): the item's Leading Squad. Its areas are offered first, the full tree is one click away. */
+function makeTreePicker(f, value, kind, onChange, extra) {
   const wrap = document.createElement("div"); wrap.className = "picker";
   const btn = document.createElement("button"); btn.type = "button"; btn.className = "pk-btn"; btn.setAttribute("aria-label", f.label); btn.setAttribute("aria-haspopup", "tree");
   const panel = document.createElement("div"); panel.className = "pk-panel tree hidden";
@@ -135,9 +136,39 @@ function makeTreePicker(f, value, kind, onChange) {
     expanded.add(root.path);
     if (selected) { const parts = String(selected).split("\\"); for (let i = 1; i < parts.length; i++) expanded.add(parts.slice(0, i).join("\\")); }
     const s = panel.querySelector(".pk-search");
-    s.oninput = () => renderTree(root, s.value);
+    const sq = kind === "area" && extra && extra.squad ? String(extra.squad() || "").trim() : "";
+    let sug = [], all = false;
+    if (sq) { try { sug = await SquadAreas.get(sq); } catch (e) { sug = []; } }
+    const view = () => {
+      if (all || !sug.length) {
+        renderTree(root, s.value);
+        if (sug.length) {
+          const back = document.createElement("button"); back.type = "button"; back.className = "pk-switch"; back.textContent = "← חזרה ל-Areas של " + sq;
+          back.onclick = () => { all = false; view(); s.focus(); };
+          panel.querySelector(".pk-tree").prepend(back);
+        }
+        return;
+      }
+      const box = panel.querySelector(".pk-tree"); box.innerHTML = "";
+      const qn = norm(s.value || "");
+      const h = document.createElement("div"); h.className = "pk-sughead"; h.textContent = "Areas של " + sq + " (לפי הפריטים שלו)";
+      box.appendChild(h);
+      const rows = sug.filter(a => !qn || norm(a.path).includes(qn));
+      if (!rows.length) box.insertAdjacentHTML("beforeend", '<div class="pk-empty">לא נמצא ברשימה המומלצת</div>');
+      rows.forEach(a => {
+        const parts = a.path.split("\\");
+        const b = document.createElement("button"); b.type = "button"; b.className = "pk-name pk-sug" + (a.path === selected ? " sel" : "");
+        b.innerHTML = "<b>" + escHtml(parts[parts.length - 1]) + '</b> <small dir="ltr">' + escHtml(parts.join(" › ")) + "</small>";
+        b.onclick = () => { selected = a.path; draw(); panel.classList.add("hidden"); btn.focus(); onChange(); };
+        box.appendChild(b);
+      });
+      const more = document.createElement("button"); more.type = "button"; more.className = "pk-switch"; more.textContent = "הצגת כל העץ";
+      more.onclick = () => { all = true; view(); s.focus(); };
+      box.appendChild(more);
+    };
+    s.oninput = view;
     s.onkeydown = e => { if (e.key === "Escape") { e.stopPropagation(); panel.classList.add("hidden"); btn.focus(); } };
-    renderTree(root, "");
+    view();
     s.focus();
   };
   return {el: wrap, get: () => selected, set: v => { selected = v || null; draw(); }};
@@ -159,7 +190,32 @@ function makeMultiPicker(opts) {
   draw();
   let list = null;
   const expanded = new Set();
-  const render = q => opts.tree ? renderTree(q) : renderFlat(q);
+  let sug = [], sugTitle = "", showAll = false;
+  const render = q => opts.tree ? (sug.length && !showAll ? renderSug(q) : renderTree(q)) : renderFlat(q);
+  /* Suggested areas (the row's squads): ticked the same way as in the tree */
+  const renderSug = q => {
+    const box = panel.querySelector(".mpk-list"); box.innerHTML = "";
+    const qn = norm(q || "");
+    const h = document.createElement("div"); h.className = "pk-sughead"; h.textContent = sugTitle; box.appendChild(h);
+    const rows = sug.filter(a => !qn || norm(a.path).includes(qn));
+    if (!rows.length) box.insertAdjacentHTML("beforeend", '<div class="pk-empty">לא נמצא ברשימה המומלצת</div>');
+    rows.forEach(a => {
+      const covered = selected.some(s => isUnder(a.path, s));
+      const l = document.createElement("label"); l.className = "mpk-opt";
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = covered || selected.includes(a.path); cb.disabled = covered;
+      cb.onchange = () => {
+        if (cb.checked) selected = [...selected.filter(s => !isUnder(s, a.path)), a.path]; else selected = selected.filter(s => s !== a.path);
+        render(panel.querySelector(".pk-search").value); live();
+      };
+      const parts = a.path.split("\\");
+      l.append(cb, document.createTextNode(" " + parts[parts.length - 1]));
+      const sm = document.createElement("small"); sm.dir = "ltr"; sm.textContent = parts.slice(0, -1).join(" › "); l.appendChild(sm);
+      box.appendChild(l);
+    });
+    const more = document.createElement("button"); more.type = "button"; more.className = "pk-switch"; more.textContent = "הצגת כל העץ";
+    more.onclick = () => { showAll = true; render(panel.querySelector(".pk-search").value); };
+    box.appendChild(more);
+  };
   /* Tree (area paths): choosing a node covers everything under it. Those show as checked and locked,
      and only the top node is kept (it already includes its children). */
   const isUnder = (v, parent) => String(v).toLowerCase().startsWith(String(parent).toLowerCase() + "\\");
@@ -169,6 +225,11 @@ function makeMultiPicker(opts) {
     const hit = o => !qn || norm(o.label + " " + o.value).includes(qn);
     const show = new Set();
     list.forEach(o => { if (hit(o)) { show.add(o.value); list.forEach(a => { if (isUnder(o.value, a.value)) show.add(a.value); }); } });
+    if (sug.length) {
+      const back = document.createElement("button"); back.type = "button"; back.className = "pk-switch"; back.textContent = "← חזרה ל-" + sugTitle.replace(/ \(.*$/, "");
+      back.onclick = () => { showAll = false; render(panel.querySelector(".pk-search").value); };
+      box.appendChild(back);
+    }
     const ul = document.createElement("div"); ul.setAttribute("role", "tree"); box.appendChild(ul);
     list.forEach(o => {
       if (!show.has(o.value)) return;
@@ -229,6 +290,8 @@ function makeMultiPicker(opts) {
     panel.querySelector(".mpk-clear").onclick = () => { selected = []; render(panel.querySelector(".pk-search").value); live(); };
     try {
       list = await opts.load();
+      sug = []; showAll = false;
+      if (opts.suggest) { try { const r = await opts.suggest(); if (r && r.list && r.list.length) { sug = r.list; sugTitle = r.title; } } catch (e) { sug = []; } }
       if (opts.tree && !expanded.size) {          // open the top level and the way to what is already chosen
         list.filter(o => !o.parent).forEach(o => expanded.add(o.value));
         selected.forEach(s => list.forEach(a => { if (isUnder(s, a.value)) expanded.add(a.value); }));

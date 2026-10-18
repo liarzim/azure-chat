@@ -327,7 +327,8 @@ const BreakdownCreate = {
     if (reason) { const r = document.createElement("span"); r.className = "need"; r.textContent = reason; lab.appendChild(r); }
     const key = type + "|" + ref;
     if (value === undefined) value = defaultFieldValue(f);
-    const ed = makeEditor(f, value, {type, meta: m, onChange: () => { s.touched.add(key); if (type === "Feature") this.featureChanged(ref); this.refresh(); }});
+    const squad = () => { const e = map.get(PERM_SQUAD); return e ? e.ed.get() : this.featureVal(PERM_SQUAD); };
+    const ed = makeEditor(f, value, {type, meta: m, squad, onChange: () => { s.touched.add(key); if (type === "Feature") this.featureChanged(ref); this.refresh(); }});
     const head = document.createElement("div"); head.className = "ephead"; head.appendChild(lab);
     row.append(head, ed.el); grid.appendChild(row);
     map.set(ref, {ed, row});

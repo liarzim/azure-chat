@@ -190,7 +190,7 @@ function makeMultiPicker(opts) {
       cb.onchange = () => {
         if (cb.checked) selected = [...selected.filter(s => !isUnder(s, o.value)), o.value];   // the parent replaces its children
         else selected = selected.filter(s => s !== o.value);
-        render(panel.querySelector(".pk-search").value);
+        render(panel.querySelector(".pk-search").value); live();
       };
       l.append(cb, document.createTextNode(" " + o.label));
       if (kids && cb.checked && !covered) { const s = document.createElement("small"); s.textContent = "כולל כל מה שמתחת"; l.appendChild(s); }
@@ -206,15 +206,19 @@ function makeMultiPicker(opts) {
     rows.forEach(o => {
       const l = document.createElement("label"); l.className = "mpk-opt"; l.style.paddingInlineStart = (8 + (qn ? 0 : (o.depth || 0) * 16)) + "px";
       const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = selected.includes(o.value);
-      cb.onchange = () => { selected = cb.checked ? [...selected, o.value] : selected.filter(v => v !== o.value); };
+      cb.onchange = () => { selected = cb.checked ? [...selected, o.value] : selected.filter(v => v !== o.value); live(); };
       l.append(cb, document.createTextNode(" " + o.label));
       if (o.hint && qn) { const s = document.createElement("small"); s.dir = "ltr"; s.textContent = o.hint; l.appendChild(s); }
       box.appendChild(l);
     });
   };
+  let saved = JSON.stringify(selected);
+  const commit = () => { const now = JSON.stringify(selected); if (now === saved) return; saved = now; opts.onChange(selected.slice()); };
+  // the button shows the choice at once; it is saved at once too, unless the caller saves only when the list closes
+  const live = () => { draw(); if (!opts.saveOnClose) commit(); };
   const close = apply => {
     panel.classList.add("hidden");
-    if (apply) { draw(); opts.onChange(selected.slice()); }
+    if (apply) { draw(); commit(); }
   };
   btn.onclick = async () => {
     if (!panel.classList.contains("hidden")) { close(true); return; }
@@ -222,7 +226,7 @@ function makeMultiPicker(opts) {
     panel.innerHTML = '<input class="pk-search" type="search" placeholder="חיפוש" aria-label="חיפוש ב-' + escHtml(opts.label) + '"><div class="mpk-list"><div class="pk-empty">טוען...</div></div>' +
       '<div class="mpk-bar"><button type="button" class="btn ghost mini mpk-clear">ניקוי</button><span class="sp"></span><button type="button" class="btn mini mpk-ok">אישור</button></div>';
     panel.querySelector(".mpk-ok").onclick = () => { close(true); btn.focus(); };
-    panel.querySelector(".mpk-clear").onclick = () => { selected = []; render(panel.querySelector(".pk-search").value); };
+    panel.querySelector(".mpk-clear").onclick = () => { selected = []; render(panel.querySelector(".pk-search").value); live(); };
     try {
       list = await opts.load();
       if (opts.tree && !expanded.size) {          // open the top level and the way to what is already chosen
@@ -237,7 +241,7 @@ function makeMultiPicker(opts) {
   };
   // clicking outside applies the choice (like closing a dropdown)
   document.addEventListener("mousedown", e => { if (!panel.classList.contains("hidden") && !wrap.contains(e.target)) close(true); });
-  return {el: wrap, get: () => selected.slice(), set: v => { selected = (v || []).slice(); draw(); }};
+  return {el: wrap, get: () => selected.slice(), set: v => { selected = (v || []).slice(); saved = JSON.stringify(selected); draw(); }};
 }
 /* Area or iteration tree flattened for makeMultiPicker */
 async function treeOptions(kind) {

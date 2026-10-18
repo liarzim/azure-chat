@@ -132,6 +132,8 @@
       ]
     }
   },
+  "updatedAt": "2026-10-18T15:57:57.256Z",
+  "updatedBy": "מיכאל ליארזי",
   "permissions": {
     "mode": "block",
     "users": [
@@ -142,9 +144,27 @@
         "squads": [],
         "areas": [],
         "note": "מנהל אז'ורי"
+      },
+      {
+        "email": "edenben@goifinance.onmicrosoft.com",
+        "name": "עדן בן נאה",
+        "role": "user",
+        "squads": [],
+        "areas": [
+          "Portfolio Merkava\\MK2\\HR\\PYROL"
+        ],
+        "note": ""
+      },
+      {
+        "email": "edenben@goifinance.onmicrosoft.com",
+        "name": "עדן בן נאה",
+        "role": "user",
+        "squads": [],
+        "areas": [
+          "Portfolio Merkava\\MK2\\HR\\CORE"
+        ],
+        "note": ""
       }
     ]
-  },
-  "updatedAt": "2026-10-15T13:19:54.000Z",
-  "updatedBy": "מיכאל ליארזי"
+  }
 }

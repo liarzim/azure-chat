@@ -54,11 +54,16 @@ const Perm = {
       // a team named like a squad ("Meteor", "Meteor Team", "Meteor - Dev") gives that squad
       squadNames.forEach(s => { const k = this.key(s), n = this.key(t.name); if (n === k || n.startsWith(k + " ") || n.startsWith(k + "-") || n.startsWith(k + "_")) { st.squads.push(s); t.squads.push(s); } });
     });
-    const row = this.cfg().users.find(u => u.email === st.email);
-    if (row) {
-      st.row = row; st.role = row.role;
-      row.squads.forEach(s => st.squads.push(s));
-      row.areas.forEach(a => st.areas.push({path: a, children: true}));
+    // a person can have several rows (one per Area Path): all of them count
+    const rows = this.cfg().users.filter(u => u.email === st.email);
+    if (rows.length) {
+      st.row = rows[0];
+      // admin anywhere wins; otherwise "read only" in any row wins (the safer reading)
+      st.role = rows.some(r => r.role === "admin") ? "admin" : rows.some(r => r.role === "readonly") ? "readonly" : "user";
+      rows.forEach(r => {
+        r.squads.forEach(s => st.squads.push(s));
+        r.areas.forEach(a => st.areas.push({path: a, children: true}));
+      });
     }
     st.squads = [...new Set(st.squads)];
     this.state = st;

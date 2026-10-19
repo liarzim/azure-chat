@@ -82,6 +82,12 @@ with sync_playwright() as p:
     setp = lambda perms: pg.evaluate("async (p) => { TeamConfig.data.permissions = normalizePermissions(p); Perm.reset(); await Perm.ready(); return Perm.summary(); }", perms)
     s = setp({"users": [{"email": "demo.user@example.com", "squads": ["Payroll"]}]})
     check("exceptions table adds a squad", "Payroll" in s and "הרשאה" not in pg.evaluate(PLAN, [112073, {"System.State": "Active"}]), s)
+    setp({"users": [{"email": "demo.user@example.com", "squads": ["CRM"], "areas": ["Portfolio Merkava\\MK2\\LOG"]},
+                     {"email": "demo.user@example.com", "squads": ["HR_Core"], "areas": ["Portfolio Merkava\\Payroll"]}]})
+    check("several rows of the same person all count (second row's area)", "הרשאה" not in pg.evaluate(PLAN, [112073, {"System.State": "Active"}]))
+    check("several rows: squads of all rows", pg.evaluate("Perm.state.squads.includes('CRM') && Perm.state.squads.includes('HR_Core')"))
+    setp({"users": [{"email": "demo.user@example.com", "role": "readonly"}, {"email": "demo.user@example.com", "areas": ["Portfolio Merkava\\Payroll"]}]})
+    check("read only in one of the rows wins", "קריאה בלבד" in pg.evaluate(PLAN, [112073, {"System.State": "Active"}]))
     setp({"users": [{"email": "DEMO.USER@example.com", "role": "readonly"}]})
     check("read only role blocks even own items", "קריאה בלבד" in pg.evaluate(PLAN, [110047, {"System.State": "Active"}]))
     setp({"users": [{"email": "demo.user@example.com", "role": "admin"}]})

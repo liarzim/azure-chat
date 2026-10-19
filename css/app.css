@@ -525,3 +525,10 @@ tr.locked .rowedit { opacity: .7; }
 .conn-ok{color:#1a7f37;font-weight:600}
 .conn-bad{color:var(--bad);font-weight:600}
 @media (prefers-color-scheme: dark){.conn-ok{color:#4ac26b}}
+
+/* report columns: drag to reorder */
+.colrow[draggable=true]{cursor:grab}
+.colrow.dragging{opacity:.45}
+.colrow.drop-before{box-shadow:0 -3px 0 var(--accent)}
+.colrow.drop-after{box-shadow:0 3px 0 var(--accent)}
+.colrow .grip{color:var(--muted);width:14px;text-align:center;letter-spacing:-2px;user-select:none}

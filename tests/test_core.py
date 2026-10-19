@@ -82,6 +82,23 @@ with sync_playwright() as p:
     check("other: default mail app (mailto) with the subject", url.startswith("mailto:?subject=") and "body=%0D%0A%0D%0A" in url, url[:120])
     one = pg.evaluate("mailSubject({cols:[{label:'ID',ref:'id'},{label:'Work Item Type',ref:'System.WorkItemType'},{label:'Title',ref:'System.Title'}],rows:[{id:5,cells:['5','Bug','שגיאה במסך']}],missing:[]})")
     check("mail: one item subject has type, id and title", one == "אז'ורי: Bug 5 - שגיאה במסך", one)
+    # report columns: drag up and down
+    pg.set_viewport_size({"width": 1280, "height": 1000})
+    pg.evaluate("localStorage.removeItem(FIELDS_KEY); openSettings(); 0"); pg.wait_for_timeout(200)
+    names = lambda: [x.strip() for x in pg.locator("#colList .colrow .nm").all_inner_texts()]
+    before = names()
+    rows = pg.locator("#colList .colrow")
+    rows.nth(4).drag_to(rows.nth(1), target_position={"x": 20, "y": 2})
+    after = names()
+    check("drag a column up", after[1].startswith(before[4].split(" ")[0]) and len(after) == len(before), (before, after))
+    last = rows.nth(len(after) - 1); hb = last.bounding_box()["height"]
+    rows.nth(1).drag_to(last, target_position={"x": 20, "y": hb - 3})
+    after2 = names()
+    check("drag a column to the end", after2[-1].startswith(after[1].split(" ")[0]), after2)
+    rows.nth(2).drag_to(rows.nth(0), target_position={"x": 20, "y": 2})
+    check("ID stays first", names()[0].startswith("ID"), names())
+    check("ID row cannot be dragged", rows.nth(0).get_attribute("draggable") in (None, "false"))
+    pg.click("#setCancel")
     check("no js errors", not errs, errs)
     b.close()
 srv.shutdown()

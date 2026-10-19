@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.12.4",
+  VERSION: "2.12.5",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -1078,17 +1078,44 @@ function getDefaultFields() {
   return [...CONFIG.DEFAULT_FIELDS];
 }
 
-let draft = [];
+let draft = [], dragFrom = null;
 function closeSetMenu() { const m = $("setMenu"); if (m) { m.classList.add("hidden"); $("setMenuBtn").setAttribute("aria-expanded", "false"); } }
 function openSettings() { draft = getDefaultFields(); renderSettings(); $("settings").classList.remove("hidden"); $("setSave").focus(); }
 function closeSettings() { $("settings").classList.add("hidden"); $("input").focus(); }
 function renderSettings() {
   const list = $("colList"); list.innerHTML = "";
+  // dropping in the empty space under the rows puts the column last
+  list.ondragover = e => { if (dragFrom !== null && e.target === list) e.preventDefault(); };
+  list.ondrop = e => { if (dragFrom === null || e.target !== list) return; e.preventDefault(); const [m] = draft.splice(dragFrom, 1); draft.push(m); dragFrom = null; renderSettings(); };
   draft.forEach((name, i) => {
     const known = resolveKnown(name);
     const row = document.createElement("div"); row.className = "colrow";
     const locked = sameField(name, "ID"), always = sameField(name, ALWAYS_FIELD);
-    row.innerHTML = '<span class="nm">' + escHtml(known ? known.name : name) + (known ? "" : " <small>(שדה מותאם)</small>") + (locked ? " <small>(תמיד ראשון)</small>" : "") + (always ? " <small>(תמיד מוצג)</small>" : "") + "</span>";
+    // drag a row up or down (ID stays first)
+    row.dataset.i = i;
+    if (!locked) {
+      row.draggable = true; row.title = "גררו כדי לשנות את הסדר";
+      row.addEventListener("dragstart", e => { dragFrom = i; row.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", String(i)); } catch (x) {} });
+      row.addEventListener("dragend", () => { dragFrom = null; row.classList.remove("dragging"); list.querySelectorAll(".drop-before,.drop-after").forEach(x => x.classList.remove("drop-before", "drop-after")); });
+    }
+    row.addEventListener("dragover", e => {
+      if (dragFrom === null) return;
+      e.preventDefault(); e.dataTransfer.dropEffect = "move";
+      const r = row.getBoundingClientRect(), after = locked || e.clientY > r.top + r.height / 2;
+      list.querySelectorAll(".drop-before,.drop-after").forEach(x => x.classList.remove("drop-before", "drop-after"));
+      row.classList.add(after ? "drop-after" : "drop-before");
+    });
+    row.addEventListener("drop", e => {
+      if (dragFrom === null) return;
+      e.preventDefault();
+      const r = row.getBoundingClientRect(), after = locked || e.clientY > r.top + r.height / 2;
+      let to = i + (after ? 1 : 0);
+      const [moved] = draft.splice(dragFrom, 1);
+      if (dragFrom < to) to--;
+      draft.splice(Math.max(1, to), 0, moved);
+      dragFrom = null; renderSettings();
+    });
+    row.innerHTML = (locked ? '<span class="grip off" aria-hidden="true"></span>' : '<span class="grip" aria-hidden="true">⋮⋮</span>') + '<span class="nm">' + escHtml(known ? known.name : name) + (known ? "" : " <small>(שדה מותאם)</small>") + (locked ? " <small>(תמיד ראשון)</small>" : "") + (always ? " <small>(תמיד מוצג)</small>" : "") + "</span>";
     const mk = (txt, label, dis, fn, cls) => { const b = document.createElement("button"); b.type = "button"; b.className = "ib" + (cls ? " " + cls : ""); b.textContent = txt; b.title = label; b.setAttribute("aria-label", label + " " + name); b.disabled = dis; b.onclick = fn; return b; };
     row.append(
       mk("▲", "הזזה למעלה", locked || i <= 1, () => { [draft[i - 1], draft[i]] = [draft[i], draft[i - 1]]; renderSettings(); }),

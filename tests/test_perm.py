@@ -19,6 +19,8 @@ TEAMS = {"mode": "area"}
 for i in range(600, 640): ITEMS[i] = item(i, "Portfolio Merkava\\Payroll" if i < 630 else "Portfolio Merkava\\MK2\\HR", "Payroll")
 ITEMS[640] = item(640, "Portfolio Merkava\\Odd", "Payroll")
 WIQL = []
+ITEMS[501]["fields"]["System.Parent"] = 502
+PARENT_CALLS = []
 def handler(route, req):
     if req.method == "OPTIONS": return route.fulfill(status=204, headers=CORS)
     u = req.url
@@ -46,6 +48,7 @@ def handler(route, req):
         q = json.loads(req.post_data)["query"]; WIQL.append(q)
         return J({"workItems": [{"id": i} for i in range(600, 641)] if "Payroll" in q else []})
     m = re.search(r"/_apis/wit/workitems\?ids=([\d,]+)", u)
+    if m and "fields=System.Title" in u: PARENT_CALLS.append(u)
     if m: return J({"value": [ITEMS.get(int(i)) for i in m.group(1).split(",")]})
     return J({"message": "not mocked " + u}, 404)
 from urllib.parse import unquote
@@ -191,6 +194,9 @@ with sync_playwright() as p:
     check("squad areas: safe query (quote escaped, last 180 days, this project)", any("[Custom.LeadingSquad] = 'Pay''roll'" in q and "@today - 180" in q and "@project" in q for q in WIQL), WIQL)
     pg2.evaluate("SquadAreas.get('Payroll')")
     check("squad areas: asked once per squad", sum(1 for q in WIQL if "= 'Payroll'" in q) == 1)
+    pg2.fill("#input", "501 רק Parent"); pg2.keyboard.press("Enter"); pg2.locator(".msg.bot table").last.wait_for(); pg2.wait_for_timeout(500)
+    cells = pg2.locator(".msg.bot table").last.locator("tbody tr").first.locator("td").all_inner_texts()
+    check("api: parent title fetched in one light call", cells[2].strip() == "502" and cells[3] == "פריט 502" and len(PARENT_CALLS) == 1 and "ids=502" in PARENT_CALLS[0], (cells, PARENT_CALLS))
     c2.close()
     c3, pg3, e3 = login("name")
     check("team named like a squad gives that squad; squad match alone is enough", pg3.evaluate("Perm.state.squads") == ["Payroll"] and "הרשאה" not in pg3.evaluate(PLAN, [503, {"System.State": "New"}]), pg3.evaluate("Perm.state.squads"))

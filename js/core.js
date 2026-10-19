@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.12.3",
+  VERSION: "2.12.4",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -41,6 +41,7 @@ const FIELDS = [
   {name:"Effort",              ref:"Microsoft.VSTS.Scheduling.Effort",        kind:"text",   aliases:["effort","מאמץ"]},
   {name:"Remaining Work",      ref:"Microsoft.VSTS.Scheduling.RemainingWork", kind:"text",   aliases:["remainingwork","remaining","עבודהשנותרה"]},
   {name:"Parent",              ref:"System.Parent",                           kind:"text",   aliases:["parent","אב","הורה"]},
+  {name:"Parent Title",        ref:"parentTitle",                             kind:"parentTitle", aliases:["parenttitle","שםהאב","תיאורהאב","כותרתהאב","parentname"]},
   {name:"Customer",            ref:"Custom.Customer",                         kind:"text",   aliases:["customer","לקוח"]},
   {name:"Leading Squad",       ref:"Custom.LeadingSquad",                     kind:"text",   aliases:["leadingsquad","squad","סקוואד"]},
   {name:"Found In Environment",ref:"Custom.FoundInEnviroment1",               kind:"text",   aliases:["foundinenvironment","environment","env","סביבה"]},
@@ -98,12 +99,30 @@ function parseRequest(text) {
   return {cmd:"fetch", ids, fields: withTitle(fields), customized: ops.length > 0};
 }
 
-/* The item's title (what the ID is) is always fetched and shown in its own column, right after ID */
+/* A code always comes with its title: the item's Title right after ID, and the parent's title right after Parent */
 const ALWAYS_FIELD = "Title";
 function withTitle(fields) {
-  if (fields.some(f => sameField(f, ALWAYS_FIELD))) return fields;
-  const i = fields.findIndex(f => sameField(f, "ID"));
-  return [...fields.slice(0, i + 1), ALWAYS_FIELD, ...fields.slice(i + 1)];
+  const after = (list, code, title) => {
+    if (list.some(f => sameField(f, title))) return list;
+    const i = list.findIndex(f => sameField(f, code));
+    return i < 0 ? list : [...list.slice(0, i + 1), title, ...list.slice(i + 1)];
+  };
+  return after(after(fields, "ID", ALWAYS_FIELD), "Parent", "Parent Title");
+}
+/* Titles of the parents of these items, for the Parent Title column (one call for all of them) */
+const ParentTitles = new Map();          // id -> "Type: Title"
+async function loadParents(fields, items) {
+  if (!fields.some(f => sameField(f, "Parent Title"))) return;
+  const need = [...new Set(items.map(it => it.fields && it.fields["System.Parent"]).filter(id => id && !ParentTitles.has(id)))];
+  if (!need.length) return;
+  let got = [];
+  if (Auth.mode === "demo") got = await demoItems(need);
+  else for (let i = 0; i < need.length; i += 200) {
+    const d = await api(ADO + "/_apis/wit/workitems?ids=" + need.slice(i, i + 200).join(",") + "&fields=System.Title,System.WorkItemType&errorPolicy=omit&api-version=7.1");
+    (d.value || []).forEach(v => { if (v) got.push(v); });
+  }
+  got.forEach(p => ParentTitles.set(p.id, p.fields["System.Title"] || ""));
+  need.forEach(id => { if (!ParentTitles.has(id)) ParentTitles.set(id, null); });   // not found / no access
 }
 function splitFieldNames(s) {
   return s
@@ -332,6 +351,12 @@ function attachmentsOf(it) {
 function cellValue(c, it, f, reg) {
   if (c.ref === "id") return String(it.id);
   if (!c.ref) return "לא נמצא";
+  if (c.kind === "parentTitle") {
+    const pid = f["System.Parent"];
+    if (!pid) return "—";
+    const t = ParentTitles.get(pid);
+    return t === undefined ? "—" : t === null ? "לא נמצא / אין הרשאה" : (t || "—");
+  }
   let v;
   if (c.kind === "desc") {
     const isBug = /bug/i.test(f["System.WorkItemType"] || "");
@@ -850,7 +875,7 @@ function helpHtml(first) {
     ", וגם כל שדה מותאם של הפרויקט לפי שמו. בבאג, עמודת Description מציגה את Repro Steps. תמונות מוצגות בתוך הטבלה, ולחיצה עליהן מגדילה. כפתור העתקת טבלה מעתיק גם את התמונות, ושליחה במייל פותחת מייל חדש עם הטבלה.</div></div>";
 }
 
-const NOT_EDITABLE_KINDS = new Set(["id", "attach", "none"]);
+const NOT_EDITABLE_KINDS = new Set(["id", "attach", "none", "parentTitle"]);
 function mailPref(v) {               // the mail app this person picked last (this browser only)
   try { if (v) localStorage.setItem("azuri.mailClient", v); return localStorage.getItem("azuri.mailClient") || ""; } catch (e) { return v || ""; }
 }
@@ -976,6 +1001,7 @@ async function runLookup(req) {
   try {
     const items = await fetchItems(req.ids);
     People.fromItems(items);
+    try { await loadParents(req.fields, items); } catch (e) { /* the parent titles show "—" */ }
     wait.remove();
     renderResult(buildTable(req.fields, items, req.ids), req, null, items);
   } catch (e) {
@@ -1132,7 +1158,8 @@ function demoItems(ids) {
       "Microsoft.VSTS.Common.ValueArea": "Business", "Custom.CR": false, "Custom.34c3825b-e2cf-4990-b473-d6a7e7d431e7": false, "Custom.Deliveryrisk": false,
       "Custom.d3d0252f-48df-4329-8b93-585a2c0f8dae": false, "Custom.Relevance": false, "Custom.Reviewed": false, "Custom.EscapingDefect": false, "Custom.Reopen": false, "Custom.OSS": false
     };
-    if (type === "User Story") f["Microsoft.VSTS.Scheduling.StoryPoints"] = 3;
+    if (type === "User Story") { f["Microsoft.VSTS.Scheduling.StoryPoints"] = 3; f["System.Parent"] = id - (id % 5); }
+    if (type === "Feature") f["System.Parent"] = 900001;
     if (type === "Bug") f["Microsoft.VSTS.TCM.ReproSteps"] = "<div>1. נכנסים למסך בקשה חדשה</div><div>2. ממלאים את כל השדות ולוחצים שמירה</div><div><br></div><div>התוצאה: מופיעה הודעת שגיאה כללית</div><div><img src='demo:inline-" + id + "' alt='צילום מסך'></div>";
     else if (type === "Feature") {
       const tpl = TeamConfig.template("Feature");

@@ -325,9 +325,12 @@ const Results = {
     this.list.forEach(r => {
       if (!r.items.some(i => byId.has(i.id))) return;
       r.items = r.items.map(i => byId.get(i.id) || i);
-      const t = buildTable(r.req.fields, r.items, r.t.rows.map(x => x.id));
-      r.t = t;
-      renderResult(t, r.req, r.el, r.items);
+      const ids = r.t.rows.map(x => x.id);
+      loadParents(r.req.fields, r.items).catch(() => {}).then(() => {
+        const t = buildTable(r.req.fields, r.items, ids);
+        r.t = t;
+        renderResult(t, r.req, r.el, r.items);
+      });
     });
   },
   itemFor(el, rowIndex) { const r = this.list.find(x => x.el === el); return r ? {res: r, item: r.items.find(i => i.id === r.t.rows[rowIndex].id)} : null; }
@@ -868,7 +871,7 @@ function announceCreated(item, again) {
   const m = addMsg("bot ok", "✓ נוצר " + escHtml(type) + " " + link + " · " + escHtml(title) + escHtml(parent) + ' <button type="button" class="btn ghost sm again">+ עוד ' + escHtml(type) + "</button>");
   m.querySelector(".again").onclick = () => EditPanel.openCreate(again);
   const fields = getDefaultFields();
-  renderResult(buildTable(fields, [item], [item.id]), {fields}, null, [item]);
+  loadParents(fields, [item]).catch(() => {}).then(() => renderResult(buildTable(fields, [item], [item.id]), {fields}, null, [item]));
 }
 
 /* ---------- Creating from chat ---------- */

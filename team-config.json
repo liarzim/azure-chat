@@ -58,6 +58,53 @@
         "בדיקות ממשק"
       ],
       "active": true
+    },
+    {
+      "name": "יישום הרשאות",
+      "priority": 3,
+      "squad": "",
+      "tasks": [
+        "יישום"
+      ],
+      "active": true
+    },
+    {
+      "name": "פיורי (אריחים)",
+      "priority": 3,
+      "squad": "",
+      "tasks": [],
+      "active": true
+    },
+    {
+      "name": "ATeam",
+      "priority": 3,
+      "squad": "",
+      "tasks": [
+        "פיתוח ממשקים",
+        "פיתוח AI"
+      ],
+      "active": true
+    },
+    {
+      "name": "פיתוח AIF (עבור WS)",
+      "priority": 3,
+      "squad": "",
+      "tasks": [],
+      "active": true
+    },
+    {
+      "name": "מבדקי חדירות",
+      "priority": 3,
+      "squad": "",
+      "tasks": [],
+      "active": true
+    },
+    {
+      "name": "מבדקי נגישות",
+      "priority": 3,
+      "squad": "",
+      "tasks": [],
+      "active": true
     }
   ],
   "aiTools": [
@@ -132,7 +179,7 @@
       ]
     }
   },
-  "updatedAt": "2026-10-18T16:21:54.413Z",
+  "updatedAt": "2026-10-19T10:24:01.017Z",
   "updatedBy": "מיכאל ליארזי",
   "permissions": {
     "mode": "block",

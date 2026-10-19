@@ -35,7 +35,7 @@ with sync_playwright() as p:
     pg.fill("#input", "110047, 112074 רק State ו-Parent"); pg.keyboard.press("Enter"); pg.wait_for_timeout(900)
     tl = pg.locator(".msg.bot table").last
     ths = tl.locator("th").all_inner_texts()
-    check("Parent comes with the parent's title right after it", ths == ["ID", "Title", "State", "Parent", "Parent Title"], ths)
+    check("Parent comes with the parent's title right after it", ths == ["ID", "Title", "State", "Parent", "תיאור Parent"], ths)
     cells = tl.locator("tbody tr").first.locator("td").all_inner_texts()
     check("parent title of a user story is its feature's title", cells[3].strip() == "110045" and "ממשק דיווח חודשי" in cells[4], cells)
     cells2 = tl.locator("tbody tr").nth(1).locator("td").all_inner_texts()
@@ -99,6 +99,9 @@ with sync_playwright() as p:
     check("ID stays first", names()[0].startswith("ID"), names())
     check("ID row cannot be dragged", rows.nth(0).get_attribute("draggable") in (None, "false"))
     pg.click("#setCancel")
+    # a tab with old code offers a refresh
+    pg.evaluate("CONFIG.VERSION = '0.0.1'; VersionCheck.check(true); 0"); pg.wait_for_timeout(500)
+    check("new version notice with refresh", pg.locator("#updateBanner:visible").count() == 1 and "רענון" in pg.inner_text("#updateBanner"))
     check("no js errors", not errs, errs)
     b.close()
 srv.shutdown()

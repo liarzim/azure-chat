@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.12.5",
+  VERSION: "2.12.6",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -41,7 +41,7 @@ const FIELDS = [
   {name:"Effort",              ref:"Microsoft.VSTS.Scheduling.Effort",        kind:"text",   aliases:["effort","מאמץ"]},
   {name:"Remaining Work",      ref:"Microsoft.VSTS.Scheduling.RemainingWork", kind:"text",   aliases:["remainingwork","remaining","עבודהשנותרה"]},
   {name:"Parent",              ref:"System.Parent",                           kind:"text",   aliases:["parent","אב","הורה"]},
-  {name:"Parent Title",        ref:"parentTitle",                             kind:"parentTitle", aliases:["parenttitle","שםהאב","תיאורהאב","כותרתהאב","parentname"]},
+  {name:"תיאור Parent",        ref:"parentTitle",                             kind:"parentTitle", aliases:["parenttitle","parentdescription","שםהאב","תיאורהאב","כותרתהאב","parentname","תיאורparent"]},
   {name:"Customer",            ref:"Custom.Customer",                         kind:"text",   aliases:["customer","לקוח"]},
   {name:"Leading Squad",       ref:"Custom.LeadingSquad",                     kind:"text",   aliases:["leadingsquad","squad","סקוואד"]},
   {name:"Found In Environment",ref:"Custom.FoundInEnviroment1",               kind:"text",   aliases:["foundinenvironment","environment","env","סביבה"]},
@@ -107,12 +107,12 @@ function withTitle(fields) {
     const i = list.findIndex(f => sameField(f, code));
     return i < 0 ? list : [...list.slice(0, i + 1), title, ...list.slice(i + 1)];
   };
-  return after(after(fields, "ID", ALWAYS_FIELD), "Parent", "Parent Title");
+  return after(after(fields, "ID", ALWAYS_FIELD), "Parent", "תיאור Parent");
 }
 /* Titles of the parents of these items, for the Parent Title column (one call for all of them) */
 const ParentTitles = new Map();          // id -> "Type: Title"
 async function loadParents(fields, items) {
-  if (!fields.some(f => sameField(f, "Parent Title"))) return;
+  if (!fields.some(f => sameField(f, "תיאור Parent"))) return;
   const need = [...new Set(items.map(it => it.fields && it.fields["System.Parent"]).filter(id => id && !ParentTitles.has(id)))];
   if (!need.length) return;
   let got = [];
@@ -137,6 +137,34 @@ function sameField(a, b) {
   const fa = resolveKnown(a), fb = resolveKnown(b);
   return fa && fb ? fa === fb : norm(a) === norm(b);
 }
+
+/* ============================ NEW VERSION NOTICE ============================ */
+/* A tab opened before an update keeps running the old code. Every 15 minutes, and when the tab
+   comes back into view, check the site's version and offer a refresh. */
+const VersionCheck = {
+  last: 0, shown: false,
+  async check(force) {
+    if (this.shown || (!force && Date.now() - this.last < 15 * 60e3)) return;
+    this.last = Date.now();
+    try {
+      const r = await fetch("js/core.js?v=" + Date.now(), {cache: "no-store"});
+      const m = /VERSION:\s*"([^"]+)"/.exec(await r.text());
+      if (m && m[1] !== CONFIG.VERSION) this.show(m[1]);
+    } catch (e) {}
+  },
+  show(v) {
+    const b = $("updateBanner"); if (!b) return;
+    this.shown = true;
+    b.querySelector(".uv").textContent = v;
+    b.classList.remove("hidden");
+  },
+  init() {
+    const b = $("updateBanner");
+    if (b) b.querySelector("button").onclick = () => location.reload();
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") this.check(); });
+    setInterval(() => this.check(), 15 * 60e3);
+  }
+};
 
 /* ============================ AUTH ============================ */
 /* Tokens are kept only in this tab (sessionStorage). Older versions could keep them on the computer
@@ -1030,6 +1058,7 @@ function showApp() {
 }
 
 function initUi() {
+  VersionCheck.init();
   $("patHelp").href = ADO + "/_usersSettings/tokens";
   $("msLogin").onclick = async () => { try { await Auth.loginMicrosoft(); } catch (e) { showLogin("ההתחברות נכשלה: " + (e.message || e)); } };
   $("patForm").onsubmit = async ev => {

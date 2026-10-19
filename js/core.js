@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.12.2",
+  VERSION: "2.12.3",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -95,13 +95,15 @@ function parseRequest(text) {
   }
   fields = fields.filter(f => !sameField(f, "ID"));
   fields.unshift("ID");
-  return {cmd:"fetch", ids, fields: withDescription(fields), customized: ops.length > 0};
+  return {cmd:"fetch", ids, fields: withTitle(fields), customized: ops.length > 0};
 }
 
-/* Description is always fetched and shown in its own column, whatever columns were asked for */
-const ALWAYS_FIELD = "Description";
-function withDescription(fields) {
-  return fields.some(f => sameField(f, ALWAYS_FIELD)) ? fields : [...fields, ALWAYS_FIELD];
+/* The item's title (what the ID is) is always fetched and shown in its own column, right after ID */
+const ALWAYS_FIELD = "Title";
+function withTitle(fields) {
+  if (fields.some(f => sameField(f, ALWAYS_FIELD))) return fields;
+  const i = fields.findIndex(f => sameField(f, "ID"));
+  return [...fields.slice(0, i + 1), ALWAYS_FIELD, ...fields.slice(i + 1)];
 }
 function splitFieldNames(s) {
   return s
@@ -1025,7 +1027,7 @@ function initUi() {
   input.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("composer").requestSubmit(); } });
   const autosize = () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; };
   input.addEventListener("input", autosize);
-  const chips = ["רק Title ו-State", "תוסיף Tags", "בלי Assigned To", "עזרה"];
+  const chips = ["רק Title ו-State", "תוסיף Tags", "בלי Description", "עזרה"];
   chips.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = c;
     b.onclick = () => { if (c === "עזרה") { handleInput(c); return; } input.value = (input.value.trim() + " " + c).trim(); input.focus(); autosize(); };
     $("chips").appendChild(b); });
@@ -1043,7 +1045,7 @@ function getDefaultFields() {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr) && arr.length && arr.every(x => typeof x === "string")) {
         const rest = arr.filter(f => !sameField(f, "ID"));
-        return withDescription(["ID", ...rest]);
+        return withTitle(["ID", ...rest]);
       }
     } catch (e) {}
   }

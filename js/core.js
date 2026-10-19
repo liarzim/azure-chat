@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.12.1",
+  VERSION: "2.12.2",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -95,9 +95,14 @@ function parseRequest(text) {
   }
   fields = fields.filter(f => !sameField(f, "ID"));
   fields.unshift("ID");
-  return {cmd:"fetch", ids, fields, customized: ops.length > 0};
+  return {cmd:"fetch", ids, fields: withDescription(fields), customized: ops.length > 0};
 }
 
+/* Description is always fetched and shown in its own column, whatever columns were asked for */
+const ALWAYS_FIELD = "Description";
+function withDescription(fields) {
+  return fields.some(f => sameField(f, ALWAYS_FIELD)) ? fields : [...fields, ALWAYS_FIELD];
+}
 function splitFieldNames(s) {
   return s
     .replace(/(^|\s)ו-?(?=\S)/g, ",")      // Hebrew "and" prefix: "ו-State", "ותיאור"
@@ -1020,7 +1025,7 @@ function initUi() {
   input.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("composer").requestSubmit(); } });
   const autosize = () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; };
   input.addEventListener("input", autosize);
-  const chips = ["רק Title ו-State", "תוסיף Tags", "בלי Description", "עזרה"];
+  const chips = ["רק Title ו-State", "תוסיף Tags", "בלי Assigned To", "עזרה"];
   chips.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = c;
     b.onclick = () => { if (c === "עזרה") { handleInput(c); return; } input.value = (input.value.trim() + " " + c).trim(); input.focus(); autosize(); };
     $("chips").appendChild(b); });
@@ -1038,7 +1043,7 @@ function getDefaultFields() {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr) && arr.length && arr.every(x => typeof x === "string")) {
         const rest = arr.filter(f => !sameField(f, "ID"));
-        return ["ID", ...rest];
+        return withDescription(["ID", ...rest]);
       }
     } catch (e) {}
   }
@@ -1054,13 +1059,13 @@ function renderSettings() {
   draft.forEach((name, i) => {
     const known = resolveKnown(name);
     const row = document.createElement("div"); row.className = "colrow";
-    const locked = sameField(name, "ID");
-    row.innerHTML = '<span class="nm">' + escHtml(known ? known.name : name) + (known ? "" : " <small>(שדה מותאם)</small>") + (locked ? " <small>(תמיד ראשון)</small>" : "") + "</span>";
+    const locked = sameField(name, "ID"), always = sameField(name, ALWAYS_FIELD);
+    row.innerHTML = '<span class="nm">' + escHtml(known ? known.name : name) + (known ? "" : " <small>(שדה מותאם)</small>") + (locked ? " <small>(תמיד ראשון)</small>" : "") + (always ? " <small>(תמיד מוצג)</small>" : "") + "</span>";
     const mk = (txt, label, dis, fn, cls) => { const b = document.createElement("button"); b.type = "button"; b.className = "ib" + (cls ? " " + cls : ""); b.textContent = txt; b.title = label; b.setAttribute("aria-label", label + " " + name); b.disabled = dis; b.onclick = fn; return b; };
     row.append(
       mk("▲", "הזזה למעלה", locked || i <= 1, () => { [draft[i - 1], draft[i]] = [draft[i], draft[i - 1]]; renderSettings(); }),
       mk("▼", "הזזה למטה", locked || i === draft.length - 1, () => { [draft[i + 1], draft[i]] = [draft[i], draft[i + 1]]; renderSettings(); }),
-      mk("✕", "הסרה", locked, () => { draft.splice(i, 1); renderSettings(); }, "del")
+      mk("✕", "הסרה", locked || always, () => { draft.splice(i, 1); renderSettings(); }, "del")
     );
     list.appendChild(row);
   });

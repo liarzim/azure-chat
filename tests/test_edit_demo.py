@@ -98,7 +98,7 @@ with sync_playwright() as p:
     # 10. regular lookups unaffected
     send("110047 רק Title ו-State"); pg.wait_for_timeout(900)
     last = pg.locator(".msg.bot").last
-    check("lookup still works", last.locator("th").count() == 3, last.inner_text()[:200])
+    check("lookup still works", last.locator("th").count() == 4, last.inner_text()[:200])
     # 11. not editable cells
     check("ID/Attachments cells not editable", pg.locator(".msg.bot table").first.locator("tbody tr").nth(1).locator("td").nth(col("Attachments")).get_attribute("class").find("ed") < 0)
     # phone layout of the panel

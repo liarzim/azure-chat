@@ -91,12 +91,12 @@ const Ask = {
     dict.filter(d => d.kind === "squad" && d.target).forEach(d => d.words.forEach(w => squadWords.push([w.replace(/[״"]/g, ""), d.target])));
     squadWords.sort((a, b) => b[0].length - a[0].length).forEach(([w, s]) => {
       const p = "(?:ב|ה|ל|של\\s+|סקוואד\\s+|בסקוואד\\s+|ה?סקוואד\\s+של\\s+)?(?:ה)?" + this.esc(w.toLowerCase());
-      if (take(W(p), () => {})) { if (!c.squads.includes(s)) c.squads.push(s); }
+      if (take(W(p), m => { if (/סקוואד|squad/.test(m[0])) c.squadField = true; })) { if (!c.squads.includes(s)) c.squads.push(s); }
     });
     // "סקוואד X" with a name we do not know (e.g. "מטאור"): ask which squad it is
     take(W("(?:ב|של\\s+|ל)?ה?סקוואד(?:\\s+של)?\\s+([^\\s\\d]{2,})"), m => {
       if (ASK_STOP.has(m[1])) return;
-      c.ask.push({k: "squad", word: m[1]});
+      c.ask.push({k: "squad", word: m[1]}); c.squadField = true;
     });
     take(W("(?:ב|של\\s+|ל)?ה?סקוואד(?:ים)?"), () => {});
     // areas by name (e.g. "Meteor Sigma", "LOG")
@@ -194,7 +194,7 @@ const Ask = {
       if (!got && r.scope.auto) { r.scope = null; r.iterations = null; }    // no dated PIs: do not limit
     }
     r.squadAreas = [];
-    if (r.squads.length && !r.mySquad) { try { r.squadAreas = (await SquadAreas.many(r.squads)).map(a => a.path); } catch (e) {} }
+    if (r.squads.length && !r.mySquad && !r.squadField) { try { r.squadAreas = (await SquadAreas.many(r.squads)).map(a => a.path); } catch (e) {} }
     if (r.mySquad) { try { const st = await Perm.ready(); r.squadAreas = st.areas.map(a => a.path); } catch (e) {} }
     return r;
   },
@@ -205,7 +205,7 @@ const Ask = {
     if (r.types.length) out.push({k: "types", label: r.types.join(" / ")});
     if (r.assignee) out.push({k: "assignee", label: r.assignee.me ? "שויך אליי" : r.assignee.none ? "לא שויך" : "שויך ל" + r.assignee.person.displayName});
     if (r.createdByMe) out.push({k: "createdByMe", label: "פתחתי אני"});
-    if (r.squads.length) out.push({k: "squads", label: (r.mySquad ? "הסקוואדים שלי: " : "Squad: ") + r.squads.join(", ")});
+    if (r.squads.length) out.push({k: "squads", label: (r.mySquad ? "הסקוואדים שלי: " : r.squadField ? "Leading Squad: " : "Squad: ") + r.squads.join(", ")});
     if (r.areas.length) out.push({k: "areas", label: "Area: " + r.areas.map(a => a.split("\\").pop()).join(", ")});
     out.push({k: "state", label: {open: "פתוחים", closed: "סגורים", blocked: "חסומים (Blocked / Inactive)", all: "פתוחים וסגורים"}[r.state]});
     if (r.scope && r.scope.kind !== "all") {
@@ -345,8 +345,8 @@ const Ask = {
           sel.add(new Option("בחרו סקוואד", ""));
           (await this.squadNames()).forEach(s => sel.add(new Option(s, s)));
           sel.onchange = () => { if (!sel.value) return; const v = sel.value; choose(() => { if (!c.squads.includes(v)) c.squads.push(v); c.learned = (c.learned || []).concat([[q.word, v]]); }); };
-          const skip = document.createElement("button"); skip.type = "button"; skip.className = "btn ghost mini"; skip.textContent = "זה לא סקוואד (לחפש כמילה)";
-          skip.onclick = () => choose(() => { c.words.push(this.expand(q.word, normalizeDictionary(TeamConfig.data.dictionary))); });
+          const skip = document.createElement("button"); skip.type = "button"; skip.className = "btn ghost mini"; skip.textContent = "בלי סינון סקוואד";
+          skip.onclick = () => choose(() => {});
           opts.append(sel, skip);
         }
         box2.append(title, opts); qs.appendChild(box2);

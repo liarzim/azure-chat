@@ -70,14 +70,18 @@ with sync_playwright() as p:
     m.locator(".ask-q", has_text="למה הכוונה").locator("button:has-text('הכל')").click(); pg.wait_for_timeout(300)
     check("unknown squad name: guiding question with the squads list", "לאיזה סקוואד" in m.inner_text() and m.locator(".ask-q select option").count() > 5)
     m.locator(".ask-q select").select_option("Meteor"); pg.wait_for_timeout(400)
-    check("chosen squad becomes a chip, no type limit after 'all'", chips()[0] == "Squad: Meteor" and not any(x in chips() for x in ["Task", "Feature"]), chips())
+    check("chosen squad becomes a chip, no type limit after 'all'", chips()[0] == "Leading Squad: Meteor" and not any(x in chips() for x in ["Task", "Feature"]), chips())
     check("offer to add the name to the dictionary", m.locator("button:has-text('בקשה להוסיף \"זוהר\" = Meteor')").count() == 1)
     send("באגים של סקוואד זוהר")
     m = pg.locator(".msg.ask").last
-    m.locator("button:has-text('זה לא סקוואד')").click(); pg.wait_for_timeout(300)
-    check("not a squad: searched as a word", any(x.startswith("מילים: זוהר") for x in chips()) and not m.locator("button:has-text('הרצה')").is_disabled(), chips())
+    m.locator("button:has-text('בלי סינון סקוואד')").click(); pg.wait_for_timeout(300)
+    check("unknown squad dropped: never searched as a word", not any("זוהר" in x for x in chips()) and not m.locator("button:has-text('הרצה')").is_disabled(), chips())
     send("באגים של סקוואד מטאור")
-    check("Hebrew squad name from the dictionary: no question", pg.locator(".msg.ask").last.locator(".ask-q").count() == 0 and "Squad: Meteor" in chips(), chips())
+    check("Hebrew squad name from the dictionary: no question", pg.locator(".msg.ask").last.locator(".ask-q").count() == 0 and "Leading Squad: Meteor" in chips(), chips())
+    w = pg.evaluate("Ask.parse('באגים של סקוואד מטאור').then(c => Ask.resolve(c)).then(r => Ask.wiql(r, true))")
+    check("'סקוואד X' is the Leading Squad field only: no areas, no words", "[Custom.LeadingSquad] IN ('Meteor'))" in w and "AreaPath" not in w and "CONTAINS" not in w, w)
+    w = pg.evaluate("Ask.parse('באגים של מטאור').then(c => Ask.resolve(c)).then(r => Ask.wiql(r, true))")
+    check("squad without the word 'סקוואד': Leading Squad or its areas", "[Custom.LeadingSquad] IN ('Meteor') OR [System.AreaPath] UNDER" in w and "CONTAINS" not in w, w)
     # 2. parent
     send("הילדים של 110045 כולל סגורים")
     check("children of an item", chips() == ["פתוחים וסגורים", "תחת 110045"], chips())
@@ -87,7 +91,7 @@ with sync_playwright() as p:
     # 3. a squad by its Hebrew name and words with synonyms
     send("איפה יש התייחסות לממשקים בסקוואד לוגיסטי")
     c = chips()
-    check("Hebrew squad name and synonyms", "Squad: Logistics" in c and any(x.startswith("מילים:") and "API" in x for x in c), c)
+    check("Hebrew squad name and synonyms", "Leading Squad: Logistics" in c and any(x.startswith("מילים:") and "API" in x for x in c), c)
     # 4. blocked, stale, closed last week, unassigned in sprint
     for q, want in [("פריטים חסומים", "חסומים (Blocked / Inactive)"), ("מה לא זז 30 יום", "לא עודכנו 30 יום"),
                     ("מה נסגר בשבוע שעבר", "נסגרו מ-11/10/2026 עד 17/10/2026"), ("מה לא שויך בספרינט הנוכחי", "לא שויך")]:

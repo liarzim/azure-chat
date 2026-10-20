@@ -179,7 +179,7 @@
       ]
     }
   },
-  "updatedAt": "2026-10-20T14:12:37.213Z",
+  "updatedAt": "2026-10-20T14:13:54.757Z",
   "updatedBy": "מיכאל ליארזי",
   "permissions": {
     "mode": "block",
@@ -239,6 +239,16 @@
           "Portfolio Merkava\\MK2\\LOG\\LOGST"
         ],
         "note": "PO לוגיסטי"
+      },
+      {
+        "email": "ziono@goifinance.onmicrosoft.com",
+        "name": "ציון עובדיה",
+        "role": "user",
+        "squads": [
+          "Payroll"
+        ],
+        "areas": [],
+        "note": "PO שכר"
       }
     ]
   },

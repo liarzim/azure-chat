@@ -429,7 +429,14 @@ const Ask = {
         const det = document.createElement("details"); det.className = "ask-wiql";
         det.innerHTML = "<summary>הצגת השאילתה ל-Azure</summary>";
         const pre = document.createElement("pre"); pre.dir = "ltr"; pre.textContent = await this.wiql(r, !titleOnly);
-        det.appendChild(pre); el.appendChild(det);
+        const cp = document.createElement("button"); cp.type = "button"; cp.className = "btn ghost mini"; cp.textContent = "העתקת פרטי בדיקה";
+        cp.title = "להשוואה בין מחשבים: גרסה, משתמש, תאריך, ספרינט ו-PI, סקוואדים והשאילתה";
+        cp.onclick = async () => {
+          const txt = await this.checkInfo(r, ids.length, pre.textContent);
+          try { await navigator.clipboard.writeText(txt); toast("פרטי הבדיקה הועתקו. הדביקו אותם בהודעה למי שתומך באז'ורי"); }
+          catch (e) { pre.textContent = txt; det.open = true; toast("לא ניתן להעתיק. הפרטים מוצגים למטה"); }
+        };
+        det.append(pre, cp); el.appendChild(det);
       }
       // nothing found: check which condition empties the result, one at a time
       if (!ids.length && ctx) await this.whyEmpty(r, ctx, note);
@@ -444,6 +451,26 @@ const Ask = {
       addMsg("bot error", escHtml(e.message || String(e)));
       if (e instanceof AuthError && Auth.mode === "pat") { await Auth.logout(); setTimeout(() => showLogin(e.message), 1500); }
     } finally { busy = false; $("sendBtn").disabled = false; btn.disabled = false; btn.textContent = "הרצה"; }
+  },
+
+  /* Everything that can make the same question differ between two computers (no token, no data) */
+  async checkInfo(r, found, query) {
+    const p = await this.paths();
+    let st = null; try { st = await Perm.ready(); } catch (e) {}
+    const sq = await this.squadNames();
+    const sprint = this.pick(p.sprints, 0), pi = this.pick(p.pis, 0);
+    return ["אז'ורי - פרטי בדיקה",
+      "גרסה: " + CONFIG.VERSION,
+      "משתמש: " + (Auth.userEmail || Auth.userName || "?") + " (" + Auth.mode + ")",
+      "תאריך במחשב: " + this.ymd(this.now()) + " · אזור זמן: " + (Intl.DateTimeFormat().resolvedOptions().timeZone || "?"),
+      "ספרינט נוכחי: " + (sprint ? sprint.map(x => x.path).join(" | ") : "לא נמצא") + " · PI נוכחי: " + (pi ? pi.map(x => x.path).join(" | ") : "לא נמצא"),
+      "מספר ספרינטים / PIs בעץ: " + p.sprints.length + " / " + p.pis.length,
+      "הסקוואדים שלי: " + (st ? st.squads.join(", ") || "אין" : "?") + (st && st.error ? " (שגיאה: " + st.error + ")" : ""),
+      "ערכי Leading Squad ב-Azure: " + sq.length,
+      "מילון: " + normalizeDictionary(TeamConfig.data.dictionary).length + " שורות · הגדרות צוות: " + (TeamConfig.source || "?"),
+      "דפדפן: " + navigator.userAgent,
+      "נמצאו: " + found,
+      "שאילתה:", query].join("\n");
   },
 
   /* For an empty answer: run it again without each condition and show which one removes everything */

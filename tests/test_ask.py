@@ -160,6 +160,11 @@ with sync_playwright() as p:
     p2.locator(".msg.ask").last.locator("button:has-text('הרצה')").click(); p2.wait_for_timeout(3000)
     m2 = p2.locator(".msg.ask").last
     check("api: the query can be shown", m2.locator("details.ask-wiql pre").count() == 1 and "SELECT [System.Id]" in m2.locator("details.ask-wiql pre").text_content())
+    p2.evaluate("window.__clip = null; navigator.clipboard.writeText = async t => { window.__clip = t; }; 0")
+    m2.locator("details.ask-wiql summary").click(); m2.locator("button:has-text('העתקת פרטי בדיקה')").click(); p2.wait_for_timeout(800)
+    info = p2.evaluate("window.__clip") or ""
+    check("api: check details to compare computers (version, user, date, sprint, query; no token)",
+          ("גרסה: " in info and "tester@gov.example" in info and "תאריך במחשב: 2026-10-20" in info and "PI4_26" in info and "SELECT [System.Id]" in info and "test-pat" not in info), info[:400])
     check("api: empty answer is checked condition by condition", m2.locator(".ask-why").count() == 1, m2.inner_text()[-300:])
     check("api: the user's name is never in the query (uses @Me)", all("tester@gov.example" not in x["q"] for x in WIQL))
     check("no js errors (api)", not e2, e2)

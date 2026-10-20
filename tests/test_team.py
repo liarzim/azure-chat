@@ -68,9 +68,15 @@ with sync_playwright() as p:
     pg.click("button:has-text('+ כותרת')"); pg.locator(".hin").last.fill("הערות נוספות")
     check("7 rows after delete+add", pg.locator(".ttable tbody tr").count() == 7)
     pg.screenshot(path=os.path.join(ROOT, "tests", "artifacts", "team_template.png"), full_page=True)
-    # Save without token -> goes to GitHub tab
-    pg.click("#teamSave")
-    check("save without token opens GitHub tab", pg.locator("#ghTok").is_visible())
+    # No connection: save is grey; the connection bar is on every tab, the draft stays
+    check("save is grey until GitHub is connected", pg.locator("#teamSave").is_disabled() and pg.locator("#ghBar #ghBarTok").is_visible())
+    pg.fill("#ghBarTok", "ghp_test"); pg.click("#ghBarCheck"); pg.locator("#ghBarMsg.conn-ok").wait_for(timeout=5000)
+    check("connected from the bar, without leaving the tab", pg.locator("#teamTabs [data-tab=template].on").count() == 1 and pg.locator(".ttable tbody tr").count() == 7 and "לא נשמרו" in pg.inner_text("#teamStatus"))
+    check("after a good check: check button grey, save enabled, token field hidden", pg.locator("#ghBarCheck").is_disabled() and not pg.locator("#teamSave").is_disabled() and not pg.locator("#ghBarTok").is_visible())
+    pg.click("#ghBarChange"); pg.fill("#ghBarTok", "ghp_x")
+    check("typing a new token wakes the check button", not pg.locator("#ghBarCheck").is_disabled())
+    pg.fill("#ghBarTok", ""); pg.click("#ghBarHelp")
+    check("GitHub tab keeps the draft", "לא נשמרו" in pg.inner_text("#teamStatus") and pg.locator("#ghTok").is_visible())
     pg.fill("#ghTok", "ghp_test"); pg.click("#ghSave")
     pg.locator("#ghMsg:has-text('מחובר')").wait_for(timeout=5000)
     check("token test ok", "מחובר ל-liarzim/azure-chat" in pg.inner_text("#ghMsg"))
@@ -78,6 +84,7 @@ with sync_playwright() as p:
     n_err = len(errs)
     pg.fill("#ghTok", "ghp_wrong"); pg.click("#ghSave"); pg.locator("#ghMsg.conn-bad").wait_for(timeout=5000)
     del errs[n_err:]   # the browser logs the expected 401 of the wrong token
+    check("bad token: save is grey again", pg.locator("#teamSave").is_disabled())
     check("bad token: red status with the reason", "לא תקין" in pg.inner_text("#ghMsg") and pg.evaluate("getComputedStyle(document.getElementById('ghMsg')).color") != "rgb(26, 127, 55)", pg.inner_text("#ghMsg"))
     pg.fill("#ghTok", "ghp_test"); pg.click("#ghSave"); pg.locator("#ghMsg.conn-ok").wait_for(timeout=5000)
     pg.click("#teamSave"); pg.locator("#toast:has-text('נשמר ב-GitHub')").wait_for(timeout=5000)

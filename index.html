@@ -170,6 +170,13 @@
     <button class="btn ghost" id="teamClose" type="button">סגירה</button>
   </div>
   <div class="tp-confirm hidden" id="teamConfirm" role="alert"></div>
+  <div class="ghbar" id="ghBar" role="status">
+    <b>GitHub:</b> <span id="ghBarMsg"></span>
+    <input class="field" id="ghBarTok" type="password" autocomplete="off" spellcheck="false" placeholder="הדביקו GitHub token" aria-label="GitHub token">
+    <button class="btn mini" id="ghBarCheck" type="button">בדיקת חיבור</button>
+    <button class="btn ghost mini" id="ghBarChange" type="button">החלפת token</button>
+    <button class="btn ghost mini" id="ghBarHelp" type="button">איך יוצרים token?</button>
+  </div>
   <nav class="tabs" id="teamTabs" aria-label="לשוניות">
     <button type="button" data-tab="fields">שדות חובה</button>
     <button type="button" data-tab="template">תבנית Description</button>

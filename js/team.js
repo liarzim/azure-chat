@@ -305,6 +305,16 @@ function checkTemplate(tpl, html) {
 const GitHubStore = {
   KEY: "gh_token",
   token() { try { return sessionStorage.getItem(this.KEY) || ""; } catch (e) { return ""; } },
+  conn: {state: "none", repo: "", error: "", token: ""},   // "none" | "checking" | "ok" | "bad" for the current token
+  async check() {
+    const t = this.token();
+    if (!t) { this.conn = {state: "none", repo: "", error: "", token: ""}; return this.conn; }
+    this.conn = {state: "checking", repo: "", error: "", token: t};
+    try { this.conn = {state: "ok", repo: await this.test(), error: "", token: t}; }
+    catch (e) { this.conn = {state: "bad", repo: "", error: e.message || String(e), token: t}; }
+    return this.conn;
+  },
+  connected() { return this.conn.state === "ok" && this.conn.token === this.token() && !!this.token(); },
   setToken(t) {                       // this tab only: gone when the tab is closed
     try {
       sessionStorage.removeItem(this.KEY); localStorage.removeItem(this.KEY);

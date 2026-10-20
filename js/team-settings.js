@@ -8,12 +8,57 @@
 const TeamUI = {
   draft: null, tab: "fields", type: "Feature", dirty: false, filter: "", onlyRequired: false,
 
+  /* ---------- GitHub connection: the bar on top of every tab, and the GitHub tab ---------- */
+  ghUi() {
+    const c = GitHubStore.conn, has = !!GitHubStore.token(), ok = GitHubStore.connected();
+    const msg = $("ghBarMsg"), tok = $("ghBarTok"), chk = $("ghBarCheck"), chg = $("ghBarChange");
+    msg.classList.remove("conn-ok", "conn-bad", "muted");
+    if (c.state === "checking") { msg.textContent = "בודק..."; msg.classList.add("muted"); }
+    else if (ok) { msg.textContent = "✓ מחובר ל-" + c.repo; msg.classList.add("conn-ok"); }
+    else if (c.state === "bad" && c.token === GitHubStore.token()) { msg.textContent = "✕ " + c.error; msg.classList.add("conn-bad"); }
+    else { msg.textContent = has ? "יש token, עוד לא נבדק" : "לא מחובר. כדי לשמור לצוות, הדביקו token"; msg.classList.add(has ? "muted" : "conn-bad"); }
+    const editing = this.ghEditing || !has || (c.state === "bad" && c.token === GitHubStore.token());
+    tok.classList.toggle("hidden", ok && !this.ghEditing);
+    chg.classList.toggle("hidden", !ok || this.ghEditing);
+    // the check button is grey while the connection is fine; it wakes up when a new token is typed
+    chk.disabled = c.state === "checking" || (ok && !tok.value.trim());
+    chk.title = ok ? "החיבור תקין" : "";
+    // save is grey until the connection works
+    const save = $("teamSave");
+    save.disabled = !ok;
+    save.title = ok ? "" : "קודם מחברים GitHub token (למעלה)";
+    // the GitHub tab shows the same state
+    const gm = $("ghMsg");
+    if (gm) {
+      gm.className = msg.className; gm.textContent = msg.textContent;
+      const gb = $("ghSave"); if (gb) gb.disabled = chk.disabled && !($("ghTok") && $("ghTok").value.trim());
+    }
+    return editing;
+  },
+  async ghCheck(value) {
+    if (value) { GitHubStore.setToken(value); this.ghEditing = false; }
+    if (!GitHubStore.token()) { this.ghUi(); $("ghBarTok").focus(); return; }
+    GitHubStore.conn = {state: "checking", repo: "", error: "", token: GitHubStore.token()}; this.ghUi();
+    await GitHubStore.check();
+    $("ghBarTok").value = ""; if ($("ghTok")) $("ghTok").value = "";
+    this.ghUi();
+  },
+  ghInit() {
+    $("ghBarCheck").onclick = () => this.ghCheck($("ghBarTok").value.trim());
+    $("ghBarTok").oninput = () => this.ghUi();
+    $("ghBarTok").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("ghBarCheck").click(); } };
+    $("ghBarChange").onclick = () => { this.ghEditing = true; this.ghUi(); $("ghBarTok").focus(); };
+    $("ghBarHelp").onclick = () => { this.tab = "github"; this.render(); };
+  },
+
   open() {
     this.draft = TeamConfig.clone();
     this.dirty = false;
     if (!this.draft.types.includes(this.type)) this.type = this.draft.types[0];
     $("teamPanel").classList.remove("hidden");
     this.render();
+    // a token from earlier in this tab: check it once, quietly
+    if (GitHubStore.token() && !GitHubStore.connected() && GitHubStore.conn.state !== "checking") this.ghCheck("");
   },
   close(force) {
     if (this.dirty && !force) { this.confirmBar("יש שינויים שלא נשמרו. לסגור בלי לשמור?", "סגירה בלי שמירה", () => this.close(true)); return; }
@@ -41,6 +86,7 @@ const TeamUI = {
       types.appendChild(b);
     });
     this.status();
+    this.ghUi();
     const body = $("teamBody"); body.innerHTML = "";
     if (this.tab === "fields") this.renderFields(body);
     else if (this.tab === "template") this.renderTemplate(body);
@@ -397,15 +443,10 @@ const TeamUI = {
       '<p class="muted">ה-token נשמר רק בלשונית הזו ונמחק כשסוגרים אותה.</p>' +
       '<div class="tbar"><button class="btn" type="button" id="ghSave">בדיקת חיבור</button>' + (has ? '<button class="btn ghost" type="button" id="ghClear">הסרת token</button>' : "") + '<span class="muted" id="ghMsg">' + (has ? "יש token שמור" : "אין token") + "</span></div>" +
       '<p class="muted">רק מי שיש לו token כזה יכול לשמור הגדרות לצוות. כל השאר רואים את ההגדרות ופועלים לפיהן.</p></div>';
-    $("ghSave").onclick = async () => {
-      const v = $("ghTok").value.trim();
-      if (v) GitHubStore.setToken(v);
-      const msg = $("ghMsg"), state = cls => { msg.classList.remove("muted", "conn-ok", "conn-bad"); msg.classList.add(cls); };
-      state("muted"); msg.textContent = "בודק...";
-      try { const n = await GitHubStore.test(); state("conn-ok"); msg.textContent = "✓ מחובר ל-" + n + " עם הרשאת כתיבה"; $("ghTok").value = ""; }
-      catch (e) { state("conn-bad"); msg.textContent = "✕ " + e.message; }
-    };
-    if ($("ghClear")) $("ghClear").onclick = () => { GitHubStore.setToken(""); this.render(); };
+    $("ghSave").onclick = () => this.ghCheck($("ghTok").value.trim());
+    $("ghTok").oninput = () => this.ghUi();
+    if ($("ghClear")) $("ghClear").onclick = () => { GitHubStore.setToken(""); GitHubStore.conn = {state: "none", repo: "", error: "", token: ""}; this.render(); };
+    this.ghUi();
   },
 
   /* ---------- Save ---------- */
@@ -425,7 +466,7 @@ const TeamUI = {
   },
   async save(force) {
     if (!Perm.canSaveSettings()) { toast("רק מנהלי ההרשאות שבטבלת ההרשאות יכולים לשמור הגדרות לצוות."); return; }
-    if (!GitHubStore.token()) { this.tab = "github"; this.render(); toast("כדי לשמור לצוות צריך קודם לחבר GitHub token"); return; }
+    if (!GitHubStore.connected()) { this.ghUi(); $("ghBarTok").focus(); toast("כדי לשמור לצוות צריך קודם לחבר GitHub token (בשורה למעלה)"); return; }
     const d = this.prepared();
     const btn = $("teamSave"); btn.disabled = true; btn.textContent = "שומר...";
     try {
@@ -437,7 +478,7 @@ const TeamUI = {
     } catch (e) {
       if (e.conflict) this.confirmBar(e.message + " לשמור בכל זאת ולדרוס?", "לשמור ולדרוס", () => this.save(true));
       else toast("השמירה נכשלה: " + e.message);
-    } finally { btn.disabled = false; btn.textContent = "שמירה לצוות"; }
+    } finally { btn.textContent = "שמירה לצוות"; this.ghUi(); }
   },
   download() {
     const blob = new Blob([JSON.stringify(this.prepared(), null, 2) + "\n"], {type: "application/json"});
@@ -460,6 +501,7 @@ const TeamUI = {
     $("teamBtn").onclick = () => { closeSetMenu(); this.open(); };
     $("teamClose").onclick = () => this.close();
     $("teamSave").onclick = () => this.save(false);
+    this.ghInit();
     $("teamDownload").onclick = () => this.download();
     document.querySelectorAll("#teamTabs [data-tab]").forEach(b => b.onclick = () => { this.tab = b.dataset.tab; this.render(); });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("teamPanel").classList.contains("hidden") && $("lightbox").classList.contains("hidden")) this.close(); });

@@ -554,3 +554,8 @@ tr.locked .rowedit { opacity: .7; }
 .ask-wiql{margin-top:6px;font-size:12px}
 .ask-wiql summary{cursor:pointer;color:var(--muted)}
 .ask-wiql pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;margin:6px 0 0;text-align:left}
+
+/* GitHub connection bar on top of the settings tabs */
+.ghbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 18px;border-bottom:1px solid var(--line);font-size:13px;background:var(--bg)}
+.ghbar .field{width:auto;flex:1;min-width:200px;max-width:360px;padding:6px 10px;direction:ltr}
+.ghbar .btn:disabled,.tp-head .btn:disabled,#ghSave:disabled{background:var(--line);color:var(--muted);border-color:var(--line);cursor:not-allowed}

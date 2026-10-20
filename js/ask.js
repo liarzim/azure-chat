@@ -141,13 +141,14 @@ const Ask = {
   /* Area nodes and PIs (iterations whose children are sprints) with dates */
   async paths() {
     if (this._paths) return this._paths;
-    const out = {areas: [], pis: [], sprints: []};
+    const out = {areas: [], pis: [], sprints: [], dated: new Map()};
     try {
       const tr = (await Meta.classPaths()).trees;
       const walkA = (n, d) => { if (d > 0) out.areas.push({name: n.name, path: n.path}); (n.children || []).forEach(x => walkA(x, d + 1)); };
       if (tr.area) walkA(tr.area, 0);
       const walkI = n => {
         const kids = n.children || [];
+        if (n.start && n.finish) out.dated.set(n.path.toLowerCase(), n);
         if (kids.length && kids.every(k => !(k.children || []).length)) { out.pis.push({name: n.name, path: n.path, start: n.start, finish: n.finish}); kids.forEach(k => out.sprints.push({name: k.name, path: k.path, start: k.start, finish: k.finish})); }
         else kids.forEach(walkI);
       };
@@ -192,7 +193,18 @@ const Ask = {
       const got = this.pick(r.scope.kind === "pi" ? p.pis : p.sprints, r.scope.rel);
       r.iterations = got ? got.map(x => ({path: x.path, name: x.name})) : [];
       // Features and Epics are planned at PI level, so "this sprint" means the sprint's PI for them
-      r.sprintPis = r.scope.kind === "sprint" && got ? [...new Set(got.map(x => x.path.split("\\").slice(0, -1).join("\\")))] : [];
+      // (the sprint's dated parents, whatever the levels between them are; else its direct parent)
+      r.sprintPis = [];
+      if (r.scope.kind === "sprint" && got) {
+        const set = new Set();
+        got.forEach(x => {
+          const parts = x.path.split("\\");
+          let top = null;
+          for (let i = 2; i < parts.length; i++) { const pp = parts.slice(0, i).join("\\"); if (p.dated.has(pp.toLowerCase())) { top = pp; break; } }
+          set.add(top || parts.slice(0, -1).join("\\"));
+        });
+        r.sprintPis = [...set];
+      }
       if (!got && r.scope.auto) { r.scope = null; r.iterations = null; }    // no dated PIs: do not limit
     }
     r.squadAreas = [];
@@ -368,7 +380,8 @@ const Ask = {
       }
       const bar = document.createElement("div"); bar.className = "ask-bar";
       const run = document.createElement("button"); run.type = "button"; run.className = "btn"; run.textContent = "הרצה";
-      run.onclick = () => this.run(r, el, run, () => { c.scope = {kind: "pi", rel: r.scope.rel || 0}; draw().then(() => { const b = el.querySelector(".ask-bar .btn"); if (b) b.click(); }); });
+      const rerun = fn => { fn(); draw().then(() => { const b = el.querySelector(".ask-bar .btn"); if (b) b.click(); }); };
+      run.onclick = () => this.run(r, el, run, () => rerun(() => { c.scope = {kind: "pi", rel: r.scope.rel || 0}; }), {c, rerun});
       if ((c.ask || []).length) { run.disabled = true; run.title = "קודם עונים על השאלה למעלה"; }
       const edit = document.createElement("button"); edit.type = "button"; edit.className = "btn ghost"; edit.textContent = "ניסוח מחדש";
       edit.onclick = () => { $("input").value = text; $("input").focus(); };
@@ -394,7 +407,7 @@ const Ask = {
     return el;
   },
 
-  async run(r, el, btn, widen) {
+  async run(r, el, btn, widen, ctx) {
     if (busy) return;
     busy = true; $("sendBtn").disabled = true; btn.disabled = true; btn.textContent = "מחפש...";
     try {
@@ -411,6 +424,15 @@ const Ask = {
         w.onclick = widen;
         note.append(" ", w);
       }
+      // the query itself, to check or to send to whoever supports Azuri
+      if (Auth.mode !== "demo") {
+        const det = document.createElement("details"); det.className = "ask-wiql";
+        det.innerHTML = "<summary>הצגת השאילתה ל-Azure</summary>";
+        const pre = document.createElement("pre"); pre.dir = "ltr"; pre.textContent = await this.wiql(r, !titleOnly);
+        det.appendChild(pre); el.appendChild(det);
+      }
+      // nothing found: check which condition empties the result, one at a time
+      if (!ids.length && ctx) await this.whyEmpty(r, ctx, note);
       if (use.length) {
         const items = await fetchItems(use);
         People.fromItems(items);
@@ -422,6 +444,32 @@ const Ask = {
       addMsg("bot error", escHtml(e.message || String(e)));
       if (e instanceof AuthError && Auth.mode === "pat") { await Auth.logout(); setTimeout(() => showLogin(e.message), 1500); }
     } finally { busy = false; $("sendBtn").disabled = false; btn.disabled = false; btn.textContent = "הרצה"; }
+  },
+
+  /* For an empty answer: run it again without each condition and show which one removes everything */
+  async whyEmpty(r, ctx, note) {
+    const box = document.createElement("div"); box.className = "ask-why"; box.textContent = "בודק איזה סינון מרוקן את התוצאה...";
+    note.after(box);
+    const tries = this.chips(r).filter(ch => ch.k !== "state" || r.state !== "all");
+    const found = [];
+    for (const ch of tries) {
+      const c2 = JSON.parse(JSON.stringify(ctx.c));
+      this.drop(c2, ch.k);
+      try {
+        const r2 = await this.resolve(c2);
+        const n = (await this.ids(r2)).ids.length;
+        if (n) found.push({ch, n});
+      } catch (e) {}
+    }
+    box.innerHTML = "";
+    if (!found.length) { box.textContent = "גם בלי כל סינון בנפרד לא נמצאו פריטים. כדאי לנסח את השאלה אחרת."; return; }
+    const t = document.createElement("div"); t.textContent = "בלי אחד הסינונים יש תוצאות:"; box.appendChild(t);
+    found.forEach(({ch, n}) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn ghost mini";
+      b.textContent = "בלי \"" + ch.label + "\": " + (n > ASK_MAX ? ASK_MAX + "+" : n) + " פריטים";
+      b.onclick = () => ctx.rerun(() => this.drop(ctx.c, ch.k));
+      box.appendChild(b);
+    });
   },
 
   /* a request to the admins (mail): users cannot save team settings */

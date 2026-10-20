@@ -97,6 +97,13 @@ with sync_playwright() as p:
     check("nothing in the sprint: offer the PI", wb.count() == 1, pg.locator(".msg.ask").last.inner_text()[-200:])
     wb.click(); pg.wait_for_timeout(1500)
     check("searched again in the PI", any(x.startswith("PI קודם") for x in chips()), chips())
+    # 1d. empty answer: which condition empties it
+    send("באגים של סקוואד Payroll בספרינט הנוכחי")
+    pg.locator(".msg.ask").last.locator("button:has-text('הרצה')").click(); pg.wait_for_timeout(2500)
+    why = pg.locator(".msg.ask").last.locator(".ask-why")
+    check("empty answer: the conditions that empty it, with counts", why.count() == 1 and "בלי \"Leading Squad: Payroll\"" in why.inner_text(), why.inner_text() if why.count() else pg.locator(".msg.ask").last.inner_text()[-300:])
+    why.locator("button", has_text="Leading Squad").click(); pg.wait_for_timeout(1500)
+    check("one click runs it without that condition", "Leading Squad: Payroll" not in chips() and "נמצאו" in pg.locator(".msg.ask").last.inner_text(), chips())
     # 2. parent
     send("הילדים של 110045 כולל סגורים")
     check("children of an item", chips() == ["פתוחים וסגורים", "תחת 110045"], chips())
@@ -149,6 +156,11 @@ with sync_playwright() as p:
     MODE["fulltext"] = False
     p2.locator(".msg.ask").last.locator("button:has-text('הרצה')").click(); p2.wait_for_timeout(1500)
     check("no full-text search: title only, and it says so", "CONTAINS WORDS" not in WIQL[-1]["q"] and "בכותרת בלבד" in p2.locator(".msg.ask").last.inner_text())
+    p2.wait_for_timeout(1500); p2.fill("#input", "פיצרים של סקוואד Payroll"); p2.keyboard.press("Enter"); p2.wait_for_timeout(2000)
+    p2.locator(".msg.ask").last.locator("button:has-text('הרצה')").click(); p2.wait_for_timeout(3000)
+    m2 = p2.locator(".msg.ask").last
+    check("api: the query can be shown", m2.locator("details.ask-wiql pre").count() == 1 and "SELECT [System.Id]" in m2.locator("details.ask-wiql pre").text_content())
+    check("api: empty answer is checked condition by condition", m2.locator(".ask-why").count() == 1, m2.inner_text()[-300:])
     check("api: the user's name is never in the query (uses @Me)", all("tester@gov.example" not in x["q"] for x in WIQL))
     check("no js errors (api)", not e2, e2)
     b.close()

@@ -549,3 +549,8 @@ tr.locked .rowedit { opacity: .7; }
 .ask-q{background:var(--warn-soft);border-radius:8px;padding:10px 12px;margin-bottom:10px}
 .ask-opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}
 .ask-opts select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font:inherit;color:inherit}
+
+.ask-why{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-size:13px}
+.ask-wiql{margin-top:6px;font-size:12px}
+.ask-wiql summary{cursor:pointer;color:var(--muted)}
+.ask-wiql pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;margin:6px 0 0;text-align:left}

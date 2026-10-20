@@ -100,6 +100,28 @@ const TEAM_DEFAULT = {
 };
 
 /* Shared Services table: [{name, priority 1-4, squad, tasks[], active}]. Plain names (older files) are accepted. */
+/* ---------- Dictionary: synonyms and Hebrew names of squads (team settings) ---------- */
+const ASK_DICT_DEFAULT = [
+  {kind: "words", target: "", words: ["ממשק", "ממשקים", "API", "Interface", "אינטגרציה", "integration"]},
+  {kind: "squad", target: "Logistics", words: ["לוגיסטיקה", "לוגיסטי", "לוגיסטית"]},
+  {kind: "squad", target: "Payroll", words: ["שכר"]},
+  {kind: "squad", target: "Attendance", words: ["נוכחות"]},
+  {kind: "squad", target: "Finance", words: ["כספים", "פיננסים"]},
+  {kind: "squad", target: "Infrastructure", words: ["תשתיות", "תשתית"]},
+  {kind: "squad", target: "Training", words: ["הדרכה", "הדרכות"]},
+  {kind: "squad", target: "Support", words: ["תמיכה"]},
+  {kind: "squad", target: "Development", words: ["פיתוח"]},
+  {kind: "squad", target: "Car_Housing", words: ["רכב", "דיור", "רכב ודיור"]}
+];
+function normalizeDictionary(list) {
+  const src = Array.isArray(list) ? list : ASK_DICT_DEFAULT;
+  return src.map(x => ({
+    kind: x && x.kind === "squad" ? "squad" : "words",
+    target: String((x && x.target) || "").trim(),
+    words: (Array.isArray(x && x.words) ? x.words : String((x && x.words) || "").split(/[,،\n]/)).map(w => String(w).trim()).filter(Boolean)
+  })).filter(x => x.words.length);
+}
+
 function normalizeSharedServices(list) {
   if (!Array.isArray(list)) list = TEAM_DEFAULT.sharedServices;
   const seen = new Set();
@@ -137,6 +159,7 @@ const TeamConfig = {
     out.types.forEach(t => { if (!Array.isArray(out.requiredFields[t])) out.requiredFields[t] = []; });
     out.sharedServices = normalizeSharedServices(out.sharedServices);
     out.permissions = normalizePermissions(out.permissions);
+    out.dictionary = normalizeDictionary(out.dictionary);
     out.templates = out.templates || {};
     Object.values(out.templates).forEach(tp => {
       tp.field = tp.field || "System.Description";

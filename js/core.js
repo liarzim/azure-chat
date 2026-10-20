@@ -2,7 +2,7 @@
 
 /* ============================ CONFIG ============================ */
 const CONFIG = {
-  VERSION: "2.12.7",
+  VERSION: "2.13",
   ORG: "GOI-Finance",
   TENANT: "GOIFinance.onmicrosoft.com",
   // Fill in after registering the app in Microsoft Entra ID (App registrations).
@@ -886,6 +886,7 @@ function helpHtml(first) {
     "<li><code>110047, 112074</code> שדות ברירת המחדל</li>" +
     "<li><code>110047 112074 רק Title ו-State</code> רק השדות האלה</li>" +
     "<li><code>110047 תוסיף Tags ו-Story Points</code> ברירת מחדל ועוד שדות</li>" +
+    "<li><b>שאלות חופשיות:</b> <code>מה המשימות שלי</code>, <code>באגים פתוחים של לוגיסטיקה</code>, <code>מה לא שויך בספרינט הנוכחי</code>, <code>הילדים של 112494</code>, <code>פריטים חסומים</code>, <code>מה לא זז 30 יום</code></li>" +
     "<li><code>110047 בלי Priority ו-WSJF Priority</code> להוריד שדות</li>" +
     "<li>🎤 הקלדה בדיבור בעברית: ליד תיבת הצ'אט, ובכל שדה אחר שעומדים עליו</li><li><code>עזרה</code> להציג את ההסבר הזה שוב · <code>נקה</code> לנקות את השיחה</li></ul>" +
     "<b>חיפוש:</b> כתבו מילים במקום מספר, ותקבלו רשימה לבחירה (אחד, כמה או הכל). בכותרת מחפשים גם חלק ממילה, בתיאור מילים שלמות. עם מספרים בטקסט: <code>חפש: גרסה 2026</code>.<ul>" +
@@ -1013,6 +1014,12 @@ async function handleInput(text) {
     } finally { busy = false; $("sendBtn").disabled = false; $("input").focus(); }
     return;
   }
+  // a free question ("מה המשימות הפתוחות שלי", "הילדים של 112494") becomes a query
+  if (!req.ids.length || /(ילדים של|תחת|מתחת ל|children of|under)\s*#?\d{3,}/i.test(text)) {
+    let c = null;
+    try { c = await Ask.parse(text); } catch (e) { c = null; }
+    if (c && c.strong) { await Ask.show(text, c); return; }
+  }
   if (!req.ids.length) {   // words, not numbers: search Azure by title / description
     const q = ChatSearch.queryFrom(text);
     if (!q) { addMsg("bot", "כתבו מספר של פריט, או כמה מילים לחיפוש, למשל <code>110047</code> או <code>ייצוא לאקסל</code>. כל הפקודות: <code>עזרה</code>."); return; }
@@ -1082,9 +1089,10 @@ function initUi() {
   input.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("composer").requestSubmit(); } });
   const autosize = () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; };
   input.addEventListener("input", autosize);
-  const chips = ["רק Title ו-State", "תוסיף Tags", "בלי Description", "עזרה"];
+  const chips = ["מה המשימות שלי", "מה לא שויך בספרינט הנוכחי", "רק Title ו-State", "תוסיף Tags", "בלי Description", "עזרה"];
+  const runNow = ["עזרה", "מה המשימות שלי", "מה לא שויך בספרינט הנוכחי"];
   chips.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = c;
-    b.onclick = () => { if (c === "עזרה") { handleInput(c); return; } input.value = (input.value.trim() + " " + c).trim(); input.focus(); autosize(); };
+    b.onclick = () => { if (runNow.includes(c)) { handleInput(c); return; } input.value = (input.value.trim() + " " + c).trim(); input.focus(); autosize(); };
     $("chips").appendChild(b); });
 }
 
@@ -1206,7 +1214,7 @@ function demoItems(ids) {
       "System.WorkItemType": type,
       "System.Title": type === "Epic" ? "תוכנית דיגיטציה רבעונית (הדגמה " + id + ")" : type === "Bug" ? "שגיאה בשמירת טופס בקשה (הדגמה " + id + ")" : type === "Feature" ? "ממשק דיווח חודשי ללקוח (הדגמה " + id + ")" : "הוספת סינון לפי תאריך במסך החיפוש (הדגמה " + id + ")",
       "System.State": stateFor[type][i % 4], "System.Reason": "Approved",
-      "System.AssignedTo": people[i % 4], "System.CreatedBy": people[(i + 1) % 4],
+      "System.AssignedTo": id % 7 === 0 ? {displayName: "משתמש הדגמה", uniqueName: "demo.user@example.com"} : people[i % 4], "System.CreatedBy": people[(i + 1) % 4],
       "System.CreatedDate": "2026-09-1" + (i % 9) + "T08:00:00Z", "System.ChangedDate": "2026-10-0" + ((i % 6) + 1) + "T10:00:00Z",
       "System.IterationPath": "Portfolio Merkava\\PI4_26\\4." + ((i % 3) + 1), "System.AreaPath": id % 10 === 3 ? "Portfolio Merkava\\Payroll" : "Portfolio Merkava\\MK2\\Meteor\\Meteor Sigma",
       "System.TeamProject": "Portfolio Merkava", "System.Tags": type === "Bug" ? "Demo; UI" : "Demo",

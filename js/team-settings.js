@@ -32,7 +32,7 @@ const TeamUI = {
   render() {
     document.querySelectorAll("#teamTabs [data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === this.tab));
     const types = $("teamTypes"); types.innerHTML = "";
-    $("teamTypesRow").classList.toggle("hidden", this.tab === "github" || this.tab === "shared" || this.tab === "perms");
+    $("teamTypesRow").classList.toggle("hidden", this.tab === "github" || this.tab === "shared" || this.tab === "perms" || this.tab === "dict");
     this.draft.types.forEach(t => {
       const b = document.createElement("button"); b.type = "button"; b.className = "seg" + (t === this.type ? " on" : "");
       const n = this.tab === "fields" ? (this.draft.requiredFields[t] || []).length : ((this.draft.templates[t] || {}).headings || []).length;
@@ -46,6 +46,7 @@ const TeamUI = {
     else if (this.tab === "template") this.renderTemplate(body);
     else if (this.tab === "shared") this.renderShared(body);
     else if (this.tab === "perms") this.renderPerms(body);
+    else if (this.tab === "dict") this.renderDict(body);
     else this.renderGithub(body);
   },
 
@@ -341,6 +342,47 @@ const TeamUI = {
     body.append(mine, intro, modeRow, tbl, lock);
   },
 
+  /* ---------- Dictionary for questions: synonyms and Hebrew squad names ---------- */
+  renderDict(body) {
+    const list = this.draft.dictionary = normalizeDictionary(this.draft.dictionary);
+    const intro = document.createElement("div"); intro.className = "muted permintro";
+    intro.innerHTML = "<p>המילון עוזר לאז'ורי להבין שאלות חופשיות.</p>" +
+      "<p><b>מילים נרדפות</b>: שאלה על אחת המילים מחפשת את כולן בכותרת וב-Description. למשל: ממשק, API, Interface, אינטגרציה.</p>" +
+      "<p><b>שם עברי לסקוואד</b>: שאלה \"באגים של לוגיסטיקה\" תבין שמדובר בסקוואד Logistics.</p>" +
+      "<p>משתמשים שולחים בקשה להוספה מתוך תשובה לשאלה (כפתור \"בקשה להוסיף מילה נרדפת\"). רק מנהלים שומרים שינויים.</p>";
+    const bar = document.createElement("div"); bar.className = "tbar";
+    const add = document.createElement("button"); add.type = "button"; add.className = "btn ghost"; add.textContent = "+ שורה";
+    const reset = document.createElement("button"); reset.type = "button"; reset.className = "btn ghost"; reset.textContent = "איפוס לברירת המחדל";
+    const sp = document.createElement("span"); sp.className = "sp";
+    bar.append(add, sp, reset);
+    const dl = document.createElement("datalist"); dl.id = "dictSquads";
+    Meta.typeMeta("User Story").then(m => { const f = m.byRef.get(PERM_SQUAD); (f && f.allowed || []).forEach(v => dl.appendChild(new Option(v, v))); }).catch(() => {});
+    const tbl = document.createElement("table"); tbl.className = "ttable permtable dicttable";
+    tbl.innerHTML = "<thead><tr><th>סוג</th><th>סקוואד (לשם עברי)</th><th>מילים (מופרדות בפסיק)</th><th></th></tr></thead>";
+    const tb = document.createElement("tbody"); tbl.appendChild(tb);
+    const draw = () => {
+      tb.innerHTML = "";
+      list.forEach((x, i) => {
+        const tr = document.createElement("tr");
+        const kind = document.createElement("select"); kind.setAttribute("aria-label", "סוג שורה " + (i + 1));
+        kind.add(new Option("מילים נרדפות", "words")); kind.add(new Option("שם עברי לסקוואד", "squad")); kind.value = x.kind;
+        const tg = document.createElement("input"); tg.value = x.target; tg.setAttribute("list", "dictSquads"); tg.placeholder = "למשל Logistics"; tg.setAttribute("aria-label", "סקוואד שורה " + (i + 1));
+        tg.disabled = x.kind !== "squad";
+        kind.onchange = () => { x.kind = kind.value; tg.disabled = x.kind !== "squad"; this.markDirty(); };
+        tg.oninput = () => { x.target = tg.value.trim(); this.markDirty(); };
+        const ws = document.createElement("input"); ws.value = x.words.join(", "); ws.placeholder = "ממשק, API, אינטגרציה"; ws.setAttribute("aria-label", "מילים שורה " + (i + 1));
+        ws.oninput = () => { x.words = ws.value.split(/[,،]/).map(w => w.trim()).filter(Boolean); this.markDirty(); };
+        const del = mkIconBtn("✕", "מחיקת שורה " + (i + 1), false, () => { list.splice(i, 1); this.markDirty(); draw(); }, "del");
+        [kind, tg, ws, del].forEach(el => { const td = document.createElement("td"); td.appendChild(el); tr.appendChild(td); });
+        tb.appendChild(tr);
+      });
+    };
+    add.onclick = () => { list.push({kind: "words", target: "", words: []}); this.markDirty(); draw(); const f = tb.querySelector("tr:last-child input:not([disabled])"); if (f) f.focus(); };
+    reset.onclick = () => this.confirmBar("להחזיר את המילון לברירת המחדל?", "איפוס", () => { this.draft.dictionary = normalizeDictionary(ASK_DICT_DEFAULT); this.markDirty(); this.render(); });
+    draw();
+    body.append(intro, bar, dl, tbl);
+  },
+
   /* ---------- GitHub connection ---------- */
   renderGithub(body) {
     const has = !!GitHubStore.token();
@@ -376,6 +418,7 @@ const TeamUI = {
     });
     d.sharedServices = normalizeSharedServices(d.sharedServices);
     d.permissions = normalizePermissions(d.permissions);
+    d.dictionary = normalizeDictionary(d.dictionary);
     d.updatedAt = new Date().toISOString();
     d.updatedBy = Auth.userName || "";
     return d;

@@ -30,6 +30,7 @@ def handler(route, req):
     if "/_apis/connectionData" in u: return J({"authenticatedUser": {"providerDisplayName": "בודק", "properties": {"Account": {"$value": "tester@gov.example"}}}})
     if "/_apis/teams?" in u:
         if TEAMS["mode"] == "error": return J({"message": "no access"}, 500)
+        if TEAMS["mode"] == "noscope": return route.fulfill(status=401, body="", headers=CORS)
         name = "Payroll Team" if TEAMS["mode"] == "name" else "Pay Team"
         return J({"value": [{"name": name, "projectName": "Portfolio Merkava"}, {"name": "Other Project Team", "projectName": "Other"}]})
     if "/teamfieldvalues?" in u:
@@ -210,6 +211,10 @@ with sync_playwright() as p:
     c4, pg4, e4 = login("squadfield")
     check("team field Leading Squad gives squads", pg4.evaluate("Perm.state.squads") == ["Payroll"])
     c4.close()
+    c6, pg6, e6 = login("noscope")
+    err = pg6.evaluate(PLAN, [502, {"System.State": "New"}])
+    check("token without 'Project and Team: Read': says so", "Project and Team: Read" in err and pg6.locator("#app:not(.hidden)").count() == 1, err)
+    c6.close()
     c5, pg5, e5 = login("error")
     err = pg5.evaluate(PLAN, [502, {"System.State": "New"}])
     check("teams cannot be read: blocked with a clear reason", "לא הצלחנו לברר" in err, err)

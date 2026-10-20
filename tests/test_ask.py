@@ -104,6 +104,10 @@ with sync_playwright() as p:
     check("empty answer: the conditions that empty it, with counts", why.count() == 1 and "בלי \"Leading Squad: Payroll\"" in why.inner_text(), why.inner_text() if why.count() else pg.locator(".msg.ask").last.inner_text()[-300:])
     why.locator("button", has_text="Leading Squad").click(); pg.wait_for_timeout(1500)
     check("one click runs it without that condition", "Leading Squad: Payroll" not in chips() and "נמצאו" in pg.locator(".msg.ask").last.inner_text(), chips())
+    # 1e. spelling of "סקוואד": never a search word
+    for v in ["סקוואד", "סקווד", "סקואד", "סקוד"]:
+        r = pg.evaluate("q => Ask.parse(q).then(c => ({sq: c.squads, f: !!c.squadField, w: c.words.map(x => x.word)}))", "פיצרים של " + v + " מטאור")
+        check("spelling '" + v + "': Leading Squad, no search word", r == {"sq": ["Meteor"], "f": True, "w": []}, r)
     # 2. parent
     send("הילדים של 110045 כולל סגורים")
     check("children of an item", chips() == ["פתוחים וסגורים", "תחת 110045"], chips())

@@ -73,7 +73,13 @@ const Perm = {
   /* Azure: my teams in this project, and the area paths each team owns. */
   async azureTeams() {
     const project = (TeamConfig.data && TeamConfig.data.project) || "";
-    const d = await api(ADO + "/_apis/teams?$mine=true&$top=200&api-version=7.1-preview.3");
+    let d;
+    try { d = await api(ADO + "/_apis/teams?$mine=true&$top=200&api-version=7.1-preview.3"); }
+    catch (e) {
+      // work items work with this token, so a refusal here means the token cannot read teams
+      if (e instanceof AuthError || /N2|דחה את הטוקן|הרשאה/.test(e.message || "")) throw new Error("לטוקן אין הרשאה לקרוא צוותים. צרו טוקן עם Work Items: Read & write וגם Project and Team: Read");
+      throw e;
+    }
     const teams = (d.value || []).filter(t => !project || this.key(t.projectName) === this.key(project));
     return Promise.all(teams.map(async t => {
       const out = {name: t.name, areas: [], squads: []};

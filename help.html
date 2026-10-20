@@ -49,7 +49,7 @@
       <ul>
         <li><span class="n">4</span> <b>Name:</b> שם שתזהו, למשל <code>Azuri</code>.</li>
         <li><span class="n">5</span> <b>Organization:</b> <code>GOI-Finance</code>. לא "All accessible organizations".</li>
-        <li><span class="n">7</span> <b>Scopes:</b> משאירים <b>Custom defined</b>, ותחת <b>Work Items</b> מסמנים <b>Read &amp; write</b>.</li>
+        <li><span class="n">7</span> <b>Scopes:</b> משאירים <b>Custom defined</b>, ותחת <b>Work Items</b> מסמנים <b>Read &amp; write</b>. בנוסף, תחת <b>Project and Team</b> מסמנים <b>Read</b> (בשביל ההרשאות לפי צוות ורשימת האנשים). אם לא רואים אותו, לוחצים <b>Show all scopes</b> בתחתית.</li>
       </ul>
       <figure><a href="help/img/token-3-form.png" target="_blank"><img src="help/img/token-3-form.png" alt="טופס יצירת טוקן: שם, ארגון GOI-Finance והרשאת Work Items Read and write מסומנים" loading="lazy" width="800" height="500"></a></figure>
       <p class="note">רוצים רק לשלוף נתונים בלי לעדכן? מספיק <b>Read</b>. כדי לעדכן וליצור פריטים צריך <b>Read &amp; write</b>.</p>
@@ -348,6 +348,7 @@
     <details>
       <summary>"הטוקן לא תקין, פג תוקפו, או שאין לו הרשאה"</summary>
       <p>בדקו ברשימת הטוקנים שהטוקן מסומן Active, שהארגון הוא GOI-Finance, ושיש לו Work Items. לעדכון וליצירה צריך Read &amp; write.</p>
+      <p><b>"הסקוואדים שלי: אין"</b> או "לטוקן אין הרשאה לקרוא צוותים": לטוקן חסרה הרשאת <b>Project and Team: Read</b>. בלעדיה אז'ורי לא יודע לאיזה צוות אתם שייכים, ותוכלו לעדכן רק מה שמוגדר לכם בטבלת ההרשאות. אפשר לערוך את הטוקן הקיים ב-Azure ולהוסיף את ההרשאה, בלי ליצור חדש.</p>
     </details>
     <details>
       <summary>"הטוקן מכיל תווים שאינם באנגלית"</summary>

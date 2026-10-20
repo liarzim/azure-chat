@@ -9,6 +9,7 @@
    ============================================================ */
 
 const ASK_MAX = 200;
+const SQ = "סקו+א?ו*ד"; // סקוואד, סקווד, סקואד, סקוד
 const ASK_BLOCKED = ["Blocked", "Inactive"];
 const ASK_CUE = /(^|\s)(מה|מי|איזה|איזו|אילו|איפה|היכן|כמה|תראה|תראי|הצג|הציגי|הראה|תביא|תביאי|show|list|which|what|where)(?=\s|$)/i;
 const ASK_STOP = new Set(("מה מי איזה איזו אילו איפה היכן כמה יש אין את של עם על אל תראה תראי הצג הציגי הראה תביא תביאי תן תני לי אני כל כולם " +
@@ -45,7 +46,7 @@ const Ask = {
     // "open" said out loud (the default anyway)
     take(W("ה?פתוח\\S*|open"), () => { if (!c.state) c.state = "open"; });
     // my squad
-    if (take(W("(?:ב?ה?סקוואד(?:ים)? שלי|my squads?)"), () => {})) {
+    if (take(W("(?:ב?ה?" + SQ + "(?:ים)? שלי|my squads?)"), () => {})) {
       try { const st = await Perm.ready(); c.squads.push(...st.squads); c.mySquad = true; } catch (e) {}
     }
     // created by me / unassigned / mine
@@ -90,15 +91,15 @@ const Ask = {
     squadNames.forEach(s => squadWords.push([s, s]));
     dict.filter(d => d.kind === "squad" && d.target).forEach(d => d.words.forEach(w => squadWords.push([w.replace(/[״"]/g, ""), d.target])));
     squadWords.sort((a, b) => b[0].length - a[0].length).forEach(([w, s]) => {
-      const p = "(?:ב|ה|ל|של\\s+|סקוואד\\s+|בסקוואד\\s+|ה?סקוואד\\s+של\\s+)?(?:ה)?" + this.esc(w.toLowerCase());
-      if (take(W(p), m => { if (/סקוואד|squad/.test(m[0])) c.squadField = true; })) { if (!c.squads.includes(s)) c.squads.push(s); }
+      const p = "(?:ב|ה|ל|של\\s+|ב?ה?" + SQ + "\\s+(?:של\\s+)?|squad\\s+)?(?:ה)?" + this.esc(w.toLowerCase());
+      if (take(W(p), m => { if (new RegExp(SQ + "|squad").test(m[0])) c.squadField = true; })) { if (!c.squads.includes(s)) c.squads.push(s); }
     });
     // "סקוואד X" with a name we do not know (e.g. "מטאור"): ask which squad it is
-    take(W("(?:ב|של\\s+|ל)?ה?סקוואד(?:\\s+של)?\\s+([^\\s\\d]{2,})"), m => {
+    take(W("(?:ב|של\\s+|ל)?ה?(?:" + SQ + "|squad)(?:\\s+של)?\\s+([^\\s\\d]{2,})"), m => {
       if (ASK_STOP.has(m[1])) return;
       c.ask.push({k: "squad", word: m[1]}); c.squadField = true;
     });
-    take(W("(?:ב|של\\s+|ל)?ה?סקוואד(?:ים)?"), () => {});
+    take(W("(?:ב|של\\s+|ל)?ה?(?:" + SQ + "|squad)(?:ים|s)?"), () => {});
     // areas by name (e.g. "Meteor Sigma", "LOG")
     (paths.areas || []).filter(a => a.name.length >= 3).sort((a, b) => b.name.length - a.name.length).forEach(a => {
       if (take(W("(?:ב|ב-|area\\s+)?" + this.esc(a.name.toLowerCase())), () => {})) c.areas.push(a.path);

@@ -179,7 +179,7 @@
       ]
     }
   },
-  "updatedAt": "2026-10-20T04:42:30.105Z",
+  "updatedAt": "2026-10-20T05:42:59.727Z",
   "updatedBy": "מיכאל ליארזי",
   "permissions": {
     "mode": "block",
@@ -227,6 +227,16 @@
           "Portfolio Merkava\\MK2\\HR\\PYROL"
         ],
         "note": "מיישמת של הסקוואד"
+      },
+      {
+        "email": "davidme@goifinance.onmicrosoft.com",
+        "name": "משה דוד אלבז",
+        "role": "user",
+        "squads": [
+          "Logistics"
+        ],
+        "areas": [],
+        "note": "PO לוגיסטי"
       }
     ]
   },

@@ -191,6 +191,8 @@ const Ask = {
     else if (r.scope && (r.scope.kind === "pi" || r.scope.kind === "sprint")) {
       const got = this.pick(r.scope.kind === "pi" ? p.pis : p.sprints, r.scope.rel);
       r.iterations = got ? got.map(x => ({path: x.path, name: x.name})) : [];
+      // Features and Epics are planned at PI level, so "this sprint" means the sprint's PI for them
+      r.sprintPis = r.scope.kind === "sprint" && got ? [...new Set(got.map(x => x.path.split("\\").slice(0, -1).join("\\")))] : [];
       if (!got && r.scope.auto) { r.scope = null; r.iterations = null; }    // no dated PIs: do not limit
     }
     r.squadAreas = [];
@@ -210,7 +212,10 @@ const Ask = {
     out.push({k: "state", label: {open: "פתוחים", closed: "סגורים", blocked: "חסומים (Blocked / Inactive)", all: "פתוחים וסגורים"}[r.state]});
     if (r.scope && r.scope.kind !== "all") {
       const names = (r.iterations || []).map(x => x.name).join(", ");
-      out.push({k: "scope", label: r.scope.kind === "path" ? names : (r.scope.kind === "pi" ? "PI " : "ספרינט ") + sc[r.scope.rel] + (names ? " (" + names + ")" : " (לא נמצא)")});
+      const piNames = (r.sprintPis || []).map(p => p.split("\\").pop()).join(", ");
+      const big = r.types.length && r.types.every(x => x === "Feature" || x === "Epic");
+      out.push({k: "scope", label: r.scope.kind === "path" ? names : (r.scope.kind === "pi" ? "PI " : "ספרינט ") + sc[r.scope.rel] + (names ? " (" + names + ")" : " (לא נמצא)") +
+        (piNames ? (big ? " · פיצ'רים לפי ה-PI (" + piNames + ")" : " · פיצ'רים ואפיקים לפי ה-PI") : "")});
     }
     if (r.parent) out.push({k: "parent", label: "תחת " + r.parent});
     if (r.date) { const rg = this.dateRange(r.date); out.push({k: "date", label: {created: "נפתחו", closed: "נסגרו", changed: "עודכנו"}[r.date.field] + " מ-" + fmtDate(rg.from) + (rg.to ? " עד " + fmtDate(new Date(rg.to.getTime() - 86400000)) : "")}); }
@@ -242,7 +247,15 @@ const Ask = {
     if (r.state === "open") w.push("[System.State] NOT IN (" + SEARCH_CLOSED.map(q).join(", ") + ")");
     if (r.state === "closed") w.push("[System.State] IN (" + SEARCH_CLOSED.map(q).join(", ") + ")");
     if (r.state === "blocked") w.push("[System.State] IN (" + ASK_BLOCKED.map(q).join(", ") + ")");
-    if (r.iterations) w.push(r.iterations.length ? "(" + r.iterations.map(x => "[System.IterationPath] UNDER " + q(x.path)).join(" OR ") + ")" : "[System.Id] = 0");
+    if (r.iterations) {
+      const its = r.iterations.map(x => "[System.IterationPath] UNDER " + q(x.path));
+      const pis = (r.sprintPis || []).map(p => "[System.IterationPath] UNDER " + q(p));
+      const big = r.types.length && r.types.every(x => x === "Feature" || x === "Epic");
+      if (!r.iterations.length) w.push("[System.Id] = 0");
+      else if (pis.length && big) w.push("(" + pis.join(" OR ") + ")");                                   // features of this sprint = of its PI
+      else if (pis.length) w.push("(" + its.join(" OR ") + " OR ([System.WorkItemType] IN ('Feature', 'Epic') AND (" + pis.join(" OR ") + ")))");
+      else w.push("(" + its.join(" OR ") + ")");
+    }
     if (r.squads.length) w.push("(" + ["[" + PERM_SQUAD + "] IN (" + r.squads.map(q).join(", ") + ")", ...r.squadAreas.map(a => "[System.AreaPath] UNDER " + q(a))].join(" OR ") + ")");
     if (r.areas.length) w.push("(" + r.areas.map(a => "[System.AreaPath] UNDER " + q(a)).join(" OR ") + ")");
     if (r.parent) w.push("[System.Parent] = " + (+r.parent));
@@ -299,7 +312,9 @@ const Ask = {
       if (r.assignee && r.assignee.none && who) return false;
       if (r.assignee && r.assignee.person && !(who && who.uniqueName === r.assignee.person.uniqueName)) return false;
       const under = (p, root) => { p = String(p || "").toLowerCase(); root = root.toLowerCase(); return p === root || p.startsWith(root + "\\"); };
-      if (r.iterations && !r.iterations.some(x => under(f["System.IterationPath"], x.path))) return false;
+      const bigItem = f["System.WorkItemType"] === "Feature" || f["System.WorkItemType"] === "Epic";
+      if (r.iterations && !r.iterations.some(x => under(f["System.IterationPath"], x.path)) &&
+          !(bigItem && (r.sprintPis || []).some(p => under(f["System.IterationPath"], p)))) return false;
       if (r.squads.length && !(r.squads.includes(f[PERM_SQUAD]) || r.squadAreas.some(a => under(f["System.AreaPath"], a)))) return false;
       if (r.areas.length && !r.areas.some(a => under(f["System.AreaPath"], a))) return false;
       if (r.parent && f["System.Parent"] !== r.parent) return false;
@@ -353,7 +368,7 @@ const Ask = {
       }
       const bar = document.createElement("div"); bar.className = "ask-bar";
       const run = document.createElement("button"); run.type = "button"; run.className = "btn"; run.textContent = "הרצה";
-      run.onclick = () => this.run(r, el, run);
+      run.onclick = () => this.run(r, el, run, () => { c.scope = {kind: "pi", rel: r.scope.rel || 0}; draw().then(() => { const b = el.querySelector(".ask-bar .btn"); if (b) b.click(); }); });
       if ((c.ask || []).length) { run.disabled = true; run.title = "קודם עונים על השאלה למעלה"; }
       const edit = document.createElement("button"); edit.type = "button"; edit.className = "btn ghost"; edit.textContent = "ניסוח מחדש";
       edit.onclick = () => { $("input").value = text; $("input").focus(); };
@@ -379,7 +394,7 @@ const Ask = {
     return el;
   },
 
-  async run(r, el, btn) {
+  async run(r, el, btn, widen) {
     if (busy) return;
     busy = true; $("sendBtn").disabled = true; btn.disabled = true; btn.textContent = "מחפש...";
     try {
@@ -390,6 +405,12 @@ const Ask = {
         (more ? "נמצאו יותר מ-" + ASK_MAX + " פריטים. מוצגים " + ASK_MAX + " האחרונים שעודכנו, כדאי לצמצם את השאלה." : "נמצאו " + ids.length + " פריטים.") +
         (titleOnly ? " החיפוש בתיאור לא זמין ב-Azure, ולכן חיפשנו מילים בכותרת בלבד." : "");
       el.appendChild(note);
+      if (!ids.length && r.scope && r.scope.kind === "sprint" && widen) {
+        const w = document.createElement("button"); w.type = "button"; w.className = "btn ghost mini"; w.textContent = "חיפוש ב-PI במקום בספרינט";
+        w.title = "הרבה פריטים משויכים ל-PI ולא לספרינט מסוים";
+        w.onclick = widen;
+        note.append(" ", w);
+      }
       if (use.length) {
         const items = await fetchItems(use);
         People.fromItems(items);

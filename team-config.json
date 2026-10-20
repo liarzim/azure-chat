@@ -179,7 +179,7 @@
       ]
     }
   },
-  "updatedAt": "2026-10-19T10:24:01.017Z",
+  "updatedAt": "2026-10-20T04:41:17.967Z",
   "updatedBy": "מיכאל ליארזי",
   "permissions": {
     "mode": "block",
@@ -229,5 +229,96 @@
         "note": "מיישמת של הסקוואד"
       }
     ]
-  }
+  },
+  "dictionary": [
+    {
+      "kind": "words",
+      "target": "",
+      "words": [
+        "ממשק",
+        "ממשקים",
+        "API",
+        "Interface",
+        "אינטגרציה",
+        "integration"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "Logistics",
+      "words": [
+        "לוגיסטיקה",
+        "לוגיסטי",
+        "לוגיסטית"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "Payroll",
+      "words": [
+        "שכר"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "Attendance",
+      "words": [
+        "נוכחות"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "Finance",
+      "words": [
+        "כספים",
+        "פיננסים"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "Infrastructure",
+      "words": [
+        "תשתיות",
+        "תשתית"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "Training",
+      "words": [
+        "הדרכה",
+        "הדרכות"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "Support",
+      "words": [
+        "תמיכה"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "Development",
+      "words": [
+        "פיתוח"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "Car_Housing",
+      "words": [
+        "רכב",
+        "דיור",
+        "רכב ודיור"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "Meteor",
+      "words": [
+        "מטאור"
+      ]
+    }
+  ]
 }

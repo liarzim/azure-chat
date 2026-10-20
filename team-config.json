@@ -179,7 +179,7 @@
       ]
     }
   },
-  "updatedAt": "2026-10-20T04:41:17.967Z",
+  "updatedAt": "2026-10-20T04:42:30.105Z",
   "updatedBy": "מיכאל ליארזי",
   "permissions": {
     "mode": "block",
@@ -318,6 +318,15 @@
       "target": "Meteor",
       "words": [
         "מטאור"
+      ]
+    },
+    {
+      "kind": "squad",
+      "target": "HR_Core",
+      "words": [
+        "HR",
+        "ליבה",
+        "משא\"ן"
       ]
     }
   ]

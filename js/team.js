@@ -105,6 +105,7 @@ const ASK_DICT_DEFAULT = [
   {kind: "words", target: "", words: ["ממשק", "ממשקים", "API", "Interface", "אינטגרציה", "integration"]},
   {kind: "squad", target: "Logistics", words: ["לוגיסטיקה", "לוגיסטי", "לוגיסטית"]},
   {kind: "squad", target: "Payroll", words: ["שכר"]},
+  {kind: "squad", target: "Meteor", words: ["מטאור", "מיטאור"]},
   {kind: "squad", target: "Attendance", words: ["נוכחות"]},
   {kind: "squad", target: "Finance", words: ["כספים", "פיננסים"]},
   {kind: "squad", target: "Infrastructure", words: ["תשתיות", "תשתית"]},

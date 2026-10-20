@@ -544,3 +544,8 @@ tr.locked .rowedit { opacity: .7; }
 .ask-chip button:hover{background:var(--panel);color:var(--bad)}
 .ask-bar{display:flex;gap:8px;flex-wrap:wrap}
 .ask-hint{font-size:12px;margin-top:8px}
+
+.ask-qs:empty{display:none}
+.ask-q{background:var(--warn-soft);border-radius:8px;padding:10px 12px;margin-bottom:10px}
+.ask-opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}
+.ask-opts select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font:inherit;color:inherit}

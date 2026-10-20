@@ -28,7 +28,7 @@ function askStem(w) {
 const Ask = {
   /* ---------- reading the question ---------- */
   async parse(text) {
-    let t = " " + String(text || "").toLowerCase().replace(/[?!.,;:״"()]/g, " ").replace(/\s+/g, " ").trim() + " ";
+    let t = " " + String(text || "").toLowerCase().replace(/[״"]/g, "").replace(/[?!.,;:()]/g, " ").replace(/\s+/g, " ").trim() + " ";
     const c = {words: [], squads: [], areas: [], types: []};
     const take = (re, fn) => { const m = re.exec(t); if (!m) return false; t = t.slice(0, m.index) + " " + t.slice(m.index + m[0].length); fn(m); return true; };
     const W = p => new RegExp("(?:^|\\s)(?:" + p + ")(?=\\s|$)", "i");
@@ -77,7 +77,10 @@ const Ask = {
     const paths = await this.paths();
     (paths.pis || []).forEach(p => { if (!c.scope) take(W("(?:ב-?)?" + this.esc(p.name.toLowerCase())), () => { c.scope = {kind: "path", path: p.path, name: p.name}; }); });
     // types
-    const TYPES = [["Task", "משימה|משימות|ה?טאסק\\S*|tasks?"], ["Bug", "באג\\S*|bugs?"], ["User Story", "user stor(?:y|ies)|us|ה?סטורי\\S*|סיפור\\S* משתמש"],
+    // "משימות" may mean any work: ask which type (Feature / User Story / Task / all)
+    c.ask = [];
+    if (take(W("[והב]?(?:ה)?(?:משימה|משימות)"), () => {})) c.ask.push({k: "type", word: "משימות"});
+    const TYPES = [["Task", "ה?טאסק\\S*|tasks?"], ["Bug", "באג\\S*|bugs?"], ["User Story", "user stor(?:y|ies)|us|ה?סטורי\\S*|סיפור\\S* משתמש"],
       ["Feature", "פיצ'?ר\\S*|פיצרים|features?"], ["Epic", "אפיק\\S*|epics?"]];
     TYPES.forEach(([type, p]) => { while (take(W("[והב]?(?:ה)?(?:" + p + ")"), () => {})) { if (!c.types.includes(type)) c.types.push(type); } });
     // squads: Leading Squad names from Azure, and their Hebrew names from the dictionary
@@ -85,11 +88,17 @@ const Ask = {
     const squadNames = await this.squadNames();
     const squadWords = [];
     squadNames.forEach(s => squadWords.push([s, s]));
-    dict.filter(d => d.kind === "squad" && d.target).forEach(d => d.words.forEach(w => squadWords.push([w, d.target])));
+    dict.filter(d => d.kind === "squad" && d.target).forEach(d => d.words.forEach(w => squadWords.push([w.replace(/[״"]/g, ""), d.target])));
     squadWords.sort((a, b) => b[0].length - a[0].length).forEach(([w, s]) => {
       const p = "(?:ב|ה|ל|של\\s+|סקוואד\\s+|בסקוואד\\s+|ה?סקוואד\\s+של\\s+)?(?:ה)?" + this.esc(w.toLowerCase());
       if (take(W(p), () => {})) { if (!c.squads.includes(s)) c.squads.push(s); }
     });
+    // "סקוואד X" with a name we do not know (e.g. "מטאור"): ask which squad it is
+    take(W("(?:ב|של\\s+|ל)?ה?סקוואד(?:\\s+של)?\\s+([^\\s\\d]{2,})"), m => {
+      if (ASK_STOP.has(m[1])) return;
+      c.ask.push({k: "squad", word: m[1]});
+    });
+    take(W("(?:ב|של\\s+|ל)?ה?סקוואד(?:ים)?"), () => {});
     // areas by name (e.g. "Meteor Sigma", "LOG")
     (paths.areas || []).filter(a => a.name.length >= 3).sort((a, b) => b.name.length - a.name.length).forEach(a => {
       if (take(W("(?:ב|ב-|area\\s+)?" + this.esc(a.name.toLowerCase())), () => {})) c.areas.push(a.path);
@@ -114,7 +123,7 @@ const Ask = {
       if (!c.words.includes(w)) c.words.push(w);
     });
     c.words = c.words.map(w => this.expand(w, dict));
-    c.strong = cue || !!(c.parent || c.state || c.assignee || c.createdByMe || c.missing || c.tag || c.stale || c.date || c.created || c.scope || c.types.length || c.squads.length || c.areas.length);
+    c.strong = cue || c.ask.length > 0 || !!(c.parent || c.state || c.assignee || c.createdByMe || c.missing || c.tag || c.stale || c.date || c.created || c.scope || c.types.length || c.squads.length || c.areas.length);
     return c;
   },
   esc(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"); },
@@ -317,12 +326,44 @@ const Ask = {
         x.onclick = () => { this.drop(c, ch.k); draw(); };
         s.appendChild(x); box.appendChild(s);
       });
+      // guiding questions: pick one option to go on
+      const qs = document.createElement("div"); qs.className = "ask-qs";
+      for (const q of c.ask || []) {
+        const box2 = document.createElement("div"); box2.className = "ask-q";
+        const title = document.createElement("div");
+        title.innerHTML = q.k === "type" ? "<b>למה הכוונה ב\"" + escHtml(q.word) + "\"?</b>" : "<b>לאיזה סקוואד הכוונה ב\"" + escHtml(q.word) + "\"?</b>";
+        const opts = document.createElement("div"); opts.className = "ask-opts";
+        const choose = fn => { fn(); c.ask = c.ask.filter(x => x !== q); draw(); };
+        if (q.k === "type") {
+          [["Feature", "Feature"], ["User Story", "User Story"], ["Task", "Task"], ["all", "הכל (כל הסוגים)"]].forEach(([v, l]) => {
+            const b = document.createElement("button"); b.type = "button"; b.className = "btn ghost mini"; b.textContent = l;
+            b.onclick = () => choose(() => { if (v !== "all" && !c.types.includes(v)) c.types.push(v); });
+            opts.appendChild(b);
+          });
+        } else {
+          const sel = document.createElement("select"); sel.setAttribute("aria-label", "בחירת סקוואד");
+          sel.add(new Option("בחרו סקוואד", ""));
+          (await this.squadNames()).forEach(s => sel.add(new Option(s, s)));
+          sel.onchange = () => { if (!sel.value) return; const v = sel.value; choose(() => { if (!c.squads.includes(v)) c.squads.push(v); c.learned = (c.learned || []).concat([[q.word, v]]); }); };
+          const skip = document.createElement("button"); skip.type = "button"; skip.className = "btn ghost mini"; skip.textContent = "זה לא סקוואד (לחפש כמילה)";
+          skip.onclick = () => choose(() => { c.words.push(this.expand(q.word, normalizeDictionary(TeamConfig.data.dictionary))); });
+          opts.append(sel, skip);
+        }
+        box2.append(title, opts); qs.appendChild(box2);
+      }
       const bar = document.createElement("div"); bar.className = "ask-bar";
       const run = document.createElement("button"); run.type = "button"; run.className = "btn"; run.textContent = "הרצה";
       run.onclick = () => this.run(r, el, run);
+      if ((c.ask || []).length) { run.disabled = true; run.title = "קודם עונים על השאלה למעלה"; }
       const edit = document.createElement("button"); edit.type = "button"; edit.className = "btn ghost"; edit.textContent = "ניסוח מחדש";
       edit.onclick = () => { $("input").value = text; $("input").focus(); };
       bar.append(run, edit);
+      // a name the user taught by choosing: offer to add it to the dictionary for everyone
+      (c.learned || []).forEach(([w, s]) => {
+        const req = document.createElement("button"); req.type = "button"; req.className = "btn ghost"; req.textContent = "בקשה להוסיף \"" + w + "\" = " + s + " למילון";
+        req.onclick = () => this.requestSynonym([w + " = Squad " + s]);
+        bar.appendChild(req);
+      });
       if (r.words.length) {
         const req = document.createElement("button"); req.type = "button"; req.className = "btn ghost"; req.textContent = "בקשה להוסיף מילה נרדפת";
         req.title = "שליחת בקשה למנהלי אז'ורי להוסיף מילים נרדפות למילון";
@@ -331,7 +372,7 @@ const Ask = {
       }
       const hint = document.createElement("div"); hint.className = "muted ask-hint";
       hint.textContent = "לחצו ✕ כדי להסיר משהו שלא התכוונתם אליו. ברירת המחדל: פריטים פתוחים ב-PI הנוכחי. עד " + ASK_MAX + " תוצאות.";
-      el.append(head, box, bar, hint);
+      el.append(qs, head, box, bar, hint);
       scrollDown();
     };
     await draw();

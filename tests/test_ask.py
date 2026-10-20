@@ -52,6 +52,10 @@ with sync_playwright() as p:
     chips = lambda: [x.replace("✕", "").strip() for x in pg.locator(".msg.ask").last.locator(".ask-chip").all_inner_texts()]
     # 1. my items: chips with defaults
     pg.click("#chips button:has-text('מה המשימות שלי')"); pg.wait_for_timeout(700)
+    q = pg.locator(".msg.ask").last.locator(".ask-q")
+    check("'משימות' is unclear: a guiding question, run waits for the answer", q.count() == 1 and "למה הכוונה" in q.inner_text() and pg.locator(".msg.ask").last.locator("button:has-text('הרצה')").is_disabled())
+    check("the options: Feature, User Story, Task, all", [x.strip() for x in q.locator("button").all_inner_texts()] == ["Feature", "User Story", "Task", "הכל (כל הסוגים)"])
+    q.locator("button:has-text('Task')").click(); pg.wait_for_timeout(400)
     check("quick question: chips with what was understood", chips() == ["Task", "שויך אליי", "פתוחים", "PI נוכחי (PI4_26)"], chips())
     pg.locator(".msg.ask").last.locator(".ask-chip", has_text="Task").locator("button").click(); pg.wait_for_timeout(300)
     check("removing a chip", "Task" not in chips() and "שויך אליי" in chips(), chips())
@@ -60,6 +64,20 @@ with sync_playwright() as p:
     ids = [x.replace("✎", "").replace("🔒", "").strip() for x in tbl.locator("tbody tr td:first-child").all_inner_texts()]
     check("run: my open items of the current PI in the usual table", ids and all(int(i) % 7 == 0 for i in ids), ids)
     check("result count shown", "נמצאו " + str(len(ids)) + " פריטים" in pg.locator(".msg.ask").last.inner_text())
+    # 1b. a squad name that is not known: which squad?
+    send("מה המשימות של סקוואד זוהר")
+    m = pg.locator(".msg.ask").last
+    m.locator(".ask-q", has_text="למה הכוונה").locator("button:has-text('הכל')").click(); pg.wait_for_timeout(300)
+    check("unknown squad name: guiding question with the squads list", "לאיזה סקוואד" in m.inner_text() and m.locator(".ask-q select option").count() > 5)
+    m.locator(".ask-q select").select_option("Meteor"); pg.wait_for_timeout(400)
+    check("chosen squad becomes a chip, no type limit after 'all'", chips()[0] == "Squad: Meteor" and not any(x in chips() for x in ["Task", "Feature"]), chips())
+    check("offer to add the name to the dictionary", m.locator("button:has-text('בקשה להוסיף \"זוהר\" = Meteor')").count() == 1)
+    send("באגים של סקוואד זוהר")
+    m = pg.locator(".msg.ask").last
+    m.locator("button:has-text('זה לא סקוואד')").click(); pg.wait_for_timeout(300)
+    check("not a squad: searched as a word", any(x.startswith("מילים: זוהר") for x in chips()) and not m.locator("button:has-text('הרצה')").is_disabled(), chips())
+    send("באגים של סקוואד מטאור")
+    check("Hebrew squad name from the dictionary: no question", pg.locator(".msg.ask").last.locator(".ask-q").count() == 0 and "Squad: Meteor" in chips(), chips())
     # 2. parent
     send("הילדים של 110045 כולל סגורים")
     check("children of an item", chips() == ["פתוחים וסגורים", "תחת 110045"], chips())
